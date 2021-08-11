@@ -74,8 +74,8 @@ passwordHeader :: MonadFrontBase t m => m (Event t ())
 passwordHeader =
   divClass "header-wrapper mb-1" $
     divClass "header header-black" $
-      divButton "header-button ml-a" $
-        elClass "i" "fas fa-times fa-fw" $ pure ()
+      divButton "header-button header-button-left" $
+        elClass "i" "fas fa-chevron-left" $ pure ()
 
 setupPattern :: MonadFrontBase t m => m (Event t Password)
 setupPattern = divClass "setup-password" $ form $ fieldset $ mdo
