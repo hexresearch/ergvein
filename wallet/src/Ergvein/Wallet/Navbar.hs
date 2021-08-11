@@ -42,8 +42,8 @@ navbarWidgetAndroid cur prevWidget = divClass "navbar-black" $ do
     divClass "navbar-balance" $ dynText balance
     divClass "navbar-status"  $ statusBarWidget False cur
     divClass "navbar-android-controls-wrapper" $ divClass "navbar-android-controls" $ do
-      sendE <- divButton "navbar-android-controls-button mlr-1" $ headerNavigationButton HeaderNavigationSend
-      receiveE <- divButton "navbar-android-controls-button mlr-1" $ headerNavigationButton HeaderNavigationReceive
+      sendE <- divButton "navbar-android-controls-button mx-1" $ headerNavigationButton HeaderNavigationSend
+      receiveE <- divButton "navbar-android-controls-button mx-1" $ headerNavigationButton HeaderNavigationReceive
       switchNavbar cur prevWidget (leftmost [NavbarSend <$ sendE, NavbarReceive <$ receiveE])
   where
     headerNavigationButton btnType = do

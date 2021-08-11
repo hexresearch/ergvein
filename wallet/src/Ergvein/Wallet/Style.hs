@@ -4,19 +4,22 @@ module Ergvein.Wallet.Style(
     compileFrontendCss
   ) where
 
+import Control.Monad
+import Data.ByteString (ByteString)
+import Data.Foldable (for_)
+import Language.Javascript.JSaddle (MonadJSM)
+import Prelude hiding ((**), rem)
+
 import Clay
 import Clay.Selector
 import Clay.Stylesheet
-import Control.Monad
-import Data.ByteString (ByteString)
+
+import qualified Clay.Flexbox as F
+import qualified Clay.Media as M
+
 import Ergvein.Core
-import Language.Javascript.JSaddle hiding ((#))
-import Prelude hiding ((**), rem)
 import Sepulcas.Native
 import Sepulcas.Style
-
-import qualified Clay.Media as M
-import qualified Clay.Flexbox as F
 
 compileFrontendCss :: (MonadJSM m, PlatformNatives) => m ByteString
 compileFrontendCss = compileStyles frontendCss
@@ -1032,47 +1035,38 @@ bumpFeePageCss = do
 
 legoStyles :: Css
 legoStyles = do
-  ".mb-0" ? (marginBottom $ rem 0)
-  ".ml-0" ? (marginLeft   $ rem 0)
-  ".mr-0" ? (marginRight  $ rem 0)
-  ".mt-0" ? (marginTop    $ rem 0)
-  ".m-0"  ? margin (rem 0) (rem 0) (rem 0) (rem 0)
-  ".mb-1" ? (marginBottom $ rem 1)
-  ".ml-1" ? (marginLeft   $ rem 1)
-  ".mr-1" ? (marginRight  $ rem 1)
-  ".mt-1" ? (marginTop    $ rem 1)
-  ".m-1" ? margin (rem 1) (rem 1) (rem 1) (rem 1)
-  ".mlr-1" ? margin (rem 0) (rem 1) (rem 0) (rem 1)
-  ".mlr-a" ? do
-    marginLeft auto
-    marginRight auto
-  ".mb-2" ? (marginBottom $ rem 2)
-  ".ml-2" ? (marginLeft   $ rem 2)
-  ".mr-2" ? (marginRight  $ rem 2)
-  ".mt-2" ? (marginTop    $ rem 2)
-  ".m-2" ? margin (rem 2) (rem 2) (rem 2) (rem 2)
-  ".mt-3" ? (marginTop    $ rem 3)
-  ".mr-6" ? (marginRight  $ rem 6)
-  ".mb-a" ? marginBottom  auto
-  ".ml-a" ? marginLeft    auto
-  ".mr-a" ? marginRight   auto
-  ".mt-a" ? marginTop     auto
-  ".mtb-a" ? (marginTop auto) >> (marginBottom auto)
-  ".pb-1" ? (paddingBottom $ rem 1)
-  ".pl-1" ? (paddingLeft   $ rem 1)
-  ".pr-1" ? (paddingRight  $ rem 1)
-  ".pt-1" ? (paddingTop    $ rem 1)
-  ".p-1" ? padding (rem 1) (rem 1) (rem 1) (rem 1)
-  ".pb-2" ? (paddingBottom $ rem 2)
-  ".pl-2" ? (paddingLeft   $ rem 2)
-  ".pr-2" ? (paddingRight  $ rem 2)
-  ".pt-2" ? (paddingTop    $ rem 2)
-  ".p-2" ? padding (rem 2) (rem 2) (rem 2) (rem 2)
-  ".pb-a" ? paddingBottom  auto
-  ".pl-a" ? paddingLeft    auto
-  ".pr-a" ? paddingRight   auto
-  ".pt-a" ? paddingTop     auto
-  ".p-a"  ? padding auto auto auto auto
+  let selectors = [(spacingType, size, sizeText, side) |
+        spacingType <- ["p", "m"],
+        (size, sizeText) <- [(rem 0, "0"), (rem 1, "1"), (rem 2, "2"), (rem 3, "3"), (auto, "a")],
+        side <- ["t", "r", "b", "l", "x", "y", ""] ]
+  for_ selectors $ \(spacingType, size, sizeText, side) -> do
+    let selector = selectorFromText $ "." <> spacingType <> side <> "-" <> sizeText
+    selector ? do
+      case (spacingType, side) of
+        ("p", "t") -> paddingTop size
+        ("p", "r") -> paddingRight size
+        ("p", "b") -> paddingBottom size
+        ("p", "l") -> paddingLeft size
+        ("p", "x") -> do
+          paddingLeft size
+          paddingRight size
+        ("p", "y") -> do
+          paddingTop size
+          paddingBottom size
+        ("p", "") -> padding size size size size
+
+        ("m", "t") -> marginTop size
+        ("m", "r") -> marginRight size
+        ("m", "b") -> marginBottom size
+        ("m", "l") -> marginLeft size
+        ("m", "x") -> do
+          marginLeft size
+          marginRight size
+        ("m", "y") -> do
+          marginTop size
+          marginBottom size
+        ("m", "") -> margin size size size size
+        _ -> pure ()
   ".w-80" ? width (pct 80)
   ".w-100" ? width (pct 100)
   ".h-100" ? height (pct 100)

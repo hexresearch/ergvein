@@ -256,7 +256,7 @@ lengthSelectPage = wrapperSimple True $ do
     , retractablePrev = Just $ pure lengthSelectPage
     }
   where
-    btnCls = "button button-outline" <> if isAndroid then " mlr-a disp-block" else ""
+    btnCls = "button button-outline" <> if isAndroid then " mx-a disp-block" else ""
     mkBtn i = fmap (i <$) $ buttonClass btnCls $ showt i
 
 pasteBtnsWidget :: MonadFrontBase t m => m (Event t Text)
