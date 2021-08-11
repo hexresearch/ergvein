@@ -49,8 +49,8 @@ backupPage :: MonadFrontBase t m => m ()
 backupPage = wrapperSimple True $ do
   divClass "backup-page-icon mb-2" $ elClass "i" "fas fa-exclamation-triangle" blank
   h4 $ localizedText SPSBackupTitle
-  parClass "ta-l" $ localizedText SPSBackupText1
-  parClass "ta-l" $ localizedText SPSBackupText2
+  par $ localizedText SPSBackupText1
+  par $ localizedText SPSBackupText2
   btnE <- divClass "initial-options grid1" $ do
     backupNowBtnE <- (GoBackupNow <$) <$> outlineButton SPSBackupNow
     backupLaterBtnE <- (GoBackupLater <$) <$> buttonClass "button button-clear" SPSBackupLater
