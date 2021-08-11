@@ -231,12 +231,9 @@ simpleSeedRestorePage = plainRestorePage 12
 seedRestorePage :: MonadFrontBase t m => m ()
 seedRestorePage = wrapperSimple True $ do
   h2 $ localizedText SPSTypeTitle
-  let cls = "ml-a mr-a mb-2 w-80" <> if isAndroid then " fit-content" else " navbar-2-cols"
-      btnCls = "button button-outline" <>
-        if isAndroid then " disp-block w-100" else ""
-  goE <- divClass cls $ do
-    e1 <-(True <$) <$> buttonClass btnCls SPSPlain
-    e2 <- (False <$) <$> buttonClass btnCls SPSBase58
+  goE <- divClass "restore-seed-buttons-wrapper" $ do
+    e1 <-(True <$) <$> buttonClass "button button-outline" SPSPlain
+    e2 <- (False <$) <$> buttonClass "button button-outline" SPSBase58
     pure $ leftmost [e1, e2]
   void $ nextWidget $ ffor goE $ \b -> Retractable {
       retractableNext = if b
@@ -248,8 +245,7 @@ seedRestorePage = wrapperSimple True $ do
 lengthSelectPage :: MonadFrontBase t m => m ()
 lengthSelectPage = wrapperSimple True $ do
   h2 $ localizedText SPSLengthTitle
-  let cls = "ml-a mr-a mb-2 w-80" <> if isAndroid then "" else " navbar-5-cols"
-  goE <- divClass cls $ mdo
+  goE <- divClass "restore-seed-buttons-wrapper" $ mdo
     leftmost <$> traverse mkBtn [24,21,18,15,12]
   void $ nextWidget $ ffor goE $ \i -> Retractable {
       retractableNext = plainRestorePage i

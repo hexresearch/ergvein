@@ -388,6 +388,10 @@ mnemonicWidgetCss = do
   ".mnemonic-verification-error" ? do
     color textDanger
     margin (rem 0) (rem 0.5) (rem 0) (rem 0.5)
+  ".restore-seed-option-btns" ? do
+    display flex
+    justifyContent center
+    flexWrap F.wrap
   ".restore-seed-input" ? do
     minHeight $ rem 10
   ".restore-seed-buttons-wrapper" ? do
