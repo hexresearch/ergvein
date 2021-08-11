@@ -139,10 +139,8 @@ wrapperCss = do
     flexDirection column
   ".wrapper .container" ? do
     maxWidth tabletBreakpoint
-    flexGrow 1
   ".centered-container" ? do
     display flex
-    flexGrow 1
   ".centered-content" ? do
     margin auto auto auto auto
 
@@ -155,6 +153,8 @@ headerCss = do
   ".header" ? do
     display flex
     fontSize $ pt 14
+    paddingLeft $ rem 1
+    paddingRight $ rem 1
   ".header-black" ? do
     backgroundColor black
     color white
@@ -221,6 +221,8 @@ headerCss = do
     padding (rem 0) (rem 1) (rem 0) (rem 4)
   ".menu-android-header" ? do
     display flex
+    paddingLeft $ rem 1
+    paddingRight $ rem 1
   ".menu-android-close-button" ? do
     marginLeft auto
   ".menu-android-button" ? do
@@ -1080,6 +1082,7 @@ legoStyles = do
   ".font-bold" ? fontWeight bold
   ".fit-content" ? width fitContent
   ".disp-block" ? display block
+  ".flex-grow" ? flexGrow 1
   ".overflow-wrap-bw" ? overflowWrap breakWord
   let fillBtnColor cl backCol fontCol = do
         let colorSet = do

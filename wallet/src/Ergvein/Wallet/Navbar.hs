@@ -24,7 +24,7 @@ navbarWidget cur prevWidget activeItem = do
   where
     balanceWidget = do
       balance <- balanceTitleWidget cur
-      divClass "navbar-black" $ do
+      divClass "navbar-black py-1 px-2" $ do
         divClass "navbar-balance" $ dynText balance
         divClass "navbar-status"  $ statusBarWidget False cur
 
@@ -37,7 +37,7 @@ navbarBtn _ _ = pure never
 data HeaderNavigationButtonType = HeaderNavigationSend | HeaderNavigationReceive
 
 navbarWidgetAndroid :: MonadFront t m => Currency -> Maybe (Dynamic t (m ())) -> m ()
-navbarWidgetAndroid cur prevWidget = divClass "navbar-black" $ do
+navbarWidgetAndroid cur prevWidget = divClass "navbar-black py-1 px-2" $ do
     balance <- balanceTitleWidget cur
     divClass "navbar-balance" $ dynText balance
     divClass "navbar-status"  $ statusBarWidget False cur
