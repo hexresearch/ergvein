@@ -164,6 +164,12 @@ headerCss = do
   ".header-button" ? do
     fontSize $ pt 20
     padding (rem 1) (rem 1) (rem 1) (rem 1)
+    width $ rem 7
+    display flex
+  ".header-button-left" ? do
+    justifyContent flexStart
+  ".header-button-right" ? do
+    justifyContent flexEnd
   ".header-button:hover" ? do
     cursor pointer
     color hoverColor
