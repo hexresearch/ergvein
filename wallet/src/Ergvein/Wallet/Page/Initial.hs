@@ -54,7 +54,7 @@ hasWalletsPage redir ss = do
   mnameE <- performEvent $ getLastStorage <$ buildE
   void $ nextWidget $ ffor mnameE $ \mname -> Retractable {
       retractableNext = maybe (selectWalletsPage ss) selectNext mname
-    , retractablePrev = Just $ pure $ selectWalletsPage ss
+    , retractablePrev = Nothing
     }
   where
     selectNext = if redir then loadWalletPage else const (selectWalletsPage ss)
