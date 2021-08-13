@@ -31,6 +31,7 @@ frontendCss = do
   buttonCss
   buttonsToggleCss
   graphPinCodeCanvasCss
+  pinCodeCss
   headerCss
   historyPageCss
   txInfoPageCss
@@ -877,6 +878,40 @@ patternKeyCss = do
     display block
   ".myDebugLog" ? do
     display block
+
+pinCodeCss :: Css
+pinCodeCss = do
+  ".pincode-widget" ? do
+    height $ pct 100
+    display flex
+    flexDirection column
+    justifyContent spaceBetween
+    alignItems center
+  ".pincode-widget-dots" ? do
+    display grid
+    gridTemplateColumns $ replicate 6 $ fr 1
+    gridGap $ rem 1
+  ".pincode-widget-button" ? do
+    display flex
+    justifyContent center
+    alignItems center
+    fontSize $ rem 2.2
+  ".pincode-widget-button:hover" ? do
+    cursor pointer
+    color hoverColor
+  ".pincode-widget-numpad" ? do
+    let cols = 3 :: Int
+        rows = 4 :: Int
+        numSize = 6 :: Int
+        gap = 1 :: Int
+    display grid
+    gridTemplateColumns $ replicate cols $ fr 1
+    gridGap $ rem $ fromIntegral gap
+    alignItems stretch
+    minWidth $ rem $ fromIntegral $ cols * numSize + gap * (cols - 1)
+    minHeight $ rem $ fromIntegral $ rows * numSize + gap * (rows - 1)
+    maxWidth $ rem 40
+    width $ pct 100
 
 selectCss :: Css
 selectCss = do

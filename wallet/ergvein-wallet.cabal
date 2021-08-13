@@ -52,6 +52,7 @@ library
         Ergvein.Wallet.Page.Network
         Ergvein.Wallet.Page.Password
         Ergvein.Wallet.Page.PatternKey
+        Ergvein.Wallet.Page.PinCode
         Ergvein.Wallet.Page.QRCode
         Ergvein.Wallet.Page.Receive
         Ergvein.Wallet.Page.Restore
