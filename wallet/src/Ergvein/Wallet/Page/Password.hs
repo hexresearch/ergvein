@@ -154,8 +154,8 @@ setupPatternPage :: MonadFrontBase t m
   -> [Currency]
   -> BlockHeight
   -> m ()
-setupPatternPage wt mpath mnemonic l curs startingHeight = wrapperSimple True $ do
-  let this = Just $ pure $ setupPatternPage wt mpath mnemonic l curs startingHeight
+setupPatternPage wt mpath mnemonic login curs startingHeight = wrapperSimple True $ do
+  let this = Just $ pure $ setupPatternPage wt mpath mnemonic login curs startingHeight
   divClass "password-setup-title" $ h4 $ localizedText PatPSTitle
   divClass "password-setup-descr" $ h5 $ localizedText PatPSDescr
   patE <- setupPattern
@@ -166,12 +166,12 @@ setupPatternPage wt mpath mnemonic l curs startingHeight = wrapperSimple True $ 
   let passE = leftmost ["" <$ skipE, patE]
   void $ nextWidget $ ffor passE $ \pass -> Retractable {
       retractableNext = if pass == ""
-        then confirmEmptyPage wt mnemonic curs l pass mpath startingHeight False
-        else performAuth wt mnemonic curs l pass mpath startingHeight False
+        then confirmEmptyPage wt mnemonic curs login pass mpath startingHeight False
+        else performAuth wt mnemonic curs login pass mpath startingHeight False
     , retractablePrev = if pass == "" then this else Nothing
     }
   void $ nextWidget $ ffor setPassE $ const $ Retractable {
-      retractableNext = setupMobilePasswordPage wt mpath mnemonic l curs startingHeight
+      retractableNext = setupMobilePasswordPage wt mpath mnemonic login curs startingHeight
     , retractablePrev = this
     }
 
@@ -183,7 +183,7 @@ setupMobilePasswordPage :: MonadFrontBase t m
   -> [Currency]
   -> BlockHeight
   -> m ()
-setupMobilePasswordPage wt mpath mnemonic l curs startingHeight = wrapperSimple True $ do
+setupMobilePasswordPage wt mpath mnemonic login curs startingHeight = wrapperSimple True $ do
   divClass "password-setup-title" $ h4 $ localizedText PPSPassTitle
   divClass "password-setup-descr" $ h5 $ localizedText PPSDescr
   rec
@@ -195,10 +195,10 @@ setupMobilePasswordPage wt mpath mnemonic l curs startingHeight = wrapperSimple 
       pure btnE'
   void $ nextWidget $ ffor passE $ \pass -> Retractable {
       retractableNext = if pass == ""
-        then confirmEmptyPage wt mnemonic curs l pass mpath startingHeight True
-        else performAuth wt mnemonic curs l pass mpath startingHeight True
+        then confirmEmptyPage wt mnemonic curs login pass mpath startingHeight True
+        else performAuth wt mnemonic curs login pass mpath startingHeight True
     , retractablePrev = if pass == ""
-        then Just $ pure $ setupMobilePasswordPage wt mpath mnemonic l curs startingHeight
+        then Just $ pure $ setupMobilePasswordPage wt mpath mnemonic login curs startingHeight
         else Nothing
     }
 
