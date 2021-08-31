@@ -23,12 +23,12 @@ selectCurrenciesPage wt mnemonic = do
   buildE <- getPostBuild
   let e = [BTC] <$ buildE
   void $ nextWidget $ ffor e $ \ac -> Retractable {
-#ifdef ANDROID
-      retractableNext = setupLoginPage wt Nothing mnemonic ac
-#else
-      retractableNext = setupPasswordPage wt Nothing mnemonic ac Nothing
-#endif
-    , retractablePrev = Just $ pure $ selectCurrenciesPage wt mnemonic
+      retractableNext = if isAndroid
+        -- On Android login is entered first. After that user is redirected to the password setup page.
+        then setupLoginPage wt Nothing mnemonic ac
+        -- On desktop login and passwrod are entered on the same page.
+        else setupPasswordPage wt Nothing mnemonic ac Nothing
+    , retractablePrev = Nothing
     }
 
 -- As long as we only have one active currency, this widget is not needed
