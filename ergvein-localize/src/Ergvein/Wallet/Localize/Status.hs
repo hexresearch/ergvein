@@ -23,7 +23,7 @@ instance LocalizedPrint WalletStatusNormal where
       WalletStatusNormal'empty -> ""
     Russian -> case v of
       WalletStatusNormal'gettingNodeAddresses -> "Получение адреса ноды"
-      WalletStatusNormal'connectingToPeers c -> "Подключение к узлам" <> currencyName c
+      WalletStatusNormal'connectingToPeers c -> "Подключение к узлам " <> currencyName c
       WalletStatusNormal'gettingHeight h -> "Вычисление высоты, текущее значение: " <> showt h
       WalletStatusNormal'newFilters n -> "Сканируются " <> showt n <> " новых блоков"
       WalletStatusNormal'synced -> "Синхронизировано"

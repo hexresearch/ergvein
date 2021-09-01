@@ -27,6 +27,7 @@ data WalletInfoAlert = CreateStorageAlert !StorageAlert | GenerateECIESKeyAlert 
 initWalletInfo :: (MonadIO m, PlatformNatives, HasStoreDir m, LocalizedPrint StorageAlert)
   => Language
   -> WalletSource
+  -> Bool
   -> Maybe DerivPrefix
   -> Mnemonic
   -> [Currency]
@@ -35,10 +36,10 @@ initWalletInfo :: (MonadIO m, PlatformNatives, HasStoreDir m, LocalizedPrint Sto
   -> BlockHeight
   -> Bool
   -> m (Either WalletInfoAlert WalletInfo)
-initWalletInfo lang wt mpath mnemonic curs login pass startingHeight isPass = do
-  let fname = "meta_wallet_" <> (T.replace " " "_" login)
+initWalletInfo lang wt seedBackupRequired mpath mnemonic curs login pass startingHeight isPass = do
+  let fname = "meta_wallet_" <> T.replace " " "_" login
   when (isAndroid && isPass) $ storeValue fname True True
-  mstorage <- createStorage (wt == WalletRestored) mpath mnemonic (login, pass) startingHeight curs
+  mstorage <- createStorage (wt == WalletRestored) seedBackupRequired mpath mnemonic (login, pass) startingHeight curs
   case mstorage of
     Left err -> do
       logWrite $ localizedShow lang err

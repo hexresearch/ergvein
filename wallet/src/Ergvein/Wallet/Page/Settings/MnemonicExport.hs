@@ -27,20 +27,20 @@ mnemonicExportPage = wrapperSimple True $ do
   divClass "password-setup-title" $ h4 $ localizedText PPSMnemonicTitle
   divClass "password-setup-descr" $ h5 $ localizedText PPSMnemonicDescr
   passE <- setupPassword =<< submitSetBtn
-  void $ nextWidget $ ffor passE $ \pass ->
+  mnemonicPassE <- withWallet $ ffor passE $ \pass prvStorage -> pure (_prvStorage'mnemonic prvStorage, pass)
+  void $ nextWidget $ ffor mnemonicPassE $ \(mnemonic, pass) ->
     Retractable
-      { retractableNext = mnemonicExportResutlPage pass,
+      { retractableNext = mnemonicExportResutlPage mnemonic pass,
         retractablePrev = Nothing
       }
 
-mnemonicExportResutlPage :: MonadFront t m => Password -> m ()
-mnemonicExportResutlPage pass = do
+mnemonicExportResutlPage :: MonadFront t m => Mnemonic -> Password -> m ()
+mnemonicExportResutlPage mnemonic pass = do
   title <- localized STPSTitle
-  let thisWidget = Just $ pure $ mnemonicExportResutlPage pass
+  let thisWidget = Just $ pure $ mnemonicExportResutlPage mnemonic pass
   buildE <- getPostBuild
-  encMnemE <- withWallet $ ffor buildE $ \_ prvStorage -> do
-    liftIO $ encryptMnemonic (_prvStorage'mnemonic prvStorage) pass
-  void $ networkHold (pure ()) $ ffor encMnemE $ \encryptedMnemonic ->
+  encryptedMnemonic <- liftIO $ encryptMnemonic mnemonic pass
+  void $ networkHold (pure ()) $ ffor buildE $ const $
     wrapper True title thisWidget $ divClass "mnemonic-export-page" $ do
       h4 $ localizedText STPSMnemonicExportMsg
       base64D <- divClass "mb-2" $ qrCodeWidgetWithData encryptedMnemonic

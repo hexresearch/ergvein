@@ -37,8 +37,8 @@ wrapperNavbar isCentered titleVal thisWidget navbar ma = wrapperGeneric isCenter
 contentContainer :: MonadFront t m => Bool -> Text -> m a -> m a
 contentContainer isCentered classes ma = do
   a <- if isCentered
-    then divClass "centered-container" $ divClass ("centered-content container p-1" <> padClasses classes) ma
-    else divClass ("container p-1" <> padClasses classes) ma
+    then divClass "centered-container flex-grow" $ divClass ("centered-content container py-1 px-2" <> padClasses classes) ma
+    else divClass ("container flex-grow py-1 px-2" <> padClasses classes) ma
   alertHandlerWidget English
   pure a
   where
@@ -49,8 +49,8 @@ wrapperSimpleGeneric :: MonadFrontBase t m => m () -> Bool -> m a -> m a
 wrapperSimpleGeneric header isCentered ma = divClass "wrapper" $ do
   header
   a <- if isCentered
-    then divClass "centered-container" $ divClass "centered-content container p-1" ma
-    else divClass "container p-1" ma
+    then divClass "centered-container flex-grow" $ divClass "centered-content container py-1 px-2" ma
+    else divClass "container flex-grow py-1 px-2" ma
   alertHandlerWidget English
   pure a
 

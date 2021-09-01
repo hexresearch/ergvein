@@ -70,7 +70,23 @@ instance LocalizedPrint PasswordPageStrings where
       PPSMnemonicUnlock -> "Введите пароль для расшифровки мнемонической фразы"
       PPSWrongPassword  -> "Неверный пароль"
 
-data PasswordWidgetStrings = PWSPassword | PWSPassNamed Text | PWSRepeat | PWSSet | PWSNoMatch | PWSGo | PWSLogin | PWSEmptyLogin | PWSEmptyPassword | PWSEmptyPattern | PWSDeriv | PWSDerivDescr | PWSInvalidPath | PWSMoreOptions | PWSLessOptions
+data PasswordWidgetStrings =
+    PWSPassword
+  | PWSPassNamed Text
+  | PWSRepeat
+  | PWSSet
+  | PWSNoMatch
+  | PWSGo
+  | PWSLogin
+  | PWSEmptyLogin
+  | PWSEmptyPassword
+  | PWSEmptyPattern
+  | PWSDeriv
+  | PWSDerivDescr1
+  | PWSDerivDescr2
+  | PWSInvalidPath
+  | PWSMoreOptions
+  | PWSLessOptions
 
 instance LocalizedPrint PasswordWidgetStrings where
   localizedShow l v = case l of
@@ -86,7 +102,8 @@ instance LocalizedPrint PasswordWidgetStrings where
       PWSEmptyPassword -> "Password is empty!"
       PWSEmptyPattern  -> ""
       PWSDeriv         -> "Derivation path"
-      PWSDerivDescr    -> "You can override suggested derivation path. Leave it untouched if not sure what it is."
+      PWSDerivDescr1   -> "You can override the suggested derivation path."
+      PWSDerivDescr2   -> "Leave it untouched if not sure what it is."
       PWSInvalidPath   -> "Derivation path is invalid! Format m/0'/0'/0'"
       PWSMoreOptions   -> "Advanced settings"
       PWSLessOptions   -> "Advanced settings"
@@ -102,10 +119,11 @@ instance LocalizedPrint PasswordWidgetStrings where
       PWSEmptyPassword -> "Пароль пустой!"
       PWSEmptyPattern  -> ""
       PWSDeriv         -> "Префикс BIP48 для вывода ключей"
-      PWSDerivDescr    -> "Вы можете переназначить префикс дерева для вывода ключей. Оставьте как есть, если не знаете, что это такое."
+      PWSDerivDescr1   -> "Вы можете переназначить префикс дерева для вывода ключей."
+      PWSDerivDescr2   -> "Оставьте как есть, если не знаете, что это такое."
       PWSInvalidPath   -> "Путь вывода неверен! Формат поля m/0'/0'/0'"
-      PWSMoreOptions   -> "Продвинутые опции"
-      PWSLessOptions   -> "Продвинутые опции"
+      PWSMoreOptions   -> "Дополнительные настройки"
+      PWSLessOptions   -> "Дополнительные настройки"
 
 data ConfirmEmptyPage = CEPBack | CEPSkip | CEPAttention | CEPConsequences
 
