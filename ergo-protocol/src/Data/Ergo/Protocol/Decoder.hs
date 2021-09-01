@@ -10,16 +10,13 @@ module Data.Ergo.Protocol.Decoder(
   , runGet
   ) where
 
-import Control.Monad.IO.Class
 import Control.Monad hiding (fail)
 import Control.Monad.Fail
-import Data.Bits
 import Data.ByteString (ByteString)
 import Data.Ergo.Protocol.Check
 import Data.Ergo.Protocol.Types
 import Data.Ergo.Vlq
 import Data.Int
-import Data.IORef
 import Data.Persist
 import Data.Text (Text)
 import Data.Text.Encoding
@@ -44,32 +41,17 @@ embedParser msg p bs = case runGet p bs of
   Left er -> fail $ msg <> ": " <> er
   Right a -> pure a
 
-word32be :: Word32 -> Get Word32
-word32be w = do
-  v <- fmap unBE get
-  unless (v == w) $ fail $ "Expected " <> show w <> " but got " <> show v
-  pure v
-
 anyWord8 :: Get Word8
 anyWord8 = get
 
-anyInt64be :: Get Int64
-anyInt64be = fmap unBE get
-
 anyWord64be :: Get Word64
 anyWord64be = fmap unBE get
-
-anyInt32be :: Get Int32
-anyInt32be = fmap unBE get
 
 anyWord32be :: Get Word32
 anyWord32be = fmap unBE get
 
 anyWord32le :: Get Word32
 anyWord32le = fmap unLE get
-
-anyWord16be :: Get Word16
-anyWord16be = fmap unBE get
 
 vlqInt64 :: Get Int64
 vlqInt64 = decodeVlq

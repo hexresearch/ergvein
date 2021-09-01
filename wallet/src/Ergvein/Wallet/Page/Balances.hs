@@ -3,9 +3,7 @@ module Ergvein.Wallet.Page.Balances(
     balancesPage
   ) where
 
-import Data.Maybe (fromMaybe)
-
-import Ergvein.Wallet.Debug
+-- import Ergvein.Wallet.Debug
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.History
 import Ergvein.Wallet.Page.PatternKey
@@ -40,7 +38,7 @@ currenciesList _ = divClass "currency-content" $ do
           {retractableNext = historyPage $ L.head currencies,
            retractablePrev = Nothing}
     else do
-      historyE <- leftmost <$> traverse (currencyLine s) currencies
+      historyE <- leftmost <$> traverse currencyLine currencies
       if settingsPortfolio s
         then portfolioWidget
         else pure ()
@@ -49,7 +47,7 @@ currenciesList _ = divClass "currency-content" $ do
       , retractablePrev = thisWidget
       }
   where
-    currencyLine settings cur = do
+    currencyLine cur = do
       (e, _) <- divClass' "currency-row" $ do
         bal <- balanceWidget cur
         (balance, units) <- case cur of

@@ -15,16 +15,16 @@ import Ergvein.Wallet.Widget.Balance
 
 navbarWidget :: MonadFront t m => Currency -> Maybe (Dynamic t (m ())) -> NavbarItem -> m ()
 navbarWidget cur prevWidget activeItem = do
-  when (activeItem /= NavbarReceive) balanceWidget
-  divClass "navbar-3-cols" $ do
+  when (activeItem /= NavbarReceive) localBalance
+  divClass "container" $ divClass "navbar-3-cols" $ do
     sendE <- navbarBtn NavbarSend activeItem
     historyE <- navbarBtn NavbarHistory activeItem
     receiveE <- navbarBtn NavbarReceive activeItem
     switchNavbar cur prevWidget (leftmost [sendE, historyE, receiveE])
   where
-    balanceWidget = do
+    localBalance = do
       balance <- balanceTitleWidget cur
-      divClass "navbar-black" $ do
+      divClass "navbar-black py-1 px-2" $ do
         divClass "navbar-balance" $ dynText balance
         divClass "navbar-status"  $ statusBarWidget False cur
 
@@ -37,13 +37,13 @@ navbarBtn _ _ = pure never
 data HeaderNavigationButtonType = HeaderNavigationSend | HeaderNavigationReceive
 
 navbarWidgetAndroid :: MonadFront t m => Currency -> Maybe (Dynamic t (m ())) -> m ()
-navbarWidgetAndroid cur prevWidget = divClass "navbar-black" $ do
+navbarWidgetAndroid cur prevWidget = divClass "navbar-black py-1 px-2" $ do
     balance <- balanceTitleWidget cur
     divClass "navbar-balance" $ dynText balance
     divClass "navbar-status"  $ statusBarWidget False cur
     divClass "navbar-android-controls-wrapper" $ divClass "navbar-android-controls" $ do
-      sendE <- divButton "navbar-android-controls-button mlr-1" $ headerNavigationButton HeaderNavigationSend
-      receiveE <- divButton "navbar-android-controls-button mlr-1" $ headerNavigationButton HeaderNavigationReceive
+      sendE <- divButton "navbar-android-controls-button mx-1" $ headerNavigationButton HeaderNavigationSend
+      receiveE <- divButton "navbar-android-controls-button mx-1" $ headerNavigationButton HeaderNavigationReceive
       switchNavbar cur prevWidget (leftmost [NavbarSend <$ sendE, NavbarReceive <$ receiveE])
   where
     headerNavigationButton btnType = do

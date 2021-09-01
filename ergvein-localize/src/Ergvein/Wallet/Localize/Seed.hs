@@ -32,9 +32,14 @@ data SeedPageStrings =
   | SPSBase58
   | SPSPlainTitle Int
   | SPSBase58Title
+  | SPSBackupTitle
+  | SPSBackupText1
+  | SPSBackupText2
+  | SPSBackupNow
+  | SPSBackupLater
 
 numSuffix :: Int -> Text
-numSuffix n = case (n `mod` 10) of
+numSuffix n = case n `mod` 10 of
   1 -> "st"
   2 -> "nd"
   3 -> "rd"
@@ -66,6 +71,11 @@ instance LocalizedPrint SeedPageStrings where
       SPSBase58               -> "Base58"
       SPSPlainTitle i         -> "Enter the mnemonic phrase of length " <> showt i
       SPSBase58Title          -> "Enter base58-encoded mnemonic"
+      SPSBackupTitle          -> "Back up your mnemonic phrase"
+      SPSBackupText1          -> "Your secret 12-words recovery phrase is the only way to recover your funds if you lose access to your wallet."
+      SPSBackupText2          -> "Write it down safely and store it in a secure location."
+      SPSBackupNow            -> "Backup now"
+      SPSBackupLater          -> "Do it later"
     Russian -> case v of
       SPSTitle                -> "Слова мнемонической фразы от вашего кошелька"
       SPSWarn                 -> "Эта мнемоническая фраза — единственный способ восстановить ваш кошелёк. Запишите их, иначе вы можете потерять свои деньги. Навсегда."
@@ -90,3 +100,8 @@ instance LocalizedPrint SeedPageStrings where
       SPSBase58               -> "Base58"
       SPSPlainTitle i         -> "Введите мнемоническую фразу длиной " <> showt i
       SPSBase58Title          -> "Введите мнемоническую фразу в кодировке base58"
+      SPSBackupTitle          -> "Сделайте резервную копию вашей мнемонической фразы"
+      SPSBackupText1          -> "Ваша мнемоническая фраза из 12 слов - это единственный способ восстановить ваши средства, если вы потеряли доступ к своему кошельку."
+      SPSBackupText2          -> "Запишите ёё и сохраните в надёжном месте."
+      SPSBackupNow            -> "Сделать резервную копию сейчас"
+      SPSBackupLater          -> "Сделать это позже"

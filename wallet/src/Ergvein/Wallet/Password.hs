@@ -66,7 +66,7 @@ setupLoginPassword mlogin e = divClass "setup-password" $ form $ fieldset $ mdo
 nameProposal :: [WalletName] -> WalletName
 nameProposal s = let
   ss = S.fromList s
-  in fromJust $ find (not . flip S.member ss) $ firstName : ((subsequentNamePrefix <>) . showt <$> [2..])
+  in fromJust $ find (not . flip S.member ss) $ firstName : ((subsequentNamePrefix <>) . showt <$> [2 ::Int ..])
   where
    firstName = "main"
    subsequentNamePrefix = "wallet_"
@@ -75,8 +75,8 @@ passwordHeader :: MonadFrontBase t m => m (Event t ())
 passwordHeader =
   divClass "header-wrapper mb-1" $
     divClass "header header-black" $
-      divButton "header-button ml-a" $
-        elClass "i" "fas fa-times fa-fw" $ pure ()
+      divButton "header-button header-button-left" $
+        elClass "i" "fas fa-chevron-left" $ pure ()
 
 setupPattern :: MonadFrontBase t m => m (Event t Password)
 setupPattern = divClass "setup-password" $ form $ fieldset $ mdo
@@ -98,7 +98,10 @@ setupLogin e = divClass "setup-password" $ form $ fieldset $ mdo
 
 setupDerivPrefix :: MonadFrontBase t m => [Currency] -> Maybe DerivPrefix -> m (Dynamic t DerivPrefix)
 setupDerivPrefix ac mpath = do
-  divClass "password-setup-descr" $ h5 $ localizedText PWSDerivDescr
+  divClass "password-setup-descr" $ h5 $ do
+    localizedText PWSDerivDescr1
+    br
+    localizedText PWSDerivDescr2
   divClass "setup-password" $ form $ fieldset $ mdo
     let dval = fromMaybe defValue mpath
     pathTD <- textField PWSDeriv $ showDerivPath dval

@@ -3,22 +3,27 @@ module Ergvein.Wallet.Page.Initial(
     initialPage
   ) where
 
+import Data.Bifunctor (first)
+import Data.Foldable (for_)
+import Data.Traversable (for)
+
 import Ergvein.Either
 import Ergvein.Types.Storage
-import Sepulcas.Alert
-import Sepulcas.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Password
+import Ergvein.Wallet.Page.PatternKey
 import Ergvein.Wallet.Page.Seed
 import Ergvein.Wallet.Page.Settings.Unauth
 import Ergvein.Wallet.Wrapper
+import Sepulcas.Alert
+import Sepulcas.Elements
 
-import Ergvein.Wallet.Page.PatternKey
 import qualified Data.Map.Strict as M
+import qualified Data.Text       as T
 
-data GoPage = GoSeed | GoRestore | GoSettings
+data GoPage = GoCreate | GoRestore | GoSettings
 
 initialPage :: MonadFrontBase t m => Bool -> m ()
 initialPage redir = do
@@ -28,16 +33,16 @@ initialPage redir = do
   logWrite "Finished initial page rendering"
 
 noWalletsPage :: MonadFrontBase t m => m ()
-noWalletsPage = wrapperSimple True $ divClass "initial-page-options" $ createRestore
+noWalletsPage = wrapperSimple True $ divClass "initial-page-options" createRestore
 
 createRestore :: MonadFrontBase t m => m ()
 createRestore = do
-  let items = [(GoSeed, IPSCreate), (GoRestore, IPSRestore), (GoSettings, IPSSettings)]
-  goE <- fmap leftmost $ flip traverse items $ \(act, lbl) ->
-    fmap (act <$) $ outlineButton lbl
+  let items = [(GoCreate, IPSCreate), (GoRestore, IPSRestore), (GoSettings, IPSSettings)]
+  goE <- fmap leftmost $ for items $ \(act, lbl) ->
+    (act <$) <$> outlineButton lbl
   void $ nextWidget $ ffor goE $ \go -> Retractable {
       retractableNext = case go of
-        GoSeed -> mnemonicPage
+        GoCreate -> backupPage
         GoRestore -> simpleSeedRestorePage
         GoSettings -> settingsPageUnauth
     , retractablePrev = Just $ pure $ initialPage False
@@ -49,7 +54,7 @@ hasWalletsPage redir ss = do
   mnameE <- performEvent $ getLastStorage <$ buildE
   void $ nextWidget $ ffor mnameE $ \mname -> Retractable {
       retractableNext = maybe (selectWalletsPage ss) selectNext mname
-    , retractablePrev = Just $ pure $ selectWalletsPage ss
+    , retractablePrev = Nothing
     }
   where
     selectNext = if redir then loadWalletPage else const (selectWalletsPage ss)
@@ -57,7 +62,7 @@ hasWalletsPage redir ss = do
 selectWalletsPage :: MonadFrontBase t m => [WalletName] -> m ()
 selectWalletsPage ss = wrapperSimple True $ divClass "initial-page-options" $ do
   h4 $ localizedText IPSSelectWallet
-  flip traverse_ ss $ \name -> do
+  for_ ss $ \name -> do
     btnE <- outlineButton name
     void $ nextWidget $ ffor btnE $ const $ Retractable {
         retractableNext = loadWalletPage name
@@ -69,7 +74,7 @@ selectWalletsPage ss = wrapperSimple True $ divClass "initial-page-options" $ do
 loadWalletPage :: MonadFrontBase t m => WalletName -> m ()
 loadWalletPage name = do
   buildE <- getPostBuild
-  mPlainE <- performEvent $ (loadWalletInfo name "") <$ buildE
+  mPlainE <- performEvent $ loadWalletInfo name "" <$ buildE
   let oldAuthE' = fmapMaybe eitherToMaybe mPlainE
   oldAuthE'' <- fmap switchDyn $ networkHold (pure never) $ ffor mPlainE $ \case
     Right _ -> pure never

@@ -10,7 +10,6 @@ where
 
 import Data.ByteString (ByteString)
 import Data.Ergo.Block (Digest32 (Digest32))
-import Data.Map (Map)
 import Data.Persist
 import Data.Word (Word16, Word32, Word64)
 

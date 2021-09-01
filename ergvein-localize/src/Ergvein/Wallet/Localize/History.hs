@@ -27,6 +27,7 @@ data HistoryPageStrings =
   | HistoryUnconfirmedParents
   | HistorySend
   | HistoryReceive
+  | HistorySeedBackupRequired
   | HistoryTIBlockUndefined
   | HistoryTIAddressUndefined
   | HistoryTIFeeUndefined
@@ -63,6 +64,7 @@ instance LocalizedPrint HistoryPageStrings where
       HistoryUnconfirmedParents    -> "Unconfirmed parents"
       HistorySend                  -> "Send"
       HistoryReceive               -> "Receive"
+      HistorySeedBackupRequired    -> "Backup your wallet"
       HistoryTIBlockUndefined      -> "The transaction is not yet included in a block"
       HistoryTIAddressUndefined    -> "Failed to decode address"
       HistoryTIFeeUndefined        -> "Unknown"
@@ -96,6 +98,7 @@ instance LocalizedPrint HistoryPageStrings where
       HistoryUnconfirmedParents    -> "Родительские транзакции не подтверждены"
       HistorySend                  -> "Отправить"
       HistoryReceive               -> "Получить"
+      HistorySeedBackupRequired    -> "Cделайте резервную копию кошелька"
       HistoryTIBlockUndefined      -> "Транзакция еще не включена в блок"
       HistoryTIAddressUndefined    -> "Не удалось декодировать адрес"
       HistoryTIFeeUndefined        -> "Неизвестно"

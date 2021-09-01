@@ -36,7 +36,6 @@ import Data.Proxy
 import Data.Text (Text)
 import Ergvein.Core.Client.Monad
 import Ergvein.Core.Node.Monad
-import Ergvein.Core.Node.Btc.Blocks
 import Ergvein.Core.Settings.Monad
 import Ergvein.Core.Store.Monad
 import Ergvein.Index.Protocol.Types (Message(..))

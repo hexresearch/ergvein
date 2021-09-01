@@ -4,19 +4,22 @@ module Ergvein.Wallet.Style(
     compileFrontendCss
   ) where
 
+import Control.Monad
+import Data.ByteString (ByteString)
+import Data.Foldable (for_)
+import Language.Javascript.JSaddle (MonadJSM)
+import Prelude hiding ((**), rem)
+
 import Clay
 import Clay.Selector
 import Clay.Stylesheet
-import Control.Monad
-import Data.ByteString (ByteString)
+
+import qualified Clay.Flexbox as F
+import qualified Clay.Media as M
+
 import Ergvein.Core
-import Language.Javascript.JSaddle hiding ((#))
-import Prelude hiding ((**), rem)
 import Sepulcas.Native
 import Sepulcas.Style
-
-import qualified Clay.Media as M
-import qualified Clay.Flexbox as F
 
 compileFrontendCss :: (MonadJSM m, PlatformNatives) => m ByteString
 compileFrontendCss = compileStyles frontendCss
@@ -47,7 +50,7 @@ frontendCss = do
   navbarCss
   networkPageCss
   toggleSwitchCss
-  dropdownContainer
+  dropdownContainerCss
   passwordCss
   badgeCss
   receiveCss
@@ -58,6 +61,7 @@ frontendCss = do
   validateCss
   wrapperCss
   testnetDisclaimerCss
+  backupPageCss
 
 textColor :: Color
 textColor = rgb 0 0 0
@@ -136,10 +140,8 @@ wrapperCss = do
     flexDirection column
   ".wrapper .container" ? do
     maxWidth tabletBreakpoint
-    flexGrow 1
   ".centered-container" ? do
     display flex
-    flexGrow 1
   ".centered-content" ? do
     margin auto auto auto auto
 
@@ -152,6 +154,8 @@ headerCss = do
   ".header" ? do
     display flex
     fontSize $ pt 14
+    paddingLeft $ rem 1
+    paddingRight $ rem 1
   ".header-black" ? do
     backgroundColor black
     color white
@@ -161,6 +165,12 @@ headerCss = do
   ".header-button" ? do
     fontSize $ pt 20
     padding (rem 1) (rem 1) (rem 1) (rem 1)
+    width $ rem 7
+    display flex
+  ".header-button-left" ? do
+    justifyContent flexStart
+  ".header-button-right" ? do
+    justifyContent flexEnd
   ".header-button:hover" ? do
     cursor pointer
     color hoverColor
@@ -218,6 +228,8 @@ headerCss = do
     padding (rem 0) (rem 1) (rem 0) (rem 4)
   ".menu-android-header" ? do
     display flex
+    paddingLeft $ rem 1
+    paddingRight $ rem 1
   ".menu-android-close-button" ? do
     marginLeft auto
   ".menu-android-button" ? do
@@ -237,20 +249,14 @@ navbarCss = do
   ".navbar-2-cols" ? do
     display grid
     gridTemplateColumns [fr 1, fr 1]
-    padding (rem 0) (rem 1) (rem 0) (rem 1)
   ".navbar-3-cols" ? do
     display grid
     gridTemplateColumns [fr 1, fr 1, fr 1]
-    padding (rem 0) (rem 1) (rem 0) (rem 1)
-  ".navbar-5-cols" ? do
-    display grid
-    gridTemplateColumns [fr 1, fr 1, fr 1, fr 1, fr 1]
-    padding (rem 0) (rem 1) (rem 0) (rem 1)
   ".navbar-item" ? do
     padding (rem 1) (rem 1) (rem 1) (rem 1)
-    cursor pointer
   ".navbar-item:hover" ? do
     color hoverColor
+    cursor pointer
   ".navbar-item.active" ? do
     borderBottom solid (px 4) textColor
   ".navbar-item.active:hover" ? do
@@ -347,9 +353,6 @@ mnemonicWidgetCss = do
     fontFamily ["Roboto-Medium"] []
     fontSize $ pt 18
     textAlign center
-  ".mnemonic-word-ix" ? do
-    fontSize $ em 0.6
-    marginRight $ em 0.25
   ".mnemonic-warn" ? do
     marginTop $ px 30
   ".mnemonic-verification-container" ? do
@@ -360,7 +363,7 @@ mnemonicWidgetCss = do
     borderStyle solid
     borderWidth $ px 1
     borderColor hoverColor
-    minHeight $ px 200
+    minHeight $ px 100
     padding (rem 0.5) (rem 1) (rem 0.5) (rem 1)
   ".mnemonic-verification-btn-container" ? do
     display flex
@@ -386,6 +389,10 @@ mnemonicWidgetCss = do
   ".mnemonic-verification-error" ? do
     color textDanger
     margin (rem 0) (rem 0.5) (rem 0) (rem 0.5)
+  ".restore-seed-option-btns" ? do
+    display flex
+    justifyContent center
+    flexWrap F.wrap
   ".restore-seed-input" ? do
     minHeight $ rem 10
   ".restore-seed-buttons-wrapper" ? do
@@ -518,10 +525,15 @@ toggleSwitchCss =
     ".toggle-switch input:checked + label" ? do
       left $ toggleSwitchWidth @-@ (knobMargin @+@ knobSize @+@ 2 *@ toggleSwitchBorderWidth)
 
-dropdownContainer :: Css
-dropdownContainer = do
-  ".dropdown-header" ? do
+dropdownContainerCss :: Css
+dropdownContainerCss = do
+  ".dropdown-header-containter" ? do
     marginBottom $ rem 1.5
+  ".dropdown-header" ? do
+    display inlineBlock
+  ".dropdown-header:hover" ? do
+    cursor pointer
+    color hoverColor
   ".dropdownContainerHidden" ? do
     display displayNone
 
@@ -1022,6 +1034,12 @@ historyPageCss = do
   ".history-page-status-text-icon" ? do
     fontSize $ pt 9
     paddingLeft $ rem 0.5
+  ".seed-backup-btn" ? do
+    position absolute
+    right $ rem 2
+    bottom $ rem 1
+    backgroundColor $ rgb 255 147 30
+    borderColor $ rgb 255 147 30
 
 txInfoPageCss :: Css
 txInfoPageCss = do
@@ -1058,47 +1076,38 @@ bumpFeePageCss = do
 
 legoStyles :: Css
 legoStyles = do
-  ".mb-0" ? (marginBottom $ rem 0)
-  ".ml-0" ? (marginLeft   $ rem 0)
-  ".mr-0" ? (marginRight  $ rem 0)
-  ".mt-0" ? (marginTop    $ rem 0)
-  ".m-0"  ? margin (rem 0) (rem 0) (rem 0) (rem 0)
-  ".mb-1" ? (marginBottom $ rem 1)
-  ".ml-1" ? (marginLeft   $ rem 1)
-  ".mr-1" ? (marginRight  $ rem 1)
-  ".mt-1" ? (marginTop    $ rem 1)
-  ".m-1" ? margin (rem 1) (rem 1) (rem 1) (rem 1)
-  ".mlr-1" ? margin (rem 0) (rem 1) (rem 0) (rem 1)
-  ".mlr-a" ? do
-    marginLeft auto
-    marginRight auto
-  ".mb-2" ? (marginBottom $ rem 2)
-  ".ml-2" ? (marginLeft   $ rem 2)
-  ".mr-2" ? (marginRight  $ rem 2)
-  ".mt-2" ? (marginTop    $ rem 2)
-  ".m-2" ? margin (rem 2) (rem 2) (rem 2) (rem 2)
-  ".mt-3" ? (marginTop    $ rem 3)
-  ".mr-6" ? (marginRight  $ rem 6)
-  ".mb-a" ? marginBottom  auto
-  ".ml-a" ? marginLeft    auto
-  ".mr-a" ? marginRight   auto
-  ".mt-a" ? marginTop     auto
-  ".mtb-a" ? (marginTop auto) >> (marginBottom auto)
-  ".pb-1" ? (paddingBottom $ rem 1)
-  ".pl-1" ? (paddingLeft   $ rem 1)
-  ".pr-1" ? (paddingRight  $ rem 1)
-  ".pt-1" ? (paddingTop    $ rem 1)
-  ".p-1" ? padding (rem 1) (rem 1) (rem 1) (rem 1)
-  ".pb-2" ? (paddingBottom $ rem 2)
-  ".pl-2" ? (paddingLeft   $ rem 2)
-  ".pr-2" ? (paddingRight  $ rem 2)
-  ".pt-2" ? (paddingTop    $ rem 2)
-  ".p-2" ? padding (rem 2) (rem 2) (rem 2) (rem 2)
-  ".pb-a" ? paddingBottom  auto
-  ".pl-a" ? paddingLeft    auto
-  ".pr-a" ? paddingRight   auto
-  ".pt-a" ? paddingTop     auto
-  ".p-a"  ? padding auto auto auto auto
+  let selectors = [(spacingType, size, sizeText, side) |
+        spacingType <- ["p", "m"],
+        (size, sizeText) <- [(rem 0, "0"), (rem 1, "1"), (rem 2, "2"), (rem 3, "3"), (auto, "a")],
+        side <- ["t", "r", "b", "l", "x", "y", ""] ]
+  for_ selectors $ \(spacingType, size, sizeText, side) -> do
+    let selector = selectorFromText $ "." <> spacingType <> side <> "-" <> sizeText
+    selector ? do
+      case (spacingType, side) of
+        ("p", "t") -> paddingTop size
+        ("p", "r") -> paddingRight size
+        ("p", "b") -> paddingBottom size
+        ("p", "l") -> paddingLeft size
+        ("p", "x") -> do
+          paddingLeft size
+          paddingRight size
+        ("p", "y") -> do
+          paddingTop size
+          paddingBottom size
+        ("p", "") -> padding size size size size
+
+        ("m", "t") -> marginTop size
+        ("m", "r") -> marginRight size
+        ("m", "b") -> marginBottom size
+        ("m", "l") -> marginLeft size
+        ("m", "x") -> do
+          marginLeft size
+          marginRight size
+        ("m", "y") -> do
+          marginTop size
+          marginBottom size
+        ("m", "") -> margin size size size size
+        _ -> pure ()
   ".w-80" ? width (pct 80)
   ".w-100" ? width (pct 100)
   ".h-100" ? height (pct 100)
@@ -1112,6 +1121,7 @@ legoStyles = do
   ".font-bold" ? fontWeight bold
   ".fit-content" ? width fitContent
   ".disp-block" ? display block
+  ".flex-grow" ? flexGrow 1
   ".overflow-wrap-bw" ? overflowWrap breakWord
   let fillBtnColor cl backCol fontCol = do
         let colorSet = do
@@ -1248,3 +1258,8 @@ testnetDisclaimerCss = do
     marginBottom $ rem 1
   ".testnet-disclaimer-text" ? do
     marginBottom $ rem 1
+
+backupPageCss :: Css
+backupPageCss = do
+  ".backup-page-icon" ? do
+    fontSize $ pt 45

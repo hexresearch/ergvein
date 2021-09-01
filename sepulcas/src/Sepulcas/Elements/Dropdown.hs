@@ -25,10 +25,10 @@ dropdownContainer lClosed lOpened tglD innerContent = mdo
   valD <- mergeDyn tglD $ poke clickE $ const $ not <$> sampleDyn valD
   valD' <- holdUniqDyn valD
   clickE <- fmap switchDyn $ networkHoldDyn $ ffor valD' $ \v ->
-    h5 $ el "div" $ divButton "dropdown-header" $ do
-        let (lbl, chevronTypeClass) = if v then (lClosed, "up") else (lOpened, "down")
-        localizedText lbl
-        text " "
-        elClass "i" ("fa fa-fw fa-chevron-" <> chevronTypeClass) $ blank
+    divClass "dropdown-header-containter" $ divButton "dropdown-header" $ elClass "h5" "mb-0" $ do
+      let (lbl, chevronTypeClass) = if v then (lClosed, "down") else (lOpened, "up")
+      localizedText lbl
+      text " "
+      elClass "i" ("fa fa-fw fa-chevron-" <> chevronTypeClass) blank
   let backButtonClassesD = visibilityClass "" <$> valD'
   elClassDyn "div" backButtonClassesD innerContent

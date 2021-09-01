@@ -16,6 +16,7 @@ module Reflex.Flunky(
   , mergeDyn
   , splitEither
   , splitFilter
+  , takeE
   , switchDyn2
   , zipDyn3
   , mkChunks
@@ -24,6 +25,8 @@ module Reflex.Flunky(
   , triggerPair
   ) where
 
+import Control.Monad 
+import Control.Monad.Fix
 import Control.Monad.IO.Class
 import Data.Functor (void)
 import Reflex
@@ -114,6 +117,13 @@ zipDyn3 aD bD cD = let abD = zipDyn aD bD
 splitFilter :: Reflex t => (a -> Bool) -> Event t a -> (Event t a, Event t a)
 splitFilter f e = (ffilter f e, ffilter (not . f) e)
 
+-- | Only take first N event from stream
+takeE :: (Reflex t, MonadHold t m, MonadFix m)
+      => Int -> Event t a -> m (Event t a)
+takeE n
+  =  takeWhileJustE (\(i,a) -> a <$ guard (i < n))
+ <=< zipListWithEvent (,) [0..]
+ 
 -- / Make chunks of length n
 mkChunks :: Int -> [a] -> [[a]]
 mkChunks n vals = mkChunks' [] vals

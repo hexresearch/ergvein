@@ -3,7 +3,9 @@
 
 -- | Page for mnemonic phrase generation
 module Ergvein.Wallet.Page.Seed(
-    mnemonicPage
+    backupPage
+  , mnemonicPage
+  , setLoginPasswordPage
   , mnemonicWidget
   , simpleSeedRestorePage
   , seedRestorePage
@@ -11,7 +13,6 @@ module Ergvein.Wallet.Page.Seed(
 
 import Control.Monad.Random.Strict
 import Data.Bifunctor
-import Data.List (permutations, (\\))
 import Data.Maybe
 import Data.Text.Encoding (decodeUtf8With)
 import Data.Text.Encoding.Error (lenientDecode)
@@ -19,6 +20,7 @@ import Data.Traversable (for)
 import Reflex.Localize.Dom
 import System.Random.Shuffle
 
+import {-# SOURCE #-} Ergvein.Wallet.Page.History.Btc
 import Ergvein.Crypto
 import Ergvein.Either
 import Ergvein.Text
@@ -38,23 +40,66 @@ import Sepulcas.Resize
 import qualified Data.List      as L
 import qualified Data.Serialize as S
 import qualified Data.Text      as T
-import qualified Data.Vector    as V
 
-mnemonicPage :: MonadFrontBase t m => m ()
-mnemonicPage = go Nothing
-  where
-    go mnemonic = wrapperSimple True $ do
-      (e, mnemonicD) <- mnemonicWidget mnemonic
-      void $ nextWidget $ ffor e $ \mn -> Retractable {
-          retractableNext = checkPage mn
-        , retractablePrev = Just $ go <$> mnemonicD
-        }
+data GoPage = GoBackupNow | GoBackupLater
 
-checkPage :: MonadFrontBase t m => Mnemonic -> m ()
-checkPage mnemonic = wrapperSimple True $ do
+backupPage :: MonadFrontBase t m => m ()
+backupPage = wrapperSimple True $ do
+  divClass "backup-page-icon mb-2" $ elClass "i" "fas fa-exclamation-triangle" blank
+  h4 $ localizedText SPSBackupTitle
+  par $ localizedText SPSBackupText1
+  par $ localizedText SPSBackupText2
+  btnE <- divClass "initial-options grid1" $ do
+    backupNowBtnE <- (GoBackupNow <$) <$> outlineButton SPSBackupNow
+    backupLaterBtnE <- (GoBackupLater <$) <$> buttonClass "button button-clear" SPSBackupLater
+    pure $ leftmost [backupNowBtnE, backupLaterBtnE]
+  goE <- performFork $ ffor btnE $ \act -> do
+    entropy <- liftIO getEntropy
+    pure $ fmap (act,) <$> first T.pack $ toMnemonic entropy
+  goE' <- handleDangerMsg goE
+  void $ nextWidget $ ffor goE' $ \(act, mnemonic) -> Retractable {
+      retractableNext = case act of
+        GoBackupNow -> mnemonicPageUnauth $ Just mnemonic
+        GoBackupLater -> setLoginPasswordPage WalletGenerated True mnemonic
+    , retractablePrev = Just $ pure backupPage
+    }
+
+mnemonicPageUnauth :: MonadFrontBase t m => Maybe Mnemonic -> m ()
+mnemonicPageUnauth mMnemonic = wrapperSimple True $ do
+  (e, mnemonicD) <- mnemonicWidget mMnemonic
+  void $ nextWidget $ ffor e $ \mn -> Retractable {
+      retractableNext = checkPageUnauth mn
+    , retractablePrev = Just $ mnemonicPageUnauth <$> mnemonicD
+    }
+
+mnemonicPage :: MonadFront t m => Maybe Mnemonic -> m ()
+mnemonicPage mMnemonic = wrapperSimple True $ do
+  (e, mnemonicD) <- mnemonicWidget mMnemonic
+  void $ nextWidget $ ffor e $ \mn -> Retractable {
+      retractableNext = checkPage mn
+    , retractablePrev = Just $ mnemonicPage <$> mnemonicD
+    }
+
+setLoginPasswordPage :: MonadFrontBase t m => WalletSource -> Bool -> Mnemonic -> m ()
+setLoginPasswordPage walletSource seedBackupRequired mnemonic = if isAndroid
+  then setupLoginPage walletSource seedBackupRequired Nothing mnemonic activeCurrencies
+  else setupPasswordPage walletSource seedBackupRequired Nothing mnemonic activeCurrencies Nothing
+  where activeCurrencies = [BTC]
+
+checkPageUnauth :: MonadFrontBase t m => Mnemonic -> m ()
+checkPageUnauth mnemonic = wrapperSimple True $ do
   mnemonicE <- mnemonicCheckWidget mnemonic
   void $ nextWidget $ ffor mnemonicE $ \mnemonic' -> Retractable {
-      retractableNext = selectCurrenciesPage WalletGenerated mnemonic'
+      retractableNext = setLoginPasswordPage WalletGenerated False mnemonic'
+    , retractablePrev = Just $ pure $ checkPageUnauth mnemonic'
+    }
+
+checkPage :: MonadFront t m => Mnemonic -> m ()
+checkPage mnemonic = wrapperSimple True $ do
+  mnemonicE <- mnemonicCheckWidget mnemonic
+  _ <- setSeedBackupRequired $ False <$ mnemonicE
+  void $ nextWidget $ ffor mnemonicE $ \mnemonic' -> Retractable {
+      retractableNext = historyPage
     , retractablePrev = Just $ pure $ checkPage mnemonic'
     }
 
@@ -80,7 +125,7 @@ mnemonicWidget mnemonic = do
     prepareMnemonic cols = L.concat . L.transpose . mkCols cols . zip [1..] . T.words
 
     wordColumn cs i w = divClass ("column " <> cs) $ do
-      elClass "span" "mnemonic-word-ix" $ text $ showt i
+      elClass "span" "text-muted" $ text $ showt i <> " "
       text w
 
     smallMnemonic phrase = for_ (zip [(1 :: Int)..] . T.words $ phrase) $ uncurry (wordColumn "mnemonic-word-mb")
@@ -128,15 +173,14 @@ mnemonicCheckWidget mnemonic = mdo
       indexedWords = zip [0..] ws -- We need to deal with indices because there might be repetitions in mnemonic
   randGen <- liftIO newStdGen
   let shuffledWords = shuffle' indexedWords (length indexedWords) randGen
-  langD <- getLanguage
   h4 $ localizedText SPSVerifyTitle
   h5 $ spanClass "text-muted" $ localizedText SPSVerifyDescr
-  selectedWordsD <- foldDyn (\(append, x) xs -> if append then xs <> [x] else L.delete x xs) [] $ leftmost [wordSelectedE, wordUnselectedE] -- Contains a list of selected words
+  selectedWordsD <- foldDyn (\(doAppend, x :: (Int, Text)) xs -> if doAppend then xs <> [x] else L.delete x xs) [] $ leftmost [wordSelectedE, wordUnselectedE] -- Contains a list of selected words
   let isCorrectOrderD = ffor selectedWordsD (\selectedWords -> (snd <$> selectedWords) `L.isPrefixOf` ws) -- Contains True if the order of selected words is correct, False otherwise
   wordUnselectedE <- divClass "mnemonic-verification-container mb-2" $ do
     unselectedE <- divClass "mnemonic-verification-btn-container" $ do
-      pressedEventsD <- networkHoldDyn $ ffor selectedWordsD $ \words -> do
-        unselectBtnEvents <- for (zip [1..] words) $ \(i, iw@(index, word)) -> do
+      pressedEventsD <- networkHoldDyn $ ffor selectedWordsD $ \sws -> do
+        unselectBtnEvents <- for (zip [1..] sws) $ \(i, iw@(_, word)) -> do
           pressedE <- numberedButton "button button-outline" i word
           pure $ (False, iw) <$ pressedE -- False means that we unselected this word and we need to remove it from selectedWordsD
         pure $ leftmost unselectBtnEvents
@@ -152,7 +196,7 @@ mnemonicCheckWidget mnemonic = mdo
             localizedText SPSVerifyError
     pure unselectedE
   wordSelectedE <- divClass "mnemonic-verification-btn-container mb-2" $ do
-    selectBtnEvents <- for shuffledWords $ \iw@(index, word) -> do
+    selectBtnEvents <- for shuffledWords $ \iw@(_, word) -> do
       pressedE <- switchableButton "button button-outline" ((iw `elem`) <$> selectedWordsD) "mnemonic-word-disabled" word
       pure $ (True, iw) <$ pressedE -- Ture means that we selected this word and we need to append it to selectedWordsD
     pure $ leftmost selectBtnEvents
@@ -174,7 +218,7 @@ askSeedPasswordPage encryptedMnemonic = do
   let mnemonicBSE = decryptBSWithAEAD encryptedMnemonic <$> passE
   verifiedMnemonicE <- handleDangerMsg mnemonicBSE
   void $ nextWidget $ ffor (decodeUtf8With lenientDecode <$> verifiedMnemonicE) $ \mnem -> Retractable {
-      retractableNext = selectCurrenciesPage WalletRestored mnem
+      retractableNext = setLoginPasswordPage WalletRestored False mnem
     , retractablePrev = Just $ pure $ askSeedPasswordPage encryptedMnemonic
     }
 
@@ -184,12 +228,9 @@ simpleSeedRestorePage = plainRestorePage 12
 seedRestorePage :: MonadFrontBase t m => m ()
 seedRestorePage = wrapperSimple True $ do
   h2 $ localizedText SPSTypeTitle
-  let cls = "ml-a mr-a mb-2 w-80" <> if isAndroid then " fit-content" else " navbar-2-cols"
-      btnCls = "button button-outline" <>
-        if isAndroid then " disp-block w-100" else ""
-  goE <- divClass cls $ do
-    e1 <-(True <$) <$> buttonClass btnCls SPSPlain
-    e2 <- (False <$) <$> buttonClass btnCls SPSBase58
+  goE <- divClass "restore-seed-buttons-wrapper" $ do
+    e1 <-(True <$) <$> buttonClass "button button-outline" SPSPlain
+    e2 <- (False <$) <$> buttonClass "button button-outline" SPSBase58
     pure $ leftmost [e1, e2]
   void $ nextWidget $ ffor goE $ \b -> Retractable {
       retractableNext = if b
@@ -201,15 +242,14 @@ seedRestorePage = wrapperSimple True $ do
 lengthSelectPage :: MonadFrontBase t m => m ()
 lengthSelectPage = wrapperSimple True $ do
   h2 $ localizedText SPSLengthTitle
-  let cls = "ml-a mr-a mb-2 w-80" <> if isAndroid then "" else " navbar-5-cols"
-  goE <- divClass cls $ mdo
+  goE <- divClass "restore-seed-buttons-wrapper" $ mdo
     leftmost <$> traverse mkBtn [24,21,18,15,12]
   void $ nextWidget $ ffor goE $ \i -> Retractable {
       retractableNext = plainRestorePage i
     , retractablePrev = Just $ pure lengthSelectPage
     }
   where
-    btnCls = "button button-outline" <> if isAndroid then " mlr-a disp-block" else ""
+    btnCls = "button button-outline" <> if isAndroid then " mx-a disp-block" else ""
     mkBtn i = fmap (i <$) $ buttonClass btnCls $ showt i
 
 pasteBtnsWidget :: MonadFrontBase t m => m (Event t Text)
@@ -320,7 +360,7 @@ plainRestorePage mnemLength = wrapperSimple True $ mdo
     PSDone mnem -> do
       submitE <- outlineButton CSForward
       void $ nextWidget $ ffor submitE $ const $ Retractable {
-          retractableNext = selectCurrenciesPage WalletRestored mnem
+          retractableNext = setLoginPasswordPage WalletRestored False mnem
         , retractablePrev = Just $ pure seedRestorePage
         }
     _ -> pure ()

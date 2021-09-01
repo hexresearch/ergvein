@@ -12,16 +12,16 @@ import Ergvein.Crypto.Keys
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Restore
-import Sepulcas.Elements
 import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Password
 import Ergvein.Wallet.Wrapper
+import Sepulcas.Elements
 
-selectCurrenciesPage :: MonadFrontBase t m => WalletSource -> Mnemonic -> m ()
-selectCurrenciesPage wt mnemonic = do
-  buildE <- getPostBuild
-  let e = [BTC] <$ buildE
+-- As long as we only have one active currency, this widget is not needed
+selectCurrenciesPage :: MonadFrontBase t m => WalletSource -> Bool -> Mnemonic -> m ()
+selectCurrenciesPage wt seedBackupRequired mnemonic = wrapperSimple True $ do
+  e <- selectCurrenciesWidget []
   void $ nextWidget $ ffor e $ \ac -> Retractable {
       retractableNext = if isAndroid
         -- On Android login is entered first. After that user is redirected to the password setup page.
@@ -30,20 +30,6 @@ selectCurrenciesPage wt mnemonic = do
         else setupPasswordPage wt Nothing mnemonic ac Nothing
     , retractablePrev = Nothing
     }
-
--- As long as we only have one active currency, this widget is not needed
-
--- selectCurrenciesPage :: MonadFrontBase t m => WalletSource -> Mnemonic -> m ()
--- selectCurrenciesPage wt mnemonic = wrapperSimple True $ do
---   e <- selectCurrenciesWidget []
---   void $ nextWidget $ ffor e $ \ac -> Retractable {
--- #ifdef ANDROID
---       retractableNext = setupLoginPage wt Nothing mnemonic ac
--- #else
---       retractableNext = setupPasswordPage wt Nothing mnemonic ac Nothing
--- #endif
---     , retractablePrev = Just $ pure $ selectCurrenciesPage wt mnemonic
---     }
 
 selectCurrenciesWidget :: MonadFrontBase t m => [Currency] -> m (Event t [Currency])
 selectCurrenciesWidget currs = mdo
