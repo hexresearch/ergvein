@@ -97,7 +97,10 @@ setupLogin e = divClass "setup-password" $ form $ fieldset $ mdo
 
 setupDerivPrefix :: MonadFrontBase t m => [Currency] -> Maybe DerivPrefix -> m (Dynamic t DerivPrefix)
 setupDerivPrefix ac mpath = do
-  divClass "password-setup-descr" $ h5 $ localizedText PWSDerivDescr
+  divClass "password-setup-descr" $ h5 $ do
+    localizedText PWSDerivDescr1
+    br
+    localizedText PWSDerivDescr2
   divClass "setup-password" $ form $ fieldset $ mdo
     let dval = fromMaybe defValue mpath
     pathTD <- textField PWSDeriv $ showDerivPath dval
