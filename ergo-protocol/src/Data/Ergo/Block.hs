@@ -1,3 +1,4 @@
+{-# LANGUAGE TypeApplications #-}
 module Data.Ergo.Block(
     BlockVersion
   , Digest32(..)
@@ -18,7 +19,6 @@ import Data.Ergo.Vlq
 import Data.Int
 import Data.Persist
 import Data.Time
-import Data.Time.Clock
 import Data.Time.Clock.POSIX
 import Data.Word
 import GHC.Generics
@@ -97,7 +97,7 @@ instance Persist BlockHeader where
     put adProofsRoot
     put transactionsRoot
     put stateRoot
-    encodeVlq $ (floor . realToFrac . (* 1000) . utcTimeToPOSIXSeconds $ timestamp :: Word64)
+    encodeVlq $ (floor @Double . realToFrac . (* 1000) . utcTimeToPOSIXSeconds $ timestamp :: Word64)
     put extensionRoot
     put nBits
     encodeVlq height

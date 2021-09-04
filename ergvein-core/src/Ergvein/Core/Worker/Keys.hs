@@ -1,6 +1,6 @@
 module Ergvein.Core.Worker.Keys
   (
-    pubKeysGenerator
+    pubKeysGeneratorBtc
   , generateNewPubKeysByE
   ) where
 
@@ -12,8 +12,8 @@ import Ergvein.Types.Storage
 import Ergvein.Core.Wallet
 import Ergvein.Core.Store
 
-pubKeysGenerator :: MonadWallet t m => m ()
-pubKeysGenerator = do
+pubKeysGeneratorBtc :: MonadWallet t m => m ()
+pubKeysGeneratorBtc = do
   pubStoreD <- getPubStorageD
   let deriveExternalPubKeysE = fforMaybe (updated pubStoreD) getMissingPubKeysCountHelper
   void $ generateNewPubKeysByE BTC deriveExternalPubKeysE

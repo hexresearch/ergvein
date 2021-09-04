@@ -33,17 +33,21 @@ library
         Ergvein.Wallet.Menu.Switcher
         Ergvein.Wallet.Menu.Types
         Ergvein.Wallet.Monad
-        Ergvein.Wallet.Monad.Env
         Ergvein.Wallet.Monad.Class
+        Ergvein.Wallet.Monad.Env
         Ergvein.Wallet.Navbar
         Ergvein.Wallet.Navbar.Switcher
         Ergvein.Wallet.Navbar.Types
+        Ergvein.Wallet.Orphanage
         Ergvein.Wallet.Page.About
         Ergvein.Wallet.Page.Balances
         Ergvein.Wallet.Page.BumpFee
         Ergvein.Wallet.Page.Canvas
         Ergvein.Wallet.Page.Currencies
         Ergvein.Wallet.Page.History
+        Ergvein.Wallet.Page.History.Btc
+        Ergvein.Wallet.Page.History.Common
+        Ergvein.Wallet.Page.History.Erg
         Ergvein.Wallet.Page.Initial
         Ergvein.Wallet.Page.Network
         Ergvein.Wallet.Page.Password
@@ -52,21 +56,25 @@ library
         Ergvein.Wallet.Page.Receive
         Ergvein.Wallet.Page.Restore
         Ergvein.Wallet.Page.Seed
-        Ergvein.Wallet.Page.Send
+        Ergvein.Wallet.Page.Send.Btc
+        Ergvein.Wallet.Page.Send.Erg
         Ergvein.Wallet.Page.Settings
         Ergvein.Wallet.Page.Settings.MnemonicExport
         Ergvein.Wallet.Page.Settings.Network
         Ergvein.Wallet.Page.Settings.Unauth
-        Ergvein.Wallet.Page.Transaction
+        Ergvein.Wallet.Page.TxInfo.Btc
+        Ergvein.Wallet.Page.TxInfo.Common
+        Ergvein.Wallet.Page.TxInfo.Erg
         Ergvein.Wallet.Password
+        Ergvein.Wallet.Settings
         Ergvein.Wallet.Status.Widget
         Ergvein.Wallet.Style
         Ergvein.Wallet.Validate
         Ergvein.Wallet.Widget.Balance
         Ergvein.Wallet.Widget.GraphPinCode
-        Ergvein.Wallet.Widget.Input.BTC.Amount
-        Ergvein.Wallet.Widget.Input.BTC.Fee
-        Ergvein.Wallet.Widget.Input.BTC.Recipient
+        Ergvein.Wallet.Widget.Input.Amount
+        Ergvein.Wallet.Widget.Input.Fee
+        Ergvein.Wallet.Widget.Input.Recipient
         Ergvein.Wallet.Wrapper
     hs-source-dirs: src
     default-language: Haskell2010
@@ -125,7 +133,6 @@ library
         , ergvein-node-discovery
         , ergvein-types           >= 0.1        && < 0.2
         , ergvein-wallet-version  >= 0.1        && < 0.2
-        , sepulcas-native         >= 0.1        && < 0.2
         , exceptions
         , file-embed              >= 0.0        && < 0.1
         , filepath
@@ -163,6 +170,7 @@ library
         , semialign
         , sepulcas
         , sepulcas-log
+        , sepulcas-native         >= 0.1        && < 0.2
         , serialise               >= 0.2        && < 0.3
         , socks                   >= 0.5        && < 0.7
         , split                   >= 0.2.3.3    && < 0.3

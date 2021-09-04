@@ -4,6 +4,7 @@ module Ergvein.Wallet.Localize.Status
     WalletStatusNormal(..)
   , RestoreStage(..)
   , CurrencyStatus(..)
+  , ExchangeRatesError(..)
   ) where
 
 import Ergvein.Core.Status.Types
@@ -22,7 +23,7 @@ instance LocalizedPrint WalletStatusNormal where
       WalletStatusNormal'empty -> ""
     Russian -> case v of
       WalletStatusNormal'gettingNodeAddresses -> "Получение адреса ноды"
-      WalletStatusNormal'connectingToPeers c -> "Подключение к узлам" <> currencyName c
+      WalletStatusNormal'connectingToPeers c -> "Подключение к узлам " <> currencyName c
       WalletStatusNormal'gettingHeight h -> "Вычисление высоты, текущее значение: " <> showt h
       WalletStatusNormal'newFilters n -> "Сканируются " <> showt n <> " новых блоков"
       WalletStatusNormal'synced -> "Синхронизировано"
@@ -42,6 +43,14 @@ instance LocalizedPrint RestoreStage where
       RestoreStage'empty                -> "Загрузка..."
 
 instance LocalizedPrint CurrencyStatus where
-  localizedShow l (CurrencyStatus cur status) = case l of
-    English -> "[" <> showt cur <> "]: " <> showt status
-    Russian -> "[" <> showt cur <> "]: " <> showt status
+  localizedShow l (CurrencyStatus cur status) =
+      "[" <> showt cur <> "]: " <> localizedShow l status
+
+data ExchangeRatesError = ExchangeRatesUnavailable
+
+instance LocalizedPrint ExchangeRatesError where
+  localizedShow l v = case l of
+    English -> case v of
+      ExchangeRatesUnavailable -> "Getting the exchange rate"
+    Russian -> case v of
+      ExchangeRatesUnavailable -> "Получение обменного курса"

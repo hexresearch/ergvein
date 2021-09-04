@@ -29,6 +29,7 @@ library
       Sepulcas.Elements.Markup
       Sepulcas.Elements.Table
       Sepulcas.Elements.Toggle
+      Sepulcas.Elements.Dropdown
       Sepulcas.Embed
       Sepulcas.Id
       Sepulcas.Loading

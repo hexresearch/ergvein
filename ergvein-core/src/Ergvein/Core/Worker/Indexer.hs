@@ -19,17 +19,14 @@ import Sepulcas.Native
 import Reflex.Workflow
 import Control.Concurrent
 import qualified Data.Map.Strict as M
-import Network.DNS
 
 import Ergvein.Index.Protocol.Types
 import Reflex.Flunky
-import Control.Monad
 import Control.Monad.Random
 import Reflex.Fork
 import Ergvein.Core.Node.Socket
 
-connectionTimeout :: NominalDiffTime
-connectionTimeout = 60
+latencyCheckInterval :: NominalDiffTime 
 latencyCheckInterval = 4
 
 indexerNodeController :: (PlatformNatives, MonadHasMain m, MonadClient t m, MonadSettings t m)
@@ -46,7 +43,7 @@ indexerNodeController initialAddresses = mdo
   addressReconnectionCountMapRef <- newExternalRef M.empty
   addrReconnectE <- performFork $ ffor reconnectNeededE $ \addrToReconnect -> do
       reconnectTryIndex <- modifyExternalRef addressReconnectionCountMapRef $ \oldMap -> let
-        newMap = M.alter (Just . maybe 0 succ) addrToReconnect oldMap
+        newMap = M.alter (Just . maybe (0 :: Int) succ) addrToReconnect oldMap
         in (newMap, newMap M.! addrToReconnect)
       liftIO $ threadDelay $ appliedDelay reconnectTryIndex
       pure $ M.singleton addrToReconnect $ Just ()
@@ -65,7 +62,7 @@ indexerNodeController initialAddresses = mdo
         conn <- initIndexerConnection address (namedAddrSock addr) reqE
         modifyExternalRef activeConnectionsRef $ (, ()) . M.insert address conn
         validVerE <- headE $ updated $ indexConIndexerVersion conn
-        performEvent $ ffor validVerE $ const $
+        performEvent_ $ ffor validVerE $ const $
           modifyExternalRef addressReconnectionCountMapRef $ (, ()) . M.delete address
         indexerStatusUpdater conn
         -- Everything below this line is handling the closure of a connection
@@ -105,5 +102,5 @@ connectionLatencyWidget connection = mdo
         pingPayload <- randomIO
         fireReq $ M.singleton (indexConName connection) $ (IndexerMsg $ MPing pingPayload)
       pure $ fforMaybe (indexConRespE connection) $ \case
-                      MPong pingPayload ->  Just ()
-                      _                 ->  Nothing
+                      MPong _  ->  Just ()
+                      _        ->  Nothing

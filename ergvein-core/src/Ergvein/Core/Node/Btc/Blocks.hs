@@ -5,7 +5,6 @@ module Ergvein.Core.Node.Btc.Blocks
 import Control.Monad.Random
 import Data.Maybe (catMaybes)
 import Data.Time
-import Data.Word
 import Network.Haskoin.Block
 import Network.Haskoin.Network
 import Reflex

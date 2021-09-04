@@ -28,6 +28,7 @@ module Ergvein.Core.Store.Util(
   , getBtcUtxos
   , getBtcUtxoPoints
   , getBtcUtxoPointsParted
+  , getBtcTxs
   ) where
 
 import Control.Lens
@@ -52,7 +53,7 @@ import Ergvein.Types.Currency
 import Ergvein.Types.Derive
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
-import Ergvein.Types.Storage.Currency.Public.Btc (BtcPubStorage(..), btcPubStorage'utxos)
+import Ergvein.Types.Storage.Currency.Public.Btc (BtcPubStorage(..), btcPubStorage'utxos, btcPubStorage'transactions)
 import Ergvein.Types.Storage.Currency.Public.Ergo (ErgoPubStorage(..))
 import Ergvein.Types.Transaction as ETT
 import Ergvein.Types.Utxo.Btc
@@ -107,8 +108,8 @@ createPubKeystore masterPubKey =
       internalKeys = V.unfoldrN initialInternalAddressCount (keygen Internal) 0
   in PubKeystore masterPubKey externalKeys internalKeys
 
-createPubStorage :: Bool -> Maybe DerivPrefix -> EgvRootXPrvKey -> [Currency] -> BlockHeight -> PubStorage
-createPubStorage isRestored mpath rootPrvKey cs startingHeight = PubStorage rootPubKey pubStorages cs isRestored mpath
+createPubStorage :: Bool -> Bool -> Maybe DerivPrefix -> EgvRootXPrvKey -> [Currency] -> BlockHeight -> PubStorage
+createPubStorage isRestored seedBackupRequired mpath rootPrvKey cs startingHeight = PubStorage rootPubKey pubStorages cs isRestored seedBackupRequired mpath
   where rootPubKey = EgvRootXPubKey $ deriveXPubKey $ unEgvRootXPrvKey rootPrvKey
         mkStore = createCurrencyPubStorage mpath rootPrvKey startingHeight
         pubStorages = M.fromList [(currency, mkStore currency) | currency <- cs]
@@ -140,21 +141,21 @@ createCurrencyPubStorage mpath rootPrvKey startingHeight c = CurrencyPubStorage 
   where
     dpath = extendDerivPath c <$> mpath
 
-
 createStorage :: MonadIO m
   => Bool -- ^ Flag that set to True if wallet was restored, not fresh generation
+  -> Bool -- ^ Flag that set to True if the mnemonic verification procedure was skipped
   -> Maybe DerivPrefix -- ^ Override Bip44 derivation path in keys
   -> Mnemonic -- ^ Mnemonic to generate keys
   -> (WalletName, Password) -- ^ Wallet file name and encryption password
   -> BlockHeight -- ^ Starting height for the restore process
   -> [Currency] -- ^ Default currencies
   -> m (Either StorageAlert WalletStorage)
-createStorage isRestored mpath mnemonic (login, pass) startingHeight cs = case mnemonicToSeed "" mnemonic of
+createStorage isRestored seedBackupRequired mpath mnemonic (login, pass) startingHeight cs = case mnemonicToSeed "" mnemonic of
    Left err -> pure $ Left $ SAMnemonicFail $ showt err
    Right seed -> do
     let rootPrvKey = EgvRootXPrvKey $ makeXPrvKey seed
         prvStorage = createPrvStorage mpath mnemonic rootPrvKey
-        pubStorage = createPubStorage isRestored mpath rootPrvKey cs startingHeight
+        pubStorage = createPubStorage isRestored seedBackupRequired mpath rootPrvKey cs startingHeight
     encryptPrvStorageResult <- encryptPrvStorage prvStorage pass
     case encryptPrvStorageResult of
       Left err -> pure $ Left err
@@ -456,6 +457,9 @@ getBtcUtxoPoints pubStorage = (uncurry UtxoPoint) <$> (M.toList $ getBtcUtxos pu
 
 getBtcUtxoPointsParted :: PubStorage -> (ConfirmedUtxoPoints, UnconfirmedUtxoPoints)
 getBtcUtxoPointsParted pubStorage = partitionBtcUtxos $ M.toList $ getBtcUtxos pubStorage
+
+getBtcTxs :: PubStorage -> [BtcTx]
+getBtcTxs pubStorage = M.elems $ pubStorage ^. btcPubStorage . currencyPubStorage'meta . _PubStorageBtc . btcPubStorage'transactions
 
 partitionBtcUtxos :: [(HT.OutPoint, BtcUtxoMeta)] -> ([UtxoPoint], [UtxoPoint])
 partitionBtcUtxos = foo ([], []) $ \(cs, ucs) (opoint, meta@BtcUtxoMeta{..}) ->

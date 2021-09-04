@@ -10,7 +10,7 @@ import Control.Monad.IO.Unlift (MonadUnliftIO)
 import Control.Monad.Random
 import Data.Either (fromRight)
 import Data.IP
-import Data.Maybe (catMaybes, fromMaybe, listToMaybe)
+import Data.Maybe (fromMaybe, listToMaybe)
 import Data.Text (Text)
 import Data.Time
 import Data.Traversable (for)
@@ -35,6 +35,7 @@ import Reflex.Fork
 import Reflex.Main.Thread
 import Reflex.Network
 import Sepulcas.Native
+import System.IO.Unsafe
 
 import qualified Data.Bits as BI
 import qualified Data.ByteString.Char8 as B8
@@ -70,7 +71,7 @@ btcNodeController = mdo
 
   pubStorageD <- getPubStorageD
 
-  let txidsD = ffor pubStorageD $ \ps -> S.fromList $ M.keys $ ps ^. btcPubStorage . currencyPubStorage'transactions
+  let txidsD = ffor pubStorageD $ \ps -> M.keysSet $ ps ^. btcPubStorage . currencyPubStorage'transactions
 
   let btcLenD = ffor conMapD $ maybe 0 M.size . DM.lookup BtcTag
   let te' = poke te $ const $ do
@@ -89,7 +90,7 @@ btcNodeController = mdo
   (urlStoreD, fstRunE) <- mkUrlBatcher sel urlE
 
   let (remNodeUrlE, txE) = switchTuple $ splitDynPure $ fmap (unzip . M.elems) tmpD
-  let remNodeE = (`M.singleton`Nothing) <$> remNodeUrlE
+  let remNodeE = (`M.singleton` Nothing) <$> remNodeUrlE
   let addNodeE = (`M.singleton` Just ()) <$> urlE
   let listActionE = leftmost [addNodeE, remNodeE]
 
@@ -194,11 +195,9 @@ filterTxInvs txids (Inv invs) = case txs of
   [] -> Nothing
   _ -> Just txs
   where
-    txs = catMaybes $ ffor invs $ \iv -> case invType iv of
-      InvTx -> let
-        txh = ETT.BtcTxHash $ TxHash $ invHash iv
-        b = S.member txh txids
-        in if b then Nothing else Just iv
+    txs = flip mapMaybe invs $ \case
+      iv@(InvVector InvTx hash)
+        | S.notMember (ETT.BtcTxHash $ TxHash hash) txids -> Just iv
       _ -> Nothing
 
 data SAStorageAct = SAAdd [SockAddr] | SARemove SockAddr | SAClear
@@ -254,25 +253,26 @@ mkUrlBatcher sel remE = mdo
               in Just $ fmap naAddress verifiedAddrs
             _ -> Nothing
         pure $ leftmost es
-  sasE <- performFork $ ffor hostAddrsE $ \hs ->
-    liftIO $ fmap (SAAdd . catMaybes) $ for hs $ \h ->
-      catch (fmap Just $ evaluate $ hostToSockAddr h) (\(_ :: SomeException) -> pure Nothing)
-  urlsD <- foldDynMaybe handleSAStore S.empty $ leftmost [sasE, SARemove <$> remE]
+  urlsD <- foldDynMaybe handleSAStore S.empty $ leftmost
+    [ SAAdd . mapMaybe tryHostToSockAddr <$> hostAddrsE -- Add
+    , SARemove <$> remE                                 -- Remove
+    ]
   -- let addr = SockAddrInet 8333 $ tupleToHostAddress (127,0,0,1)
   -- let urlsD' = S.insert addr <$> urlsD
   -- performEvent_ $ ffor (updated urlsD') $ liftIO . print
-  let actE = flip push (updated urlsD) $ \acc -> if S.size acc >= saStorageSize
-        then pure $ Just Nothing          -- If the storage is full, stop connections
-        else if S.size acc /= 0
-          then pure Nothing               -- If it's in between, do nothing
-          else do                         -- If the storage is empty, request saStorageSize more
-            remCnt <- sampleDyn remCntD
-            if remCnt <= minNodeNum
-              then pure Nothing           -- Do not fire for first minNodeNum updates
-              else pure $ Just (Just saStorageSize)
-  let nonNullE = fforMaybe (updated urlsD) (\urls -> if S.null urls then Nothing else Just ())
-  cntD <- count nonNullE
-  fstRunE <- eventToNextFrame $ fforMaybe (updated cntD) $ \c -> if c <= minNodeNum then Just () else Nothing
+  let actE = flip push (updated urlsD) $ \acc ->
+           -- If the storage is full, stop connections
+        if | S.size acc >= saStorageSize -> pure $ Just Nothing
+           -- If it's in between, do nothing
+           | S.size acc /= 0             -> pure Nothing
+           -- If the storage is empty, request saStorageSize more
+           | otherwise -> do
+               remCnt <- sampleDyn remCntD
+               if remCnt <= minNodeNum
+                 then pure Nothing           -- Do not fire for first minNodeNum updates
+                 else pure $ Just (Just saStorageSize)
+  nonNullUrlsE <- takeE minNodeNum $ ffilter (not . null) (updated urlsD)
+  fstRunE      <- eventToNextFrame $ () <$ nonNullUrlsE
   pure (S.toList <$> urlsD, fstRunE)
 
 -- | Connects to DNS servers, gets n urls and initializes connection to those nodes
@@ -320,3 +320,8 @@ randomVals l urls = if l >= n
         else let acc' = i:acc in if length acc' == l
           then pure acc'
           else mkIndexes acc'
+
+tryHostToSockAddr :: Network.Haskoin.Network.HostAddress -> Maybe SockAddr
+tryHostToSockAddr h = unsafePerformIO $ do
+  (Just <$> evaluate (hostToSockAddr h)) `catch` (\ErrorCall{} -> pure Nothing)
+

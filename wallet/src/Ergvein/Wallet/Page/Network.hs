@@ -3,7 +3,6 @@ module Ergvein.Wallet.Page.Network(
     networkPage
   ) where
 
-import Data.Maybe (catMaybes)
 import Reflex.ExternalRef
 
 import Ergvein.Types.Currency
@@ -55,24 +54,16 @@ networkPageWidget cur refrE = do
 
 btcNetworkWidget :: MonadFront t m => [NodeBtc t] -> m ()
 btcNetworkWidget nodes = do
-  infosD <- fmap sequence $ traverse externalRefDynamic $ nodeconStatus <$> nodes
   let activeND = fmap (length . filter id) $ sequence $ nodeconIsUp <$> nodes
-      sumLatD  = fmap (sum . fmap nodestatLat . catMaybes) infosD
-      avgLatD  = (\a b -> if b == 0 then NPSNoActiveNodes else NPSAvgLat $ a / fromIntegral b) <$> sumLatD <*> activeND
   valueOptionDyn $ NPSActiveNum <$> activeND
   descrOption $ NPSNodesNum $ length nodes
-  descrOptionDyn avgLatD
   labelHorSep
 
 ergNetworkWidget :: MonadFront t m => [NodeErgo t] -> m ()
 ergNetworkWidget nodes = do
-  infosD <- fmap sequence $ traverse externalRefDynamic $ nodeconStatus <$> nodes
   let activeND = fmap (length . filter id) $ sequence $ nodeconIsUp <$> nodes
-      sumLatD  = fmap (sum . fmap nodestatLat . catMaybes) infosD
-      avgLatD  = (\a b -> if b == 0 then NPSNoActiveNodes else NPSAvgLat $ a / fromIntegral b) <$> sumLatD <*> activeND
   valueOptionDyn $ NPSActiveNum <$> activeND
   descrOption $ NPSNodesNum $ length nodes
-  descrOptionDyn avgLatD
   labelHorSep
 
 networkPageHeader :: MonadFront t m => Maybe Currency -> m (Dynamic t (Maybe (Currency, Event t ())))

@@ -6,7 +6,6 @@ module Data.Ergo.Protocol.Encoder(
   , handshakeEncoder
   ) where
 
-import Data.Bits
 import Control.Monad
 import Data.ByteString (ByteString)
 import Data.Ergo.Protocol.Check
@@ -21,15 +20,8 @@ import Data.Vector (Vector)
 import Data.Word
 
 import qualified Data.ByteString as BS
-import qualified Data.ByteString.Lazy as BSL
 import qualified Data.Text as T
 import qualified Data.Vector as V
-
-int64BE :: Int64 -> Put ()
-int64BE = put . BigEndian
-
-int32BE :: Int32 -> Put ()
-int32BE = put . BigEndian
 
 word64BE :: Word64 -> Put ()
 word64BE = put . BigEndian
@@ -39,9 +31,6 @@ word32BE = put . BigEndian
 
 word32LE :: Word32 -> Put ()
 word32LE = put . LittleEndian
-
-word16BE :: Word16 -> Put ()
-word16BE = put . BigEndian
 
 word8 :: Word8 -> Put ()
 word8 = put
@@ -157,10 +146,10 @@ encodeFeature v = do
   putByteString bs
   where
     bs = case v of
-      FeatureOperationMode v -> runPut $ encodeOpMode v
-      FeatureSession v -> runPut $ encodeSessionFeature v
-      FeatureLocalAddress v -> runPut $ encodeLocalAddrFeature v
-      UnknownFeature _ bs -> bs
+      FeatureOperationMode a -> runPut $ encodeOpMode a
+      FeatureSession a -> runPut $ encodeSessionFeature a
+      FeatureLocalAddress a -> runPut $ encodeLocalAddrFeature a
+      UnknownFeature _ a -> a
 
 syncInfoEncoder :: SyncInfo -> Put ()
 syncInfoEncoder SyncInfo{..} = encodeVector put syncHeaders
