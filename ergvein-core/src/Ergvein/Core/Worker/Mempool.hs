@@ -139,11 +139,14 @@ btcMempoolWorkerConn IndexerConnection{..} = void $ workflow waitRestore
             -- This vvv reqires an Event. Rewrite in a non-reflexive manner
             -- removeTxsReplacedByFee tx
             liftIO $ flip runReaderT txStore $ do
-              checkAddrTxResult <- checkAddrMempoolTx keys tx
-              utxoUpdates <- getUtxoUpdates Nothing keys tx
-              pure $ Just $ helper (checkAddrTxResult, utxoUpdates)
+              mcheckAddrTxResult <- checkAddrMempoolTx keys tx
+              case mcheckAddrTxResult of
+                Nothing -> pure Nothing
+                Just checkAddrTxResult -> do
+                  utxoUpdates <- getUtxoUpdates Nothing keys tx
+                  pure $ Just $ helper (checkAddrTxResult, utxoUpdates)
         pure val
-      insertedE <- insertManyTxsUtxoInPubKeystore "btcMempoolTxInserter" BTC valsE
+      insertedE <- insertManyTxsUtxoInPubKeystore "btcMempoolTxInserter" BTC $ ffilter (not . null) valsE
       pure ((), waitNextInv n <$ insertedE)
       where
         helper :: ((V.Vector ScanKeyBox, EgvTx), BtcUtxoUpdate) -> (V.Vector (ScanKeyBox, M.Map TxId EgvTx), BtcUtxoUpdate)

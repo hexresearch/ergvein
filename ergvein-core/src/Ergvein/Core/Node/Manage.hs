@@ -156,10 +156,13 @@ btcMempoolTxInserter txE = do
         keys = getPublicKeys $ btcps ^. currencyPubStorage'pubKeystore
         txStore = btcps ^. currencyPubStorage'transactions
     liftIO $ flip runReaderT txStore $ do
-      checkAddrTxResult <- checkAddrMempoolTx keys tx
-      utxoUpdates <- getUtxoUpdates Nothing keys tx
-      pure (checkAddrTxResult, utxoUpdates)
-  insertedE <- insertTxsUtxoInPubKeystore "btcMempoolTxInserter" BTC $ helper <$> valsE
+      mcheckAddrTxResult <- checkAddrMempoolTx keys tx
+      case mcheckAddrTxResult of
+        Nothing -> pure Nothing
+        Just checkAddrTxResult -> do
+          utxoUpdates <- getUtxoUpdates Nothing keys tx
+          pure $ Just (checkAddrTxResult, utxoUpdates)
+  insertedE <- insertTxsUtxoInPubKeystore "btcMempoolTxInserter" BTC $ helper <$> (fmapMaybe id valsE)
   pure $ void insertedE
   where
     helper :: ((V.Vector ScanKeyBox, EgvTx), BtcUtxoUpdate) -> (V.Vector (ScanKeyBox, M.Map TxId EgvTx), BtcUtxoUpdate)
@@ -206,7 +209,8 @@ removeTxsReplacedByFee caller replacingTxE = do
   where clr = caller <> ":" <> "removeTxsReplacedByFee"
 
 -- | Checks tx with checkAddrTx against provided keys and returns that tx in EgvTx format with matched keys vector.
-checkAddrMempoolTx :: (HasTxStorage m, PlatformNatives) => V.Vector ScanKeyBox -> HT.Tx -> m (V.Vector ScanKeyBox, EgvTx)
+-- Returns Nothing if no key has been matched
+checkAddrMempoolTx :: (HasTxStorage m, PlatformNatives) => V.Vector ScanKeyBox -> HT.Tx -> m (Maybe (V.Vector ScanKeyBox, EgvTx))
 checkAddrMempoolTx vec tx = do
   st <- liftIO $ systemToUTCTime <$> getSystemTime
   let meta = Just $ EgvTxMeta Nothing Nothing st
@@ -214,4 +218,6 @@ checkAddrMempoolTx vec tx = do
     b <- checkAddrTx (TxBtc $ BtcTx tx meta) (egvXPubKeyToEgvAddress . scanBox'key $ kb)
     pure $ if b then Just kb else Nothing
   let resultVec = V.mapMaybe id vec'
-  pure (resultVec, TxBtc $ BtcTx tx meta)
+  pure $ if V.null resultVec
+    then Nothing
+    else Just (resultVec, TxBtc $ BtcTx tx meta)
