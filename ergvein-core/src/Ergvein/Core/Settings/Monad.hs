@@ -76,8 +76,16 @@ modifySettings setE = do
     storeSettings =<< modifyExternalRef settingsRef (\s -> let s' = f s in (s',s'))
 {-# INLINE modifySettings #-}
 
+-- | Eq over SocksConf, bc lib's devs were too lazy to derive it
+socksConfEq :: Maybe S5.SocksConf -> Maybe S5.SocksConf -> Bool
+socksConfEq c1 c2 = case (c1,c2) of
+  (Just (S5.SocksConf s1 v1), Just (S5.SocksConf s2 v2)) -> s1 == s2 && v1 == v2
+  (Nothing, Nothing) -> True
+  _ -> False
+{-# INLINE socksConfEq #-}
+
 getSocksConf :: MonadSettings t m => m (Dynamic t (Maybe S5.SocksConf))
-getSocksConf = fmap (fmap toSocksProxy . settingsSocksProxy) <$> getSettingsD
+getSocksConf = holdUniqDynBy socksConfEq =<< fmap (fmap toSocksProxy . settingsSocksProxy) <$> getSettingsD
 {-# INLINE getSocksConf #-}
 
 getProxyConf :: MonadSettings t m => m (Dynamic t (Maybe SocksConf))
