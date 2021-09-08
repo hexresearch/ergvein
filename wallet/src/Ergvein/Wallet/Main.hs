@@ -50,9 +50,9 @@ mainpageDispatcher = void $ workflow testnetDisclaimer
       closeE <- outlineButton TestnetDisclaimerClose
       pure ((), startWallet <$ closeE)
     startWallet = Workflow $ do
-      void $ retractStack (initialPage True) `liftAuth` (spawnWorkers >> retractStack startPage)
+      void $ retractStack (initialPage OpenLastWalletOn) `liftAuth` (spawnWorkers >> retractStack startPage)
       pure ((), never)
 #else
 mainpageDispatcher :: MonadFrontBase t m => m ()
-mainpageDispatcher = void $ retractStack (initialPage True) `liftAuth` (spawnWorkers >> retractStack startPage)
+mainpageDispatcher = void $ retractStack (initialPage OpenLastWalletOn) `liftAuth` (spawnWorkers >> retractStack startPage)
 #endif

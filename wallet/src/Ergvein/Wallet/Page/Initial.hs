@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 module Ergvein.Wallet.Page.Initial(
     initialPage
+  , OpenLastWallet(..)
   ) where
 
 import Data.Bifunctor (first)
@@ -25,11 +26,13 @@ import qualified Data.Text       as T
 
 data GoPage = GoCreate | GoRestore | GoSettings
 
-initialPage :: MonadFrontBase t m => Bool -> m ()
-initialPage redir = do
+data OpenLastWallet = OpenLastWalletOn | OpenLastWalletOff
+
+initialPage :: MonadFrontBase t m => OpenLastWallet -> m ()
+initialPage openLastWallet = do
   logWrite "Initial page rendering"
   ss <- listStorages
-  if null ss then noWalletsPage else hasWalletsPage redir ss
+  if null ss then noWalletsPage else hasWalletsPage openLastWallet ss
   logWrite "Finished initial page rendering"
 
 noWalletsPage :: MonadFrontBase t m => m ()
@@ -45,19 +48,24 @@ createRestore = do
         GoCreate -> backupPage
         GoRestore -> simpleSeedRestorePage
         GoSettings -> settingsPageUnauth
-    , retractablePrev = Just $ pure $ initialPage False
+    , retractablePrev = Just $ pure $ initialPage OpenLastWalletOff
     }
 
-hasWalletsPage :: MonadFrontBase t m => Bool -> [WalletName] -> m ()
-hasWalletsPage redir ss = do
+hasWalletsPage :: MonadFrontBase t m => OpenLastWallet -> [WalletName] -> m ()
+hasWalletsPage openLastWallet ss = do
   buildE <- getPostBuild
-  mnameE <- performEvent $ getLastStorage <$ buildE
-  void $ nextWidget $ ffor mnameE $ \mname -> Retractable {
-      retractableNext = maybe (selectWalletsPage ss) selectNext mname
-    , retractablePrev = Nothing
+  mNameE <- performEvent $ getLastStorage <$ buildE
+  void $ nextWidget $ ffor mNameE $ \mName -> Retractable {
+      retractableNext = maybe (selectWalletsPage ss) selectNext mName
+    , retractablePrev = selectPrev =<< mName
     }
   where
-    selectNext = if redir then loadWalletPage else const (selectWalletsPage ss)
+    selectNext walletName = case openLastWallet of
+      OpenLastWalletOn -> loadWalletPage walletName
+      OpenLastWalletOff -> selectWalletsPage ss
+    selectPrev _ = case openLastWallet of
+      OpenLastWalletOn -> Just $ pure $ initialPage OpenLastWalletOff
+      OpenLastWalletOff -> Nothing
 
 selectWalletsPage :: MonadFrontBase t m => [WalletName] -> m ()
 selectWalletsPage ss = wrapperSimple True $ divClass "initial-page-options" $ do
