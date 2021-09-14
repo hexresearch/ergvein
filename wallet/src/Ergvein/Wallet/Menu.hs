@@ -43,7 +43,7 @@ menuDesktop menuIsHiddenD thisWidget = do
     ps <- getPubStorage
     let activeCurrencies = _pubStorage'activeCurrencies ps
     menuButtonsDesktop thisWidget $ case activeCurrencies of
-      cur:[] -> Just cur
+      [cur] -> Just cur
       _ -> Nothing
 
 menuAndroid :: MonadFront t m => Event t () -> Maybe (Dynamic t (m ())) -> m ()
@@ -56,7 +56,7 @@ menuAndroid menuOpenE thisWidget = mdo
     let activeCurrencies = _pubStorage'activeCurrencies ps
     menuBtnE <- divClass "menu-android-header" $ divButton "menu-android-close-button header-button header-button-right" $ elClass "i" "fas fa-times" blank
     divClass "menu-android-buttons-wrapper" $ menuButtonsAndroid thisWidget $ case activeCurrencies of
-      cur:[] -> Just cur
+      [cur] -> Just cur
       _ -> Nothing
     pure menuBtnE
   pure ()
@@ -109,7 +109,7 @@ menuButtonsAndroid thisWidget mCur = do
         elClass "i" (i <> " menu-android-button-icon") blank
         localizedText v
         pure v
-  balE <- menuBtn $ (maybe MenuBalances MenuSingleBalance mCur, "fas fa-wallet")
+  balE <- menuBtn (maybe MenuBalances MenuSingleBalance mCur, "fas fa-wallet")
   setE <- menuBtn (MenuSettings, "fas fa-cog")
   abtE <- menuBtn (MenuAbout, "fas fa-info-circle")
   switchE <- menuBtn (MenuSwitch, "fas fa-sign-out-alt")
