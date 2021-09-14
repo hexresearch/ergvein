@@ -23,16 +23,19 @@ import qualified Data.Serialize as S
 import qualified Data.Text as T
 
 mnemonicExportPage :: MonadFront t m => m ()
-mnemonicExportPage = wrapperSimple True $ do
-  divClass "password-setup-title" $ h4 $ localizedText PPSMnemonicTitle
-  divClass "password-setup-descr" $ h5 $ localizedText PPSMnemonicDescr
-  passE <- setupPassword =<< submitSetBtn
-  mnemonicPassE <- withWallet $ ffor passE $ \pass prvStorage -> pure (_prvStorage'mnemonic prvStorage, pass)
-  void $ nextWidget $ ffor mnemonicPassE $ \(mnemonic, pass) ->
-    Retractable
-      { retractableNext = mnemonicExportResutlPage mnemonic pass,
-        retractablePrev = Nothing
-      }
+mnemonicExportPage = do
+  title <- localized STPSButMnemonicExport
+  let thisWidget = Just $ pure mnemonicExportPage
+  wrapper True title thisWidget $ do
+    divClass "password-setup-title" $ h4 $ localizedText PPSMnemonicTitle
+    divClass "password-setup-descr" $ h5 $ localizedText PPSMnemonicDescr
+    passE <- setupPassword =<< submitSetBtn
+    mnemonicPassE <- withWallet $ ffor passE $ \pass prvStorage -> pure (_prvStorage'mnemonic prvStorage, pass)
+    void $ nextWidget $ ffor mnemonicPassE $ \(mnemonic, pass) ->
+      Retractable
+        { retractableNext = mnemonicExportResutlPage mnemonic pass,
+          retractablePrev = Nothing
+        }
 
 mnemonicExportResutlPage :: MonadFront t m => Mnemonic -> Password -> m ()
 mnemonicExportResutlPage mnemonic pass = do
