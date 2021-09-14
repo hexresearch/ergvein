@@ -1,6 +1,8 @@
 module Ergvein.Wallet.Menu(
     headerWidgetDesktop
   , headerWidgetAndroid
+  , headerWidgetDesktopPasswordModal
+  , headerWidgetAndroidPasswordModal
   , headerWidgetOnlyBackBtn
   , headerWidgetOnlyLogoutBtn
   ) where
@@ -35,6 +37,33 @@ headerAndroid titleD = divClass "header header-black" $ mdo
   backButtonRetract
   divClass "header-wallet-text" $ dynText titleD
   divButton "header-button header-button-right" $ elClass "i" "fas fa-bars" blank
+
+headerWidgetDesktopPasswordModal :: MonadFront t m => Dynamic t Text -> m (Event t ())
+headerWidgetDesktopPasswordModal titleD = divClass "header-wrapper" $ do
+  (closeModalE, menuIsHiddenD) <- headerDesktopPasswordModal titleD
+  menuDesktop menuIsHiddenD Nothing
+  pure closeModalE
+
+headerWidgetAndroidPasswordModal :: MonadFront t m => Dynamic t Text -> m (Event t ())
+headerWidgetAndroidPasswordModal titleD = do
+  (closeModalE, menuOpenE) <- divClass "header-wrapper" $ headerAndroidPasswordModal titleD
+  menuAndroid menuOpenE Nothing
+  pure closeModalE
+
+headerDesktopPasswordModal :: MonadFront t m => Dynamic t Text -> m (Event t (), Dynamic t Bool)
+headerDesktopPasswordModal titleD = divClass "header header-black" $ do
+  closeBtnE <- divButton "header-button header-button-left" $ elClass "i" "fas fa-chevron-left" blank
+  divClass "header-wallet-text" $ dynText titleD
+  menuBtnE <- divButton "header-button header-button-right" $ elClass "i" "fas fa-bars" blank
+  menuIsHiddenD <- toggle True menuBtnE
+  pure (closeBtnE, menuIsHiddenD)
+
+headerAndroidPasswordModal :: MonadFront t m => Dynamic t Text -> m (Event t (), Event t ())
+headerAndroidPasswordModal titleD = divClass "header header-black" $ mdo
+  closeBtnE <- divButton "header-button header-button-left" $ elClass "i" "fas fa-chevron-left" blank
+  divClass "header-wallet-text" $ dynText titleD
+  menuBtnE <- divButton "header-button header-button-right" $ elClass "i" "fas fa-bars" blank
+  pure (closeBtnE, menuBtnE)
 
 menuDesktop :: MonadFront t m => Dynamic t Bool -> Maybe (Dynamic t (m ())) -> m ()
 menuDesktop menuIsHiddenD thisWidget = do
