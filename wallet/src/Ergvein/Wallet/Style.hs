@@ -893,16 +893,32 @@ patternKeyCss = do
 
 pinCodeCss :: Css
 pinCodeCss = do
+  ".pincode-page" ? do
+    flexGrow 1
+    display flex
+    flexDirection column
   ".pincode-widget" ? do
-    height $ pct 100
+    flexGrow 1
     display flex
     flexDirection column
     justifyContent spaceBetween
     alignItems center
   ".pincode-widget-dots" ? do
-    display grid
-    gridTemplateColumns $ replicate 6 $ fr 1
-    gridGap $ rem 1
+    display flex
+    justifyContent center
+    flexWrap F.wrap
+    marginLeft $ rem (-0.5)
+    marginRight $ rem (-0.5)
+    marginTop $ rem (-0.5)
+    marginBottom $ rem (-0.5)
+  ".pincode-widget-dot" ? do
+    paddingLeft $ rem 0.5
+    paddingRight $ rem 0.5
+    paddingTop $ rem 0.5
+    paddingBottom $ rem 0.5
+  ".pincode-widget-errors" ? do
+    color red
+    marginTop $ rem 1
   ".pincode-widget-button" ? do
     display flex
     justifyContent center
