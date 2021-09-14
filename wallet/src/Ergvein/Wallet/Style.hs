@@ -539,6 +539,10 @@ dropdownContainerCss = do
 
 passwordCss :: Css
 passwordCss = do
+  ".password-widget-container" ? do
+    flexGrow 1
+    display flex
+    flexDirection column
   ".password-field" ? do
     display flex
     alignItems center
@@ -561,26 +565,9 @@ passwordCss = do
     position absolute
     top $ px 0
     left $ px 0
-    width $ vw 100
-    height $ vh 100
+    width $ pct 100
     zIndex 2
-    backgroundColor white
-  ".ask-password-modal-content" ? do
-    height $ pct 100
-    display flex
-    flexDirection column
-    justifyContent center
-    paddingLeft $ pct 25
-    paddingRight $ pct 25
-  ".ask-pattern-modal" ? do
-    position absolute
-    top $ px 0
-    left $ px 0
-    width $ vw 100
-    height $ vh 100
-    zIndex 2
-    backgroundColor white
-    justifyContent center
+    backgroundColor majorBackground
 
 initialPageCss :: Css
 initialPageCss = do

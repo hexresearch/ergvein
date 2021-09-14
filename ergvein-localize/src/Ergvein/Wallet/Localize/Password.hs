@@ -4,8 +4,10 @@ module Ergvein.Wallet.Localize.Password
   , PasswordWidgetStrings(..)
   , LoginPageStrings(..)
   , PatternPageStrings(..)
+  , PinCodePageStrings(..)
   , ConfirmEmptyPage(..)
   , StartHeightStrings(..)
+  , PasswordTypePageStrings(..)
   ) where
 
 import Data.Time
@@ -15,6 +17,7 @@ import Ergvein.Types.Transaction
 import Ergvein.Wallet.Language
 
 import qualified Data.Text as T
+import Ergvein.Types (Password)
 
 data LoginPageStrings = LPSTitle | LPSDescr
 
@@ -45,6 +48,46 @@ instance LocalizedPrint PatternPageStrings where
       PatPSPatt       -> "Установить ключ"
       PatPSUsePass    -> "Ввести пароль"
       PatPSUsePattern -> "Ввести ключ"
+
+data PasswordTypePageStrings = PasswordTypeTitle | PasswordTypeText | PasswordTypePin | PasswordTypeEmpty
+
+instance LocalizedPrint PasswordTypePageStrings where
+  localizedShow l v = case l of
+    English -> case v of
+      PasswordTypeTitle -> "Select password type"
+      PasswordTypeText  -> "Text password"
+      PasswordTypePin   -> "PIN"
+      PasswordTypeEmpty -> "Skip"
+    Russian -> case v of
+      PasswordTypeTitle -> "Выберите тип пароля"
+      PasswordTypeText  -> "Текстовый пароль"
+      PasswordTypePin   -> "ПИН-код"
+      PasswordTypeEmpty -> "Пропустить"
+
+data PinCodePageStrings =
+    PinCodePSTitle
+  | PinCodePSPinCodeLengthRange
+  | PinCodePSTooShortError
+  | PinCodePSConfirm
+  | PinCodePSConfirmationError
+  | PinCodePSEnterPinCode
+
+instance LocalizedPrint PinCodePageStrings where
+  localizedShow l v = case l of
+    English -> case v of
+      PinCodePSTitle -> "Set security PIN"
+      PinCodePSPinCodeLengthRange -> "PIN must be 6 to 12 digits long"
+      PinCodePSTooShortError -> "PIN code must be at least 6 digits"
+      PinCodePSConfirm -> "Repeat security PIN"
+      PinCodePSConfirmationError -> "PINs do not match"
+      PinCodePSEnterPinCode -> "Enter your secret PIN"
+    Russian -> case v of
+      PinCodePSTitle -> "Задайте ПИН-код"
+      PinCodePSPinCodeLengthRange -> "ПИН-код должен содержать от 6 до 12 цифр"
+      PinCodePSTooShortError -> "ПИН-код должен содержать не менее 6 цифр"
+      PinCodePSConfirm -> "Повторите ПИН-код"
+      PinCodePSConfirmationError -> "ПИН-коды не совпадают"
+      PinCodePSEnterPinCode -> "Введите ПИН-код"
 
 data PasswordPageStrings = PPSTitle | PPSPassTitle | PPSDescr | PPSMnemonicTitle | PPSMnemonicDescr | PPSUnlock | PPSMnemonicUnlock | PPSWrongPassword
   deriving (Eq)
@@ -161,4 +204,4 @@ showDate :: BlockHeight -> Text
 showDate h = T.pack $ formatTime defaultTimeLocale "%F" $ addUTCTime delta genDate
   where
     genDate = parseTimeOrError False defaultTimeLocale "%F %T" "2009-01-03 18:15:05"
-    delta = (fromIntegral h) * 9.5 * 60
+    delta = fromIntegral h * 9.5 * 60

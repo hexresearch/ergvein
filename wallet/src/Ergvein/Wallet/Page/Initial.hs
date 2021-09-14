@@ -12,11 +12,13 @@ import Ergvein.Either
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localize
+import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Password
 import Ergvein.Wallet.Page.PatternKey
 import Ergvein.Wallet.Page.Seed
 import Ergvein.Wallet.Page.Settings.Unauth
+import Ergvein.Wallet.Password
 import Ergvein.Wallet.Wrapper
 import Sepulcas.Alert
 import Sepulcas.Elements
@@ -81,19 +83,21 @@ selectWalletsPage ss = wrapperSimple True $ divClass "initial-page-options" $ do
 
 loadWalletPage :: MonadFrontBase t m => WalletName -> m ()
 loadWalletPage name = do
-  buildE <- getPostBuild
-  mPlainE <- performEvent $ loadWalletInfo name "" <$ buildE
-  let oldAuthE' = fmapMaybe eitherToMaybe mPlainE
-  oldAuthE'' <- fmap switchDyn $ networkHold (pure never) $ ffor mPlainE $ \case
-    Right _ -> pure never
-    Left _ -> do
-      passE <- askPasswordPage name
-      mOldAuthE <- performEvent $ loadWalletInfo name <$> passE
-      handleDangerMsg mOldAuthE
-  let oldAuthE = leftmost [oldAuthE', oldAuthE'']
-  mAuthE <- performEvent $ generateMissingPrvKeys <$> oldAuthE
-  authE <- handleDangerMsg mAuthE
-  when isAndroid $ performEvent_ $ ffor authE $ const $ do
-    c <- loadCounter
-    saveCounter $ PatternTries $ M.insert name 0 (patterntriesCount c)
-  void $ setWalletInfo $ Just <$> authE
+  -- We could use `wrapperSimple True` here, but to draw the pin code widget to full screen, we need to use this
+  wrapperSimpleGeneric headerWidgetOnlyBackBtn "password-widget-container" False $ do
+    buildE <- getPostBuild
+    mPlainE <- performEvent $ loadWalletInfo name "" <$ buildE
+    let oldAuthE' = fmapMaybe eitherToMaybe mPlainE
+    oldAuthE'' <- fmap switchDyn $ networkHold (pure never) $ ffor mPlainE $ \case
+      Right _ -> pure never
+      Left _ -> do
+        passE <- askPasswordWidget name True
+        mOldAuthE <- performEvent $ loadWalletInfo name <$> passE
+        handleDangerMsg mOldAuthE
+    let oldAuthE = leftmost [oldAuthE', oldAuthE'']
+    mAuthE <- performEvent $ generateMissingPrvKeys <$> oldAuthE
+    authE <- handleDangerMsg mAuthE
+    when isAndroid $ performEvent_ $ ffor authE $ const $ do
+      c <- loadCounter
+      saveCounter $ PatternTries $ M.insert name 0 (patterntriesCount c)
+    void $ setWalletInfo $ Just <$> authE

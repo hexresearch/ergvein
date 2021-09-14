@@ -3,8 +3,8 @@ module Ergvein.Wallet.Password(
     setupPassword
   , submitSetBtn
   , setupLoginPassword
-  , askTextPassword
-  , askPassword
+  , askTextPasswordWidget
+  , askPasswordWidget
   , askPasswordModal
   , setupLogin
   , setupPattern
@@ -22,8 +22,11 @@ import Data.Time (getCurrentTime)
 import Reflex.Localize.Dom
 
 import Ergvein.Wallet.Localize
+import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.PatternKey
+import Ergvein.Wallet.Page.PinCode
+import Ergvein.Wallet.Wrapper
 import Sepulcas.Elements
 import Sepulcas.Validate
 
@@ -113,48 +116,77 @@ setupDerivPrefix ac mpath = do
       [c] -> defaultDerivePath c
       _ -> defaultDerivPathPrefix
 
-askPassword :: MonadFrontBase t m => Text -> Bool -> m (Event t Password)
-askPassword name writeMeta
-  | isAndroid = askPasswordAndroid name writeMeta
-  | otherwise = askTextPassword PPSUnlock (PWSPassNamed name)
+askPasswordWidget :: MonadFrontBase t m => Text -> Bool -> m (Event t Password)
+askPasswordWidget name writeMeta
+  | isAndroid = askPasswordAndroidWidget name writeMeta
+  | otherwise = askTextPasswordWidget PPSUnlock (PWSPassNamed name)
 
-askTextPassword :: (MonadFrontBase t m, LocalizedPrint l1, LocalizedPrint l2) => l1 -> l2 -> m (Event t Password)
-askTextPassword title description = do
-  divClass "password-ask-title" $ h4 $ localizedText title
-  divClass "ask-password" $ form $ fieldset $ do
+askTextPasswordWidget :: (MonadFrontBase t m, LocalizedPrint l1, LocalizedPrint l2) => l1 -> l2 -> m (Event t Password)
+askTextPasswordWidget title description = divClass "my-a" $ do
+  h4 $ localizedText title
+  divClass "" $ do
     pD <- passFieldWithEye description
     e <- submitClass "button button-outline" PWSGo
     pure $ tag (current pD) e
 
-askPasswordAndroid :: MonadFrontBase t m => Text -> Bool -> m (Event t Password)
-askPasswordAndroid name writeMeta = mdo
+askPasswordAndroidWidget :: MonadFrontBase t m => Text -> Bool -> m (Event t Password)
+askPasswordAndroidWidget name writeMeta = mdo
   let fpath = "meta_wallet_" <> T.replace " " "_" name
-  isPass0 <- fromRight False <$> retrieveValue fpath False
-  isPassD <- holdDyn isPass0 tglE
-  valD <- networkHoldDyn $ ffor isPassD $ \isPass -> if isPass
+  isPass <- fromRight False <$> retrieveValue fpath False
+  passE <- if isPass
     then askPasswordImpl name writeMeta
-    else askPatternImpl name writeMeta
-  let (passE, tglE) = bimap switchDyn switchDyn $ splitDynPure valD
+    else askPinCodeImpl name writeMeta
   pure passE
 
-askPasswordImpl :: MonadFrontBase t m => Text -> Bool -> m (Event t Password, Event t Bool)
+askPasswordImpl :: MonadFrontBase t m => Text -> Bool -> m (Event t Password)
 askPasswordImpl name writeMeta = do
   let fpath = "meta_wallet_" <> T.replace " " "_" name
   when writeMeta $ storeValue fpath True True
-  divClass "password-ask-title" $ h4 $ localizedText PPSUnlock
-  divClass "ask-password" $ form $ fieldset $ do
+  divClass "ask-password my-a" $ form $ fieldset $ do
+    h4 $ localizedText PPSUnlock
     pD <- passFieldWithEye $ PWSPassNamed name
     divClass "fit-content ml-a mr-a" $ do
       e <- divClass "" $ submitClass "button button-outline w-100" PWSGo
-      patE <- divClass "" $ submitClass "button button-outline w-100" PatPSUsePattern
-      pure (tag (current pD) e, False <$ patE)
+      pure $ tag (current pD) e
+
+askPinCodeImpl :: MonadFrontBase t m => Text -> Bool -> m (Event t Password)
+askPinCodeImpl name writeMeta = do
+  let fpath = "meta_wallet_" <> T.replace " " "_" name
+  when writeMeta $ storeValue fpath False True
+  pinE <- mdo
+    c <- loadCounter
+    let cInt = fromMaybe 0 $ Map.lookup name (patterntriesCount c)
+    now <- liftIO getCurrentTime
+    a <- clockLossy 1 now
+    freezeD <- networkHold (pure False) $ ffor (updated a) $ \TickInfo{..} -> do
+      cS <- sampleDyn counterD
+      let cdTime = if cS < 5
+            then 0
+            else 30 * (2 ^ (cS - 5))
+      if (cdTime - _tickInfo_n) > 0
+      then do
+        divClass "backcounter" $ text $ "You should wait " <> showt (cdTime - _tickInfo_n) <> " sec"
+        pure True
+      else
+        pure False
+    passE <- pinCodeAskWidget PinCodePSEnterPinCode
+    counterD <- holdDyn cInt $ poke passE $ \_ -> do
+      freezeS <- sampleDyn freezeD
+      cS <- sampleDyn counterD
+      if freezeS
+        then pure cS
+        else pure $ cS + 1
+    performEvent_ $ ffor (updated counterD) $ \cS ->
+      saveCounter $ PatternTries $ Map.insert name cS (patterntriesCount c)
+    pure $ attachPromptlyDynWithMaybe (\freeze p -> if not freeze then Just p else Nothing) freezeD passE
+  pure pinE
 
 askPatternImpl :: MonadFrontBase t m => Text -> Bool -> m (Event t Password, Event t Bool)
 askPatternImpl name writeMeta = do
   let fpath = "meta_wallet_" <> T.replace " " "_" name
   when writeMeta $ storeValue fpath False True
-  divClass "password-ask-title" $ h5 $ localizedText PKSUnlock
-  divClass "password-ask-title" $ h5 $ localizedText $ PKSFor name
+  h5 $ localizedText PKSUnlock
+  h5 $ localizedText $ PKSFor name
   patE <- divClass "ask-pattern" $ form $ fieldset $ mdo
     c <- loadCounter
     let cInt = fromMaybe 0 $ Map.lookup name (patterntriesCount c)
