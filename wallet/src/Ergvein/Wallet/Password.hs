@@ -184,40 +184,19 @@ askPatternImpl name writeMeta = do
   passE <- submitClass "button button-outline" PatPSUsePass
   pure (patE, True <$ passE)
 
-askPasswordModal :: MonadFrontBase t m => m ()
-askPasswordModal
-  | isAndroid = askPasswordModalAndroid
-  | otherwise = askPasswordModalDesc
-
-askPasswordModalAndroid :: MonadFrontBase t m => m ()
-askPasswordModalAndroid = mdo
-  goE  <- fmap fst getPasswordModalEF
-  fire <- fmap snd getPasswordSetEF
-  let redrawE = leftmost [Just <$> goE, Nothing <$ passE, Nothing <$ closeE]
-  valD <- networkHold (pure (never, never)) $ ffor redrawE $ \case
-    Just (i, name) -> divClass "ask-pattern-modal" $ do
-      closeE' <- passwordHeader
-      passE' <- divClass "mt-1 ml-1 mr-1" $ do
-        askPassword name False
-      pure (fmap ((i,) . Just) passE', closeE')
-    Nothing -> pure (never, never)
-  let (passD, closeD) = splitDynPure valD
-  let passE = switchDyn passD
-  let closeE = switchDyn closeD
-  performEvent_ $ liftIO . fire <$> passE
-
-askPasswordModalDesc :: MonadFrontBase t m => m ()
-askPasswordModalDesc = mdo
-  goE  <- fmap fst getPasswordModalEF
+askPasswordModal :: MonadFront t m => m ()
+askPasswordModal = mdo
+  goE <- fmap fst getPasswordModalEF
   fire <- fmap snd getPasswordSetEF
   let redrawE = leftmost [Just <$> goE, Nothing <$ passE, Nothing <$ closeE]
   valD <- networkHold (pure (never, never)) $ ffor redrawE $ \case
     Just (i, name) -> divClass "ask-password-modal" $ do
-      closeE' <- passwordHeader
-      passE' <- (fmap . fmap) ((i,) . Just) $ divClass "ask-password-modal-content" $ askPassword name False
+      title <- localized PWSPassword
+      (closeE', passE') <- wrapperPasswordModal title "password-widget-container" $
+        fmap ((i,) . Just) <$> askPasswordWidget name False
       pure (passE', closeE')
     Nothing -> pure (never, never)
   let (passD, closeD) = splitDynPure valD
-  let passE = switchDyn passD
-  let closeE = switchDyn closeD
+      passE = switchDyn passD
+      closeE = switchDyn closeD
   performEvent_ $ liftIO . fire <$> passE
