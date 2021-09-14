@@ -166,11 +166,11 @@ renderActive nsa refrE mconn = mdo
     Just conn -> do
       let clsUnauthD = ffor (indexConIsUp conn) $ \up -> if up then onclass else offclass
       let isUpD = ffor (indexConIsUp conn) $ \up -> up
-      let heightD = fmap (M.lookup BTC) $ indexConHeight conn
+      let indexerHeightD = fmap (M.lookup BTC) $ indexConHeight conn
       clsD <- fmap join $ liftAuth (pure clsUnauthD) $ do
         hD <- getCurrentHeight BTC
         pure $ do
-          h <- heightD
+          h <- indexerHeightD
           h' <- fmap (Just . fromIntegral) hD
           up <- indexConIsUp conn
           let synced = h >= h' || Just 1 == ((-) <$> h' <*> h)
@@ -186,7 +186,13 @@ renderActive nsa refrE mconn = mdo
           then descrOption NSSOffline
           else do
             descrOptionDyn $ NSSLatency <$> latD
-            descrOptionDyn $ (maybe NSSNoHeight NSSIndexerHeight) <$> heightD
+            let unauthHeight = descrOptionDyn $ (maybe NSSNoHeight NSSIndexerHeight) <$> indexerHeightD
+            liftAuth unauthHeight $ do
+              btcHeightD <- getCurrentHeight BTC
+              descrOptionDyn $ do
+                mh <- indexerHeightD
+                hb <- btcHeightD
+                pure $ maybe NSSNoHeight (NSSIndexerHeightAuth hb) mh
             descrOptionDyn $ NPSIndexerVersion <$> indexConIndexerVersion conn
       pure tglE'
 
