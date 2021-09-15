@@ -25,9 +25,10 @@ module Reflex.Flunky(
   , triggerPair
   ) where
 
-import Control.Monad 
+import Control.Monad
 import Control.Monad.Fix
 import Control.Monad.IO.Class
+import Data.Bifunctor (bimap)
 import Data.Functor (void)
 import Reflex
 import Reflex.Network
@@ -44,7 +45,7 @@ networkHoldDyn maD = do
 
 -- | Same as `networkHold` but tailored for widgets returning events
 networkHoldE :: forall t m a . (Reflex t, Adjustable t m, MonadHold t m) => m (Event t a) -> Event t (m (Event t a)) -> m (Event t a)
-networkHoldE m0 ma = fmap switchDyn $ networkHold m0 ma
+networkHoldE m0 ma = switchDyn <$> networkHold m0 ma
 {-# INLINABLE networkHoldE #-}
 
 -- | Same as `networkHoldDyn` but tailored for widgets returning events
@@ -77,7 +78,7 @@ dbgPrintE :: (PerformEvent t m, Show a, MonadIO (Performable m)) => Event t a ->
 dbgPrintE = performEvent_ . fmap (liftIO . print)
 
 eventToNextFrame :: (PerformEvent t m, MonadIO (Performable m)) => Event t a -> m (Event t a)
-eventToNextFrame = performEvent . (fmap (liftIO . pure . id))
+eventToNextFrame = performEvent . fmap (liftIO . pure)
 
 eventToNextFrame' :: (PerformEvent t m, MonadIO (Performable m)) => m (Event t a) -> m (Event t a)
 eventToNextFrame' evtM = do
@@ -86,8 +87,8 @@ eventToNextFrame' evtM = do
 
 eventToNextFrameN :: (PerformEvent t m, MonadIO (Performable m)) => Int -> Event t a -> m (Event t a)
 eventToNextFrameN n evt
-  | n < 1     = do performEvent $ (fmap (liftIO . pure. id)) evt
-  | otherwise = do evtN <- performEvent $ (fmap (liftIO . pure. id)) evt
+  | n < 1     = do performEvent $ fmap (liftIO . pure) evt
+  | otherwise = do evtN <- performEvent $ fmap (liftIO . pure) evt
                    eventToNextFrameN (n - 1) evtN
 
 eventToNextFrameN' :: (PerformEvent t m, MonadIO (Performable m)) => Int -> m (Event t a) -> m (Event t a)
@@ -108,7 +109,7 @@ splitEither e = (ae, be)
     be = fmapMaybe (either (const Nothing) Just) e
 
 switchDyn2 :: Reflex t => Dynamic t (Event t a, Event t b) -> (Event t a, Event t b)
-switchDyn2 = (\(a,b) -> (switchDyn a, switchDyn b)) . splitDynPure
+switchDyn2 = bimap switchDyn switchDyn . splitDynPure
 
 zipDyn3 :: Reflex t => Dynamic t a -> Dynamic t b -> Dynamic t c -> Dynamic t (a, b, c)
 zipDyn3 aD bD cD = let abD = zipDyn aD bD
@@ -126,7 +127,7 @@ takeE n
  
 -- / Make chunks of length n
 mkChunks :: Int -> [a] -> [[a]]
-mkChunks n vals = mkChunks' [] vals
+mkChunks n = mkChunks' []
   where
      mkChunks' acc xs = case xs of
        [] -> acc
