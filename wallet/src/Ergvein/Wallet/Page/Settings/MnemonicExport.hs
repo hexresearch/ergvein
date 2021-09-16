@@ -34,17 +34,17 @@ mnemonicExportPage = do
     void $ nextWidget $ ffor mnemonicPassE $ \(mnemonic, pass) ->
       Retractable
         { retractableNext = mnemonicExportResutlPage mnemonic pass,
-          retractablePrev = Nothing
+          retractablePrev = thisWidget
         }
 
 mnemonicExportResutlPage :: MonadFront t m => Mnemonic -> Password -> m ()
 mnemonicExportResutlPage mnemonic pass = do
   title <- localized STPSTitle
-  let thisWidget = Just $ pure $ mnemonicExportResutlPage mnemonic pass
   buildE <- getPostBuild
   encryptedMnemonic <- liftIO $ encryptMnemonic mnemonic pass
   void $ networkHold (pure ()) $ ffor buildE $ const $
-    wrapper True title thisWidget $ divClass "mnemonic-export-page" $ do
+    -- We don't want to keep this page on the retract stack
+    wrapper True title Nothing $ divClass "mnemonic-export-page" $ do
       h4 $ localizedText STPSMnemonicExportMsg
       base64D <- divClass "mb-2" $ qrCodeWidgetWithData encryptedMnemonic
       let mnemonicClass = if T.null pass then "" else "word-break-all"
