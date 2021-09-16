@@ -57,12 +57,12 @@ instance LocalizedPrint PasswordTypePageStrings where
       PasswordTypeTitle -> "Select password type"
       PasswordTypeText  -> "Text password"
       PasswordTypePin   -> "PIN"
-      PasswordTypeEmpty -> "Skip"
+      PasswordTypeEmpty -> "No password"
     Russian -> case v of
       PasswordTypeTitle -> "Выберите тип пароля"
       PasswordTypeText  -> "Текстовый пароль"
       PasswordTypePin   -> "ПИН-код"
-      PasswordTypeEmpty -> "Пропустить"
+      PasswordTypeEmpty -> "Без пароля"
 
 data PinCodePageStrings =
     PinCodePSTitle
