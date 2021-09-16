@@ -1,6 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedLists #-}
--- {-# OPTIONS_GHC -Wall #-}
+{-# OPTIONS_GHC -Wall #-}
 
 module Ergvein.Wallet.Page.Settings(
     settingsPage
@@ -13,7 +13,6 @@ import Data.List
 import Data.Traversable (for)
 import Reflex.Dom
 
-import Ergvein.Crypto
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
@@ -73,54 +72,29 @@ settingsPage = do
             GoNodes           -> btcNodesPage
             GoRbf             -> rbfPage
             GoDns             -> dnsPage
-            GoPassword        -> passwordChangePage
+            GoPassword        -> changePasswordPage
             GoDelete          -> deleteWalletPage
         , retractablePrev = Just $ pure settingsPage
         }
 
-passwordChangePage :: MonadFront t m => m ()
-passwordChangePage = do
-  passE <- changePasswordWidget
-  walletInfoD <- getWalletInfo
-  eaibE <- withWallet $ ffor passE $ \(pass, b) prv -> do
-    ai <- sampleDyn walletInfoD
-    encryptPrvStorageResult <- encryptPrvStorage prv pass
-    case encryptPrvStorageResult of
-      Left err -> pure $ Left $ CreateStorageAlert err
-      Right prve -> case passwordToECIESPrvKey pass of
-        Left _ -> pure $ Left GenerateECIESKeyAlert
-        Right k -> pure $ Right $ (,b) $ ai
-          & walletInfo'storage . storage'encryptedPrvStorage .~ prve
-          & walletInfo'eciesPubKey .~ toPublic k
-          & walletInfo'isPlain .~ (pass == "")
-  aibE <- handleDangerMsg eaibE
-  when isAndroid $ performEvent_ $ ffor aibE $ \(ai,b) -> do
-    let fpath = "meta_wallet_" <> T.replace " " "_" (_walletInfo'login ai)
-    storeValue fpath b True
-  doneE <- storeWallet "passwordChangePage" =<< setWalletInfo (fmap (Just . fst) aibE)
-  void $ nextWidget $ ffor doneE $ const $ Retractable{
-      retractableNext = settingsPage
-    , retractablePrev = Nothing
-    }
-
 languagePage :: MonadFront t m => m ()
 languagePage = do
-  title <- localized STPSTitle
+  title <- localized STPSButLanguage
   wrapper True title (Just $ pure languagePage) languagePageWidget
 
 dnsPage :: MonadFront t m => m ()
 dnsPage = do
-  title <- localized STPSTitle
+  title <- localized STPSButDns
   wrapper True title (Just $ pure dnsPage) dnsPageWidget
 
 torPage :: MonadFront t m => m ()
 torPage = do
-  title <- localized STPSTitle
+  title <- localized STPSButTor
   wrapper True title (Just $ pure torPage) torPageWidget
 
 currenciesPage :: MonadFront t m => m ()
 currenciesPage = do
-  title <- localized STPSTitle
+  title <- localized STPSButActiveCurrs
   wrapper True title (Just $ pure currenciesPage) $ do
     h3 $ localizedText STPSSetsActiveCurrs
     divClass "initial-options" $ mdo
@@ -148,7 +122,7 @@ currenciesPage = do
 
 unitsPage :: MonadFront t m => m ()
 unitsPage = do
-  title <- localized STPSTitle
+  title <- localized STPSButDisplay
   wrapper False title (Just $ pure unitsPage) $ do
     divClass "" $ do
       btcUnitsSettingsWidget

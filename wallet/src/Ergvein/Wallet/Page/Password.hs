@@ -3,7 +3,7 @@ module Ergvein.Wallet.Page.Password(
     setupPasswordPage
   , setupLoginPage
   , setupPatternPage
-  , changePasswordWidget
+  , changePasswordPage
   ) where
 
 import Control.Monad.Except
@@ -12,6 +12,7 @@ import Data.Traversable (for)
 import Reflex.Localize
 import Text.Read
 
+import {-# SOURCE #-} Ergvein.Wallet.Page.Settings
 import Ergvein.Crypto.Keys (Mnemonic)
 import Ergvein.Text
 import Ergvein.Wallet.Language
@@ -28,6 +29,24 @@ import Sepulcas.Elements.Dropdown
 import Sepulcas.Validate
 
 import qualified Data.Text as T
+import Ergvein.Core (Reflex(never))
+
+data GoPage = GoPinCode | GoTextPassword | GoEmptyPassword
+
+data ChangePasswordStrings = CPSTitle | CPSDescr | CPSOld
+
+instance LocalizedPrint ChangePasswordStrings where
+  localizedShow l v = case l of
+    English -> case v of
+      CPSTitle -> "Change password"
+      CPSDescr -> "Enter the new password"
+      CPSOld   -> "You will have to enter the old password at the end"
+    Russian -> case v of
+      CPSTitle -> "Смена пароля"
+      CPSDescr -> "Введите новый пароль"
+      CPSOld   -> "В конце вам понадобится ввести старый пароль"
+
+type IsTextPassword = Bool
 
 setupBtcStartingHeight :: MonadFrontBase t m => m (Dynamic t BlockHeight)
 setupBtcStartingHeight = do
@@ -82,17 +101,8 @@ setupPasswordPage wt seedBackupRequired mpath mnemonic curs mlogin = wrapperSimp
         else Nothing
     }
 
-setupPinCodePage :: MonadFrontBase t m
-  => WalletSource
-  -> Bool
-  -> Maybe DerivPrefix
-  -> Mnemonic
-  -> Text
-  -> [Currency]
-  -> BlockHeight
-  -> m ()
-setupPinCodePage wt seedBackupRequired mpath mnemonic login curs startingHeight = wrapperSimpleGeneric headerWidgetOnlyBackBtn "pincode-page" False $ divClass "pincode-widget" $ mdo
-  let thisWidget = Just $ pure $ setupPinCodePage wt seedBackupRequired mpath mnemonic login curs startingHeight
+setupPinWidget :: MonadFrontBase t m => m (Event t Password)
+setupPinWidget = divClass "pincode-widget" $ mdo
   divClass "pincode-widget-title mt-2" $ do
     h4 $ localizedText PinCodePSTitle
     h5 $ localizedText PinCodePSPinCodeLengthRange
@@ -106,14 +116,10 @@ setupPinCodePage wt seedBackupRequired mpath mnemonic login curs startingHeight 
       passD = T.concat . map showt <$> inputD
       passE = ffilter (\t -> T.length t >= minPinCodeLength) $ tagPromptlyDyn passD submitE
       tooShortErrE = [PinCodePSTooShortError] <$ ffilter (\t -> T.length t < minPinCodeLength) (tagPromptlyDyn passD submitE)
-  void $ nextWidget $ ffor passE $ \pass -> Retractable {
-      retractableNext = confirmPinCodePage pass wt seedBackupRequired mpath mnemonic login curs startingHeight
-    , retractablePrev = thisWidget
-    }
+  pure passE
 
-confirmPinCodePage :: MonadFrontBase t m
-  => Text
-  -> WalletSource
+setupPinPage :: MonadFrontBase t m
+  => WalletSource
   -> Bool
   -> Maybe DerivPrefix
   -> Mnemonic
@@ -121,8 +127,16 @@ confirmPinCodePage :: MonadFrontBase t m
   -> [Currency]
   -> BlockHeight
   -> m ()
-confirmPinCodePage pass wt seedBackupRequired mpath mnemonic login curs startingHeight = wrapperSimpleGeneric headerWidgetOnlyBackBtn "pincode-page" False $ divClass "pincode-widget" $ mdo
-  let thisWidget = Just $ pure $ confirmPinCodePage pass wt seedBackupRequired mpath mnemonic login curs startingHeight
+setupPinPage wt seedBackupRequired mpath mnemonic login curs startingHeight = wrapperSimpleGeneric headerWidgetOnlyBackBtn "pincode-page" False $ do
+  let thisWidget = Just $ pure $ setupPinPage wt seedBackupRequired mpath mnemonic login curs startingHeight
+  passE <- setupPinWidget
+  void $ nextWidget $ ffor passE $ \pass -> Retractable {
+      retractableNext = confirmPinPage pass wt seedBackupRequired mpath mnemonic login curs startingHeight
+    , retractablePrev = thisWidget
+    }
+
+confirmPinWidget :: MonadFrontBase t m => Password -> m (Event t Password)
+confirmPinWidget pass = divClass "pincode-widget" $ mdo
   divClass "pincode-widget-title mt-2" $ do
     h4 $ localizedText PinCodePSConfirm
   let pinCodeLength = T.length pass
@@ -135,6 +149,21 @@ confirmPinCodePage pass wt seedBackupRequired mpath mnemonic login curs starting
   let passD = T.concat . map showt <$> inputD
       matchErrE = [PinCodePSConfirmationError] <$ ffilter (\p -> T.length p == pinCodeLength && p /= pass) (updated passD)
   passE <- delay 0.2 $ ffilter (== pass) $ updated passD
+  pure passE
+
+confirmPinPage :: MonadFrontBase t m
+  => Text
+  -> WalletSource
+  -> Bool
+  -> Maybe DerivPrefix
+  -> Mnemonic
+  -> Text
+  -> [Currency]
+  -> BlockHeight
+  -> m ()
+confirmPinPage pass wt seedBackupRequired mpath mnemonic login curs startingHeight = wrapperSimpleGeneric headerWidgetOnlyBackBtn "pincode-page" False $ do
+  let thisWidget = Just $ pure $ confirmPinPage pass wt seedBackupRequired mpath mnemonic login curs startingHeight
+  passE <- confirmPinWidget pass
   void $ nextWidget $ ffor passE $ \confirmedPass -> Retractable {
       retractableNext = performAuth wt seedBackupRequired mnemonic curs login confirmedPass mpath startingHeight False
     , retractablePrev = thisWidget
@@ -208,7 +237,6 @@ setupLoginPage wt seedBackupRequired mpath mnemonic curs = wrapperSimple True $ 
     , retractablePrev = Just $ pure $ setupLoginPage wt seedBackupRequired (Just p) mnemonic curs
     }
 
-data GoPage = GoPinCode | GoTextPassword | GoEmptyPassword
 
 passwordTypeSelectionPage :: MonadFrontBase t m
   => WalletSource
@@ -228,7 +256,7 @@ passwordTypeSelectionPage wt seedBackupRequired (Just p) mnemonic login curs h =
       (act <$) <$> outlineButton lbl
     void $ nextWidget $ ffor goE $ \go -> Retractable {
         retractableNext = case go of
-          GoPinCode -> setupPinCodePage wt seedBackupRequired (Just p) mnemonic login curs h
+          GoPinCode -> setupPinPage wt seedBackupRequired (Just p) mnemonic login curs h
           GoTextPassword -> setupMobilePasswordPage wt seedBackupRequired (Just p) mnemonic login curs h
           GoEmptyPassword -> confirmEmptyPage wt seedBackupRequired mnemonic curs login "" (Just p) h True
       , retractablePrev = Just $ pure thisWidget
@@ -289,83 +317,114 @@ setupMobilePasswordPage wt seedBackupRequired mpath mnemonic login curs starting
         else Nothing
     }
 
-data ChangePasswordStrings = CPSTitle | CPSDescr | CPSOld
+setNewPassword :: MonadFront t m => Event t (Password, IsTextPassword) -> m (Event t ())
+setNewPassword passE = do
+  walletInfoD <- getWalletInfo
+  eWalletInfoE <- withWallet $ ffor passE $ \(pass, isTextPassword) prv -> do
+    walletInfo <- sampleDyn walletInfoD
+    encryptPrvStorageResult <- encryptPrvStorage prv pass
+    case encryptPrvStorageResult of
+      Left err -> pure $ Left $ CreateStorageAlert err
+      Right prve -> case passwordToECIESPrvKey pass of
+        Left _ -> pure $ Left GenerateECIESKeyAlert
+        Right k -> pure $ Right $ (, isTextPassword) $ walletInfo
+          & walletInfo'storage . storage'encryptedPrvStorage .~ prve
+          & walletInfo'eciesPubKey .~ toPublic k
+          & walletInfo'isPlain .~ (pass == "")
+  walletInfoE <- handleDangerMsg eWalletInfoE
+  when isAndroid $ performEvent_ $ ffor walletInfoE $ \(walletInfo, isTextPassword) -> do
+    let fpath = "meta_wallet_" <> T.replace " " "_" (_walletInfo'login walletInfo)
+    storeValue fpath isTextPassword True
+  storeWallet "passwordChangePage" =<< setWalletInfo (fmap (Just . fst) walletInfoE)
 
-instance LocalizedPrint (Bool, ChangePasswordStrings) where
-  localizedShow l (b, v) = case l of
-    English -> let s = if b then "password" else "key" in case v of
-      CPSTitle -> "Change " <> s
-      CPSDescr -> "Enter the new " <> s <> " first"
-      CPSOld   -> "You will have to enter the old " <> s <> " at the end"
-    Russian -> let s = if b then "пароль" else "ключ" in case v of
-      CPSTitle -> "Смена " <> if b then "пароля" else "ключа"
-      CPSDescr -> "Введите новый " <> s
-      CPSOld   -> "В конце вам понадобится ввести старый " <> s
+changePasswordPage :: MonadFront t m => m ()
+changePasswordPage = if isAndroid
+  then selectNewPasswordTypePage
+  else setNewTextPasswordPage
 
-changePasswordWidget :: MonadFront t m => m (Event t (Password, Bool))
-changePasswordWidget =
-  if isAndroid then changePasswordMobileWidget else changePasswordDesktopWidget
-{-# INLINE changePasswordWidget #-}
+setNewTextPasswordPage :: MonadFront t m => m ()
+setNewTextPasswordPage = do
+  let isTextPassword = True
+  title <- localized CPSTitle
+  let thisWidget = Just $ pure setNewTextPasswordPage
+  wrapperGeneric False title thisWidget Nothing "password-widget-container" $ do
+    divClass "my-a" $ mdo
+      changePasswordDescr isTextPassword
+      passE <- setupPassword btnE
+      btnE <- submitSetBtn
+      -- Ask for confirmation if the password is empty
+      let emptyPassE = ffilter T.null passE
+      void $ nextWidget $ ffor emptyPassE $ const Retractable {
+          retractableNext = confirmEmptyPasswordPage True settingsPage
+        , retractablePrev = thisWidget
+        }
+      -- Set new password if the password is not empty
+      let notEmptyPassE = (, True) <$> ffilter (not . T.null) passE
+      doneE <- setNewPassword notEmptyPassE
+      void $ nextWidget $ ffor doneE $ const $ Retractable{
+          retractableNext = settingsPage
+        , retractablePrev = thisWidget
+        }
 
-changePasswordDesktopWidget :: MonadFront t m => m (Event t (Password, Bool))
-changePasswordDesktopWidget = divClass "my-a" $ mdo
-    tglD <- holdDyn False tglE
-    (passE, tglE) <- fmap switchDyn2 $ networkHoldDyn $ ffor tglD $ \case
-      True  -> (fmap . fmap) (False <$) confirmEmptyWidget
-      False -> mdo
-        changePasswordDescr True
-        passE' <- setupPassword btnE
-        btnE <- submitSetBtn
-        let (emptyE, passE'') = splitFilter (== "") passE'
-        pure (passE'', True <$ emptyE)
-    pure $ (,True) <$> passE
+confirmEmptyPasswordPage :: MonadFront t m => IsTextPassword -> m () -> m ()
+confirmEmptyPasswordPage isTextPassword nextPage = do
+  title <- localized CPSTitle
+  wrapper True title Nothing $ do
+    h4 $ localizedText CEPAttention
+    h5 $ localizedText CEPConsequences
+    divClass "fit-content mx-a" $ do
+      submitE <- divClass "" (submitClass "button button-outline w-100" PWSSet)
+      let passE = (T.empty, isTextPassword) <$ submitE
+      doneE <- setNewPassword passE
+      void $ nextWidget $ ffor doneE $ const $ Retractable {
+          retractableNext = nextPage
+        , retractablePrev = Nothing
+        }
 
-changePasswordDescr :: (MonadLocalized t m, DomBuilder t m, PostBuild t m) => Bool -> m ()
-changePasswordDescr b = do
-  divClass "password-setup-title" $ h4 $ localizedText (b, CPSTitle)
-  divClass "password-setup-descr" $ h5 $ localizedText (b, CPSDescr)
-  divClass "password-setup-descr" $ h5 $ localizedText (b, CPSOld)
+changePasswordDescr :: (MonadLocalized t m, DomBuilder t m, PostBuild t m) => IsTextPassword -> m ()
+changePasswordDescr isTextPassword = do
+  divClass "password-setup-descr" $ h4 $ localizedText CPSDescr
+  divClass "password-setup-descr" $ h5 $ localizedText CPSOld
 
-confirmEmptyWidget :: MonadFront t m => m (Event t Password, Event t ())
-confirmEmptyWidget = do
-  h4 $ localizedText CEPAttention
-  h5 $ localizedText CEPConsequences
-  divClass "fit-content ml-a mr-a" $ do
-    setE <- divClass "" (submitClass "button button-outline w-100" PWSSet)
-    backE <- divClass "" (submitClass "button button-outline w-100" CEPBack)
-    pure ("" <$ setE, backE)
+selectNewPasswordTypePage :: MonadFront t m => m ()
+selectNewPasswordTypePage = do
+  title <- localized CPSTitle
+  let thisWidget = Just $ pure selectNewPasswordTypePage
+  wrapper True title thisWidget $ do
+    h4 $ localizedText PasswordTypeTitle
+    divClass "initial-page-options" $ do
+      let items = [(GoPinCode, PasswordTypePin), (GoTextPassword, PasswordTypeText), (GoEmptyPassword, PasswordTypeEmpty)]
+      goE <- fmap leftmost $ for items $ \(act, lbl) ->
+        (act <$) <$> outlineButton lbl
+      void $ nextWidget $ ffor goE $ \go -> Retractable {
+          retractableNext = case go of
+            GoPinCode -> setNewPinPage
+            GoTextPassword -> setNewTextPasswordPage
+            GoEmptyPassword -> confirmEmptyPasswordPage True settingsPage
+        , retractablePrev = thisWidget
+        }
 
-data CPMStage = CPMPin | CPMPassword | CPMEmpty Bool
+setNewPinPage :: MonadFront t m => m ()
+setNewPinPage = do
+  let isTextPassword = False
+  title <- localized CPSTitle
+  let thisWidget = Just $ pure setNewTextPasswordPage
+  wrapperGeneric False title thisWidget Nothing "pincode-page" $ do
+    passE <- setupPinWidget
+    void $ nextWidget $ ffor passE $ \pass -> Retractable{
+        retractableNext = confirmNewPinPage pass
+      , retractablePrev = thisWidget
+      }
 
-changePasswordMobileWidget :: MonadFront t m => m (Event t (Password, Bool))
-changePasswordMobileWidget = mdo
-  login <- fmap _walletInfo'login $ sampleDyn =<< getWalletInfo
-  let name = T.replace " " "_" login
-  stage0 <- eitherToStage <$> retrieveValue ("meta_wallet_" <> name) False
-  stageD <- holdDyn stage0 nextE
-  (patE, nextE) <- fmap switchDyn2 $ networkHoldDyn $ ffor stageD $ \case
-    CPMEmpty b -> do
-      (passE, backE) <- confirmEmptyWidget
-      pure ((,b) <$> passE, boolToStage b <$ backE)
-    CPMPassword -> mdo
-      changePasswordDescr True
-      passE' <- setupPassword btnE
-      (btnE, setPattE) <- divClass "fit-content ml-a mr-a" $ do
-        btnE' <- divClass "" $ submitClass "button button-outline w-100" PWSSet
-        setPattE' <- divClass "" $ submitClass "button button-outline w-100" PatPSPatt
-        pure (btnE', setPattE')
-      let (emptyE, passE) = splitFilter (== "") passE'
-      let nxtE = leftmost [CPMEmpty True <$ emptyE, CPMPin <$ setPattE]
-      pure ((, True) <$> passE, nxtE)
-    CPMPin -> do
-      changePasswordDescr False
-      patE' <- setupPattern
-      divClass "fit-content ml-a mr-a" $ do
-        setPassE <- divClass "" $ submitClass "button button-outline w-100" PatPSPass
-        skipE <- divClass "" $ submitClass "button button-outline w-100" CEPSkip
-        let nxtE = leftmost [CPMPassword <$ setPassE, CPMEmpty False <$ skipE]
-        pure ((, False) <$> patE', nxtE)
-  pure patE
-  where
-    boolToStage b = if b then CPMPassword else CPMPin
-    eitherToStage = either (const CPMPin) boolToStage
+confirmNewPinPage :: MonadFront t m => Password -> m ()
+confirmNewPinPage pass = do
+  let isTextPassword = False
+  title <- localized CPSTitle
+  let thisWidget = Just $ pure $ confirmNewPinPage pass
+  wrapperGeneric False title thisWidget Nothing "pincode-page" $ do
+    passE <- confirmPinWidget pass
+    doneE <- setNewPassword $ (, isTextPassword) <$> passE
+    void $ nextWidget $ ffor doneE $ const $ Retractable{
+        retractableNext = settingsPage
+      , retractablePrev = thisWidget
+      }
