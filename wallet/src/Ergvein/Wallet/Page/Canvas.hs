@@ -30,7 +30,6 @@ module Ergvein.Wallet.Page.Canvas(
   , Position
   , TouchState(..)
   , HoverState(..)
-  , PatternTry(..)
   , GridStrokeColor(..)
   -- Canvas Type
   , CanvasOptions(..)
@@ -63,8 +62,6 @@ data DrawCommand = AddSquare | Clear deriving (Show, Eq)
 data TouchState = Pressed | Unpressed deriving (Show, Eq)
 
 data HoverState = Hovered | Unhovered deriving (Show, Eq)
-
-data PatternTry = FirstTry | SecondTry | ErrorTry | Done deriving (Show, Eq)
 
 data GridStrokeColor = GridStrokeWhite | GridStrokeBlack deriving (Show, Eq)
 

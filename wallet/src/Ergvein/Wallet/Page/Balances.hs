@@ -1,4 +1,5 @@
-{-# LANGUAGE CPP #-}
+{-# OPTIONS_GHC -Wall #-}
+
 module Ergvein.Wallet.Page.Balances(
     balancesPage
   ) where
@@ -6,7 +7,6 @@ module Ergvein.Wallet.Page.Balances(
 -- import Ergvein.Wallet.Debug
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.History
-import Ergvein.Wallet.Page.PatternKey
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Status.Widget
 import Ergvein.Wallet.Widget.Balance
@@ -25,7 +25,7 @@ balancesPage = do
 
 currenciesList :: MonadFront t m => Text -> m ()
 currenciesList _ = divClass "currency-content" $ do
-  s <- getSettings
+  -- s <- getSettings
   ps <- getPubStorage
   let currencies = _pubStorage'activeCurrencies ps
       thisWidget = Just $ pure balancesPage
@@ -38,9 +38,9 @@ currenciesList _ = divClass "currency-content" $ do
            retractablePrev = Nothing}
     else do
       historyE <- leftmost <$> traverse currencyLine currencies
-      if settingsPortfolio s
-        then portfolioWidget
-        else pure ()
+      -- if settingsPortfolio s
+      --   then portfolioWidget
+      --   else pure ()
       void $ nextWidget $ ffor historyE $ \cur -> Retractable {
         retractableNext = historyPage cur
       , retractablePrev = thisWidget

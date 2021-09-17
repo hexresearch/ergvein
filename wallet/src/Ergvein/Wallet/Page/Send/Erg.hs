@@ -80,7 +80,7 @@ sendConfirmationWidget v = do
       goE <- delay 1 =<< outlineButton SendBtnBack
       void $ nextWidget $ ffor goE $ const $ Retractable {
             retractableNext = balancesPage
-          , retractablePrev = Nothing
+          , retractablePrev = thisWidget
         }
 
 makeTxWidget :: MonadFront t m =>

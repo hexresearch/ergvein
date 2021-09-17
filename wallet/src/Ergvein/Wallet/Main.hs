@@ -13,7 +13,6 @@ import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Balances
 import Ergvein.Wallet.Page.Initial
 import Ergvein.Wallet.Page.Restore
-import Ergvein.Wallet.Password
 import Sepulcas.Loading
 import Sepulcas.Log
 #ifdef TESTNET
@@ -26,8 +25,7 @@ frontend :: MonadFrontBase t m => m ()
 frontend = do
   logWrite "Frontend started"
   loadingWidget
-  askPasswordModal
-  logWriter =<< fmap fst getLogsTrigger
+  logWriter . fst =<< getLogsTrigger
   logWrite "Entering initial page"
   spawnPreWorkers
   mainpageDispatcher
@@ -50,9 +48,9 @@ mainpageDispatcher = void $ workflow testnetDisclaimer
       closeE <- outlineButton TestnetDisclaimerClose
       pure ((), startWallet <$ closeE)
     startWallet = Workflow $ do
-      void $ retractStack (initialPage True) `liftAuth` (spawnWorkers >> retractStack startPage)
+      void $ retractStack (initialPage OpenLastWalletOn) `liftAuth` (spawnWorkers >> retractStack startPage)
       pure ((), never)
 #else
 mainpageDispatcher :: MonadFrontBase t m => m ()
-mainpageDispatcher = void $ retractStack (initialPage True) `liftAuth` (spawnWorkers >> retractStack startPage)
+mainpageDispatcher = void $ retractStack (initialPage OpenLastWalletOn) `liftAuth` (spawnWorkers >> retractStack startPage)
 #endif

@@ -29,6 +29,7 @@ import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Currencies
 import Ergvein.Wallet.Page.Password
+import Ergvein.Wallet.Password
 import Ergvein.Wallet.Validate
 import Ergvein.Wallet.Wrapper
 import Sepulcas.Alert
@@ -214,7 +215,7 @@ scanQRBtn = outlineTextIconButtonTypeButton CSScanQR "fas fa-qrcode fa-lg"
 
 askSeedPasswordPage :: MonadFrontBase t m => EncryptedByteString -> m ()
 askSeedPasswordPage encryptedMnemonic = do
-  passE <- askTextPasswordPage PPSMnemonicUnlock ("" :: Text)
+  passE <- askTextPasswordWidget PPSMnemonicUnlock ("" :: Text)
   let mnemonicBSE = decryptBSWithAEAD encryptedMnemonic <$> passE
   verifiedMnemonicE <- handleDangerMsg mnemonicBSE
   void $ nextWidget $ ffor (decodeUtf8With lenientDecode <$> verifiedMnemonicE) $ \mnem -> Retractable {

@@ -34,6 +34,7 @@ frontendCss = do
   buttonCss
   buttonsToggleCss
   graphPinCodeCanvasCss
+  pinCodeCss
   headerCss
   historyPageCss
   txInfoPageCss
@@ -538,6 +539,10 @@ dropdownContainerCss = do
 
 passwordCss :: Css
 passwordCss = do
+  ".password-widget-container" ? do
+    flexGrow 1
+    display flex
+    flexDirection column
   ".password-field" ? do
     display flex
     alignItems center
@@ -560,26 +565,9 @@ passwordCss = do
     position absolute
     top $ px 0
     left $ px 0
-    width $ vw 100
-    height $ vh 100
+    width $ pct 100
     zIndex 2
-    backgroundColor white
-  ".ask-password-modal-content" ? do
-    height $ pct 100
-    display flex
-    flexDirection column
-    justifyContent center
-    paddingLeft $ pct 25
-    paddingRight $ pct 25
-  ".ask-pattern-modal" ? do
-    position absolute
-    top $ px 0
-    left $ px 0
-    width $ vw 100
-    height $ vh 100
-    zIndex 2
-    backgroundColor white
-    justifyContent center
+    backgroundColor majorBackground
 
 initialPageCss :: Css
 initialPageCss = do
@@ -881,14 +869,55 @@ alertsCss = do
     color "#000"
     backgroundColor "#a9a7a7"
 
-patternKeyCss :: Css
-patternKeyCss = do
-  ".myTestDiv" ? do
-    pointerEvents none
-    backgroundColor "red"
-    display block
-  ".myDebugLog" ? do
-    display block
+pinCodeCss :: Css
+pinCodeCss = do
+  ".pincode-page" ? do
+    flexGrow 1
+    display flex
+    flexDirection column
+  ".pincode-widget" ? do
+    flexGrow 1
+    display flex
+    flexDirection column
+    justifyContent spaceBetween
+    alignItems center
+  ".pincode-widget-dots" ? do
+    display flex
+    justifyContent center
+    flexWrap F.wrap
+    marginLeft $ rem (-0.5)
+    marginRight $ rem (-0.5)
+    marginTop $ rem (-0.5)
+    marginBottom $ rem (-0.5)
+  ".pincode-widget-dot" ? do
+    paddingLeft $ rem 0.5
+    paddingRight $ rem 0.5
+    paddingTop $ rem 0.5
+    paddingBottom $ rem 0.5
+  ".pincode-widget-errors" ? do
+    color red
+    marginTop $ rem 1
+  ".pincode-widget-button" ? do
+    display flex
+    justifyContent center
+    alignItems center
+    fontSize $ rem 2.2
+  ".pincode-widget-button:hover" ? do
+    cursor pointer
+    color hoverColor
+  ".pincode-widget-numpad" ? do
+    let cols = 3 :: Int
+        rows = 4 :: Int
+        numSize = 6 :: Int
+        gap = 1 :: Int
+    display grid
+    gridTemplateColumns $ replicate cols $ fr 1
+    gridGap $ rem $ fromIntegral gap
+    alignItems stretch
+    minWidth $ rem $ fromIntegral $ cols * numSize + gap * (cols - 1)
+    minHeight $ rem $ fromIntegral $ rows * numSize + gap * (rows - 1)
+    maxWidth $ rem 40
+    width $ pct 100
 
 selectCss :: Css
 selectCss = do

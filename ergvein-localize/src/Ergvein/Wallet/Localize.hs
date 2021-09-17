@@ -14,7 +14,6 @@ module Ergvein.Wallet.Localize(
   , module Ergvein.Wallet.Localize.Native
   , module Ergvein.Wallet.Localize.Network
   , module Ergvein.Wallet.Localize.Password
-  , module Ergvein.Wallet.Localize.PatternKey
   , module Ergvein.Wallet.Localize.Receive
   , module Ergvein.Wallet.Localize.Restore
   , module Ergvein.Wallet.Localize.Seed
@@ -43,7 +42,6 @@ import Ergvein.Wallet.Localize.IP
 import Ergvein.Wallet.Localize.Native
 import Ergvein.Wallet.Localize.Network
 import Ergvein.Wallet.Localize.Password
-import Ergvein.Wallet.Localize.PatternKey
 import Ergvein.Wallet.Localize.Receive
 import Ergvein.Wallet.Localize.Restore
 import Ergvein.Wallet.Localize.Seed

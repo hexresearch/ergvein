@@ -45,7 +45,6 @@ library
     Ergvein.Wallet.Localize.Native
     Ergvein.Wallet.Localize.Network
     Ergvein.Wallet.Localize.Password
-    Ergvein.Wallet.Localize.PatternKey
     Ergvein.Wallet.Localize.Receive
     Ergvein.Wallet.Localize.Restore
     Ergvein.Wallet.Localize.Seed

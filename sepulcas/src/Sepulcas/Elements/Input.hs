@@ -19,6 +19,7 @@ module Sepulcas.Elements.Input(
   , submitClass
   , textInputTypeDyn
   , validatedTextFieldWithSetValBtns
+  , displayError
   ) where
 
 import Control.Lens
