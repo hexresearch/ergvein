@@ -552,15 +552,6 @@ passwordCss = do
     justifyContent center
     paddingLeft $ pct 25
     paddingRight $ pct 25
-  ".ask-pattern-modal" ? do
-    position absolute
-    top $ px 0
-    left $ px 0
-    width $ vw 100
-    height $ vh 100
-    zIndex 2
-    backgroundColor white
-    justifyContent center
 
 initialPageCss :: Css
 initialPageCss = do
@@ -892,15 +883,6 @@ alertsCss = do
   ".alert-secondary" ? do
     color "#000"
     backgroundColor "#a9a7a7"
-
-patternKeyCss :: Css
-patternKeyCss = do
-  ".myTestDiv" ? do
-    pointerEvents none
-    backgroundColor "red"
-    display block
-  ".myDebugLog" ? do
-    display block
 
 selectCss :: Css
 selectCss = do

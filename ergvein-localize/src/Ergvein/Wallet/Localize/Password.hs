@@ -3,7 +3,6 @@ module Ergvein.Wallet.Localize.Password
     PasswordPageStrings(..)
   , PasswordWidgetStrings(..)
   , LoginPageStrings(..)
-  , PatternPageStrings(..)
   , PinCodePageStrings(..)
   , ConfirmEmptyPage(..)
   , StartHeightStrings(..)
@@ -29,25 +28,6 @@ instance LocalizedPrint LoginPageStrings where
     Russian -> case v of
       LPSTitle  -> "Установите логин для кошелька"
       LPSDescr -> "Вы можете иметь несколько кошельков и имя поможет различать их"
-
-data PatternPageStrings = PatPSTitle | PatPSDescr | PatPSPass | PatPSPatt | PatPSUsePass | PatPSUsePattern
-
-instance LocalizedPrint PatternPageStrings where
-  localizedShow l v = case l of
-    English -> case v of
-      PatPSTitle      -> "Setup encryption pattern key for your wallet"
-      PatPSDescr      -> "The pattern key is used every time you perform an operation with your money"
-      PatPSPass       -> "Set password"
-      PatPSPatt       -> "Set pattern"
-      PatPSUsePass    -> "Use password"
-      PatPSUsePattern -> "Use pattern"
-    Russian -> case v of
-      PatPSTitle      -> "Установите графический ключ шифрования для кошелька"
-      PatPSDescr      -> "Этот графический ключ используется для каждой операции с вашими деньгами"
-      PatPSPass       -> "Установить пароль"
-      PatPSPatt       -> "Установить ключ"
-      PatPSUsePass    -> "Ввести пароль"
-      PatPSUsePattern -> "Ввести ключ"
 
 data PasswordTypePageStrings = PasswordTypeTitle | PasswordTypeText | PasswordTypePin | PasswordTypeEmpty
 
@@ -123,7 +103,6 @@ data PasswordWidgetStrings =
   | PWSLogin
   | PWSEmptyLogin
   | PWSEmptyPassword
-  | PWSEmptyPattern
   | PWSDeriv
   | PWSDerivDescr1
   | PWSDerivDescr2
@@ -143,7 +122,6 @@ instance LocalizedPrint PasswordWidgetStrings where
       PWSLogin         -> "Login"
       PWSEmptyLogin    -> "Login is empty!"
       PWSEmptyPassword -> "Password is empty!"
-      PWSEmptyPattern  -> ""
       PWSDeriv         -> "Derivation path"
       PWSDerivDescr1   -> "You can override the suggested derivation path."
       PWSDerivDescr2   -> "Leave it untouched if not sure what it is."
@@ -160,7 +138,6 @@ instance LocalizedPrint PasswordWidgetStrings where
       PWSLogin         -> "Логин"
       PWSEmptyLogin    -> "Логин пустой!"
       PWSEmptyPassword -> "Пароль пустой!"
-      PWSEmptyPattern  -> ""
       PWSDeriv         -> "Префикс BIP48 для вывода ключей"
       PWSDerivDescr1   -> "Вы можете переназначить префикс дерева для вывода ключей."
       PWSDerivDescr2   -> "Оставьте как есть, если не знаете, что это такое."

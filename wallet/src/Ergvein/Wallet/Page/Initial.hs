@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 module Ergvein.Wallet.Page.Initial(
     initialPage
   , OpenLastWallet(..)
@@ -15,7 +14,6 @@ import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Password
-import Ergvein.Wallet.Page.PatternKey
 import Ergvein.Wallet.Page.Seed
 import Ergvein.Wallet.Page.Settings.Unauth
 import Ergvein.Wallet.Password
@@ -99,5 +97,5 @@ loadWalletPage name = do
     authE <- handleDangerMsg mAuthE
     when isAndroid $ performEvent_ $ ffor authE $ const $ do
       c <- loadCounter
-      saveCounter $ PatternTries $ M.insert name 0 (patterntriesCount c)
+      saveCounter $ PasswordTries $ M.insert name 0 (passwordTriesCount c)
     void $ setWalletInfo $ Just <$> authE

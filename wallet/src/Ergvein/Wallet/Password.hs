@@ -1,38 +1,55 @@
-{-# LANGUAGE CPP #-}
+{-# OPTIONS_GHC -Wall #-}
+
 module Ergvein.Wallet.Password(
-    setupPassword
+    PasswordTries(..)
+  , saveCounter
+  , loadCounter
+  , setupPassword
   , submitSetBtn
   , setupLoginPassword
   , askTextPasswordWidget
   , askPasswordWidget
   , askPasswordModal
   , setupLogin
-  , setupPattern
   , setupDerivPrefix
   , nameProposal
   , check
   ) where
 
 import Control.Monad.Except
-import Data.Bifunctor (bimap)
 import Data.Either (fromRight)
 import Data.List
 import Data.Maybe
 import Data.Time (getCurrentTime)
 import Reflex.Localize.Dom
 
+import Ergvein.Aeson
 import Ergvein.Wallet.Localize
-import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Page.PatternKey
 import Ergvein.Wallet.Page.PinCode
 import Ergvein.Wallet.Wrapper
 import Sepulcas.Elements
 import Sepulcas.Validate
 
 import qualified Data.Map.Strict as Map
-import qualified Data.Text as T
 import qualified Data.Set as S
+import qualified Data.Text as T
+
+data PasswordTries = PasswordTries {
+  passwordTriesCount  :: Map.Map Text Integer
+} deriving (Eq, Show)
+
+$(deriveJSON (aesonOptionsStripPrefix "password") ''PasswordTries)
+
+emptyPT :: PasswordTries
+emptyPT = PasswordTries Map.empty
+{-# INLINE emptyPT #-}
+
+saveCounter :: (MonadIO m, PlatformNatives, HasStoreDir m) => PasswordTries -> m ()
+saveCounter pt = storeValue "tries.json" pt True
+
+loadCounter :: (MonadIO m, PlatformNatives, HasStoreDir m) => m PasswordTries
+loadCounter = fmap (fromRight emptyPT) $ retrieveValue "tries" emptyPT
 
 -- | Helper to throw error when predicate is not 'True'
 check :: MonadError a m => a -> Bool -> m ()
@@ -73,22 +90,6 @@ nameProposal s = let
   where
    firstName = "main"
    subsequentNamePrefix = "wallet_"
-
-passwordHeader :: MonadFrontBase t m => m (Event t ())
-passwordHeader =
-  divClass "header-wrapper mb-1" $
-    divClass "header header-black" $
-      divButton "header-button header-button-left" $
-        elClass "i" "fas fa-chevron-left" $ pure ()
-
-setupPattern :: MonadFrontBase t m => m (Event t Password)
-setupPattern = divClass "setup-password" $ form $ fieldset $ mdo
-  pD <- patternSaveWidget
-  pE <- delay 0.1 $ updated pD
-  validateEvent $ poke pE $ const $ runExceptT $ do
-    p <- sampleDyn pD
-    check PWSEmptyPattern $ not $ T.null p
-    pure p
 
 setupLogin :: MonadFrontBase t m => Event t () -> m (Event t Text)
 setupLogin e = divClass "setup-password" $ form $ fieldset $ mdo
@@ -155,7 +156,7 @@ askPinCodeImpl name writeMeta = do
   when writeMeta $ storeValue fpath False True
   pinE <- mdo
     c <- loadCounter
-    let cInt = fromMaybe 0 $ Map.lookup name (patterntriesCount c)
+    let cInt = fromMaybe 0 $ Map.lookup name (passwordTriesCount c)
     now <- liftIO getCurrentTime
     a <- clockLossy 1 now
     freezeD <- networkHold (pure False) $ ffor (updated a) $ \TickInfo{..} -> do
@@ -177,44 +178,9 @@ askPinCodeImpl name writeMeta = do
         then pure cS
         else pure $ cS + 1
     performEvent_ $ ffor (updated counterD) $ \cS ->
-      saveCounter $ PatternTries $ Map.insert name cS (patterntriesCount c)
+      saveCounter $ PasswordTries $ Map.insert name cS (passwordTriesCount c)
     pure $ attachPromptlyDynWithMaybe (\freeze p -> if not freeze then Just p else Nothing) freezeD passE
   pure pinE
-
-askPatternImpl :: MonadFrontBase t m => Text -> Bool -> m (Event t Password, Event t Bool)
-askPatternImpl name writeMeta = do
-  let fpath = "meta_wallet_" <> T.replace " " "_" name
-  when writeMeta $ storeValue fpath False True
-  h5 $ localizedText PKSUnlock
-  h5 $ localizedText $ PKSFor name
-  patE <- divClass "ask-pattern" $ form $ fieldset $ mdo
-    c <- loadCounter
-    let cInt = fromMaybe 0 $ Map.lookup name (patterntriesCount c)
-    now <- liftIO getCurrentTime
-    a <- clockLossy 1 now
-    freezeD <- networkHold (pure False) $ ffor (updated a) $ \TickInfo{..} -> do
-      cS <- sampleDyn counterD
-      let cdTime = if cS < 5
-            then 0
-            else 30 * (2 ^ (cS - 5))
-      if (cdTime - _tickInfo_n) > 0
-      then do
-        divClass "backcounter" $ text $ "You should wait " <> showt (cdTime - _tickInfo_n) <> " sec"
-        pure True
-      else
-        pure False
-    pD <- patternAskWidget
-    counterD <- holdDyn cInt $ poke (updated pD) $ \_ -> do
-      freezeS <- sampleDyn freezeD
-      cS <- sampleDyn counterD
-      if freezeS
-        then pure cS
-        else pure $ cS + 1
-    performEvent_ $ ffor (updated counterD) $ \cS ->
-      saveCounter $ PatternTries $ Map.insert name cS (patterntriesCount c)
-    pure $ attachPromptlyDynWithMaybe (\freeze p -> if not freeze then Just p else Nothing) freezeD (updated pD)
-  passE <- submitClass "button button-outline" PatPSUsePass
-  pure (patE, True <$ passE)
 
 askPasswordModal :: MonadFront t m => m ()
 askPasswordModal = mdo

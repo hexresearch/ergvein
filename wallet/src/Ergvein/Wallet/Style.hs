@@ -869,15 +869,6 @@ alertsCss = do
     color "#000"
     backgroundColor "#a9a7a7"
 
-patternKeyCss :: Css
-patternKeyCss = do
-  ".myTestDiv" ? do
-    pointerEvents none
-    backgroundColor "red"
-    display block
-  ".myDebugLog" ? do
-    display block
-
 pinCodeCss :: Css
 pinCodeCss = do
   ".pincode-page" ? do
