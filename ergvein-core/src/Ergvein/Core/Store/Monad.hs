@@ -18,6 +18,7 @@ module Ergvein.Core.Store.Monad(
   , reconfirmBtxUtxoSet
   , getBtcUtxoD
   , insertTxsUtxoInPubKeystore
+  , insertManyTxsUtxoInPubKeystore
   , txListToMap
   , addOutgoingTx
   , removeOutgoingTxs
@@ -175,6 +176,32 @@ insertTxsUtxoInPubKeystore caller cur reqE = do
       in Just ps3
   pure $ tag (current valD) updE
   where clr = caller <> ":" <> "insertTxsUtxoInPubKeystore"
+
+insertManyTxsUtxoInPubKeystore :: MonadStorage t m
+  => Text -> Currency
+  -> Event t [(V.Vector (ScanKeyBox, Map TxId EgvTx), BtcUtxoUpdate)]
+  -> m (Event t [(V.Vector (ScanKeyBox, Map TxId EgvTx), BtcUtxoUpdate)])
+insertManyTxsUtxoInPubKeystore caller cur reqE = do
+  valD <- holdDyn (error "insertTxsUtxoInPubKeystore: impossible") reqE
+  updE <- modifyPubStorage clr $ ffor reqE $ \vals ps -> if null vals
+    then Nothing
+    else Just $ L.foldl' inserter ps vals
+  pure $ tag (current valD) updE
+  where
+    clr = caller <> ":" <> "insertManyTxsUtxoInPubKeystore"
+    inserter ps (vec, (o,i)) =
+      if (V.null vec && M.null o && null i) then ps else let
+        txmap = M.unions $ V.toList $ snd $ V.unzip vec
+        ps1 = modifyCurrStorage cur (currencyPubStorage'transactions %~ M.union txmap) ps
+        ps2 = case cur of
+          BTC -> updateBtcUtxoSet (o,i) ps1
+          _ -> ps1
+        upd ps' (ScanKeyBox{..}, txm) = fromMaybe ps' $
+          let txs = M.elems txm
+          in updateKeyBoxWith cur scanBox'purpose scanBox'index
+                (\kb -> kb {pubKeyBox'txs = S.union (pubKeyBox'txs kb) $ S.fromList (fmap egvTxId txs)}) ps'
+        ps3 = V.foldl' upd ps2 vec
+        in ps3
 
 -- | Removes RBF transactions from storage and updates transaction replacements info.
 -- Note: that this process has two stages. This is the first stage.

@@ -43,10 +43,9 @@ arbitraryBSLen n = do
 instance Arbitrary MessageHeader where
   arbitrary = do
     t <- getRandBounded
-    case t of
-      MVersionACKType -> pure $ MessageHeader MVersionACKType 0
-      MPeerRequestType -> pure $ MessageHeader MFeeRequestType 0
-      _ -> MessageHeader <$> pure t <*> arbitrary
+    if messageHasPayload t
+      then MessageHeader <$> pure t <*> arbitrary
+      else pure $ MessageHeader t 0
 
 instance Arbitrary ScanBlock where
   arbitrary = ScanBlock <$> getRandBounded <*> (fmap unPVT arbitrary) <*> arbitrary <*> arbitrary
@@ -129,6 +128,9 @@ instance Arbitrary RatesResponse where
   arbitrary = fmap (RatesResponse . M.fromList) $ sized $
     flip replicateM $ (,) <$> getRandBounded <*> (fmap unFDS arbitrary)
 
+instance Arbitrary MempoolFilter where
+  arbitrary = MempoolFilter <$> arbitrary
+
 unimplementedMessageTypes :: [MessageType]
 unimplementedMessageTypes =
   []
@@ -150,6 +152,13 @@ fullyImplementedMessageTypes =
   , MFilterEventType
   , MRatesRequestType
   , MRatesResponseType
+  , MFullFilterInvType
+  , MGetFullFilterType
+  , MGetMemFiltersType
+  , MFullFilterType
+  , MMemFiltersType
+  , MGetMempoolType
+  , MMempoolChunkType
   ]
 
 instance Arbitrary Message where
@@ -171,6 +180,12 @@ instance Arbitrary Message where
       MFeeResponseType      -> MFeeResponse <$> arbitrary
       MRatesRequestType     -> MRatesRequest <$> arbitrary
       MRatesResponseType    -> MRatesResponse <$> arbitrary
-
+      MFullFilterInvType    -> pure $ MFullFilterInv $ FullFilterInv
+      MGetFullFilterType    -> pure $ MGetFullFilter $ GetFullFilter
+      MGetMemFiltersType    -> pure $ MGetMemFilters $ GetMemFilters
+      MFullFilterType       -> MFullFilter . MempoolFilter <$> arbitrary
+      MMemFiltersType       -> MMemFilters . FilterTree <$> arbitrary
+      MGetMempoolType       -> MGetMempool . GetMempool <$> arbitrary
+      MMempoolChunkType     -> fmap MMempoolChunk $ MempoolChunk <$> arbitrary <*> arbitrary
 --------------------------------------------------------------------------
 -- newtype wrappers

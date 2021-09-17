@@ -150,6 +150,7 @@ data NetSetupStrings
   = NSSTitle
   | NSSLatency NominalDiffTime
   | NSSIndexerHeight BlockHeight
+  | NSSIndexerHeightAuth BlockHeight BlockHeight
   | NSSOffline
   | NSSWrongVersion (Maybe ProtocolVersion)
   | NSSMissingCurrencies
@@ -185,6 +186,7 @@ instance LocalizedPrint NetSetupStrings where
       NSSTitle        -> "Network settings"
       NSSLatency lat  -> "Latency: " <> showt lat
       NSSIndexerHeight h -> "Height: " <> showt h
+      NSSIndexerHeightAuth hb h -> "Height: " <> showt h <> "/" <> showt hb
       NSSOffline      -> "Offline"
       NSSWrongVersion ver -> "Indexer has incompatible version " <> maybe "" showt ver
       NSSMissingCurrencies -> "Indexer doesn't support all currencies"
@@ -217,6 +219,7 @@ instance LocalizedPrint NetSetupStrings where
       NSSTitle        -> "Настройки сети"
       NSSLatency lat  -> "Задержка: " <> showt lat
       NSSIndexerHeight h -> "Высота: " <> showt h
+      NSSIndexerHeightAuth hb h -> "Высота: " <> showt h <> "/" <> showt hb
       NSSOffline      -> "Оффлайн"
       NSSWrongVersion ver -> "Индексатор несовместимой версии " <> maybe "" showt ver
       NSSMissingCurrencies -> "Индексатор не поддерживает все валюты"

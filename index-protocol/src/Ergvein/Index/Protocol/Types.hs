@@ -54,12 +54,23 @@ data MessageType = MVersionType
                  | MPongType
                  | MRatesRequestType
                  | MRatesResponseType
+                 | MFullFilterInvType
+                 | MGetFullFilterType
+                 | MFullFilterType
+                 | MGetMemFiltersType
+                 | MMemFiltersType
+                 | MGetMempoolType
+                 | MMempoolChunkType
+
   deriving (Eq, Ord, Enum, Bounded, Show)
 
-messageHasPayload :: MessageType -> Bool 
+messageHasPayload :: MessageType -> Bool
 messageHasPayload = \case
   MVersionACKType -> False
   MPeerRequestType -> False
+  MFullFilterInvType -> False
+  MGetFullFilterType -> False
+  MGetMemFiltersType -> False
   _ -> True
 
 data RejectCode = MessageHeaderParsing | MessageParsing | InternalServerError | ZeroBytesReceived | VersionNotSupported
@@ -297,6 +308,31 @@ newtype RatesRequest = RatesRequest { unRatesRequest :: Map CurrencyCode [Fiat] 
 newtype RatesResponse = RatesResponse { unRatesResponse :: Map CurrencyCode (Map Fiat Centi)}
   deriving (Show, Eq)
 
+data FullFilterInv = FullFilterInv
+  deriving (Show, Eq)
+
+data GetFullFilter = GetFullFilter
+  deriving (Show, Eq)
+
+data GetMemFilters = GetMemFilters
+  deriving (Show, Eq)
+
+type TxPrefix = (Word8, Word8)
+
+newtype GetMempool = GetMempool {unGetMempool :: V.Vector TxPrefix }
+  deriving (Show, Eq)
+
+newtype MempoolFilter = MempoolFilter {unMempoolFilter :: ByteString }
+  deriving (Show, Eq)
+
+newtype FilterTree = FilterTree { unFilterTree :: Map TxPrefix MempoolFilter }
+  deriving (Show, Eq)
+
+data MempoolChunk = MempoolChunk {
+  mcPrefix :: TxPrefix
+, mcBytes  :: V.Vector ByteString
+} deriving (Show, Eq)
+
 data Message = MPing                       !Ping
              | MPong                       !Pong
              | MVersion                    !Version
@@ -312,6 +348,13 @@ data Message = MPing                       !Ping
              | MPeerIntroduce              !PeerIntroduce
              | MRatesRequest               !RatesRequest
              | MRatesResponse              !RatesResponse
+             | MFullFilterInv              !FullFilterInv
+             | MGetFullFilter              !GetFullFilter
+             | MFullFilter                 !MempoolFilter
+             | MGetMemFilters              !GetMemFilters
+             | MMemFilters                 !FilterTree
+             | MGetMempool                 !GetMempool
+             | MMempoolChunk               !MempoolChunk
   deriving (Show, Eq)
 
 genericSizeOf :: (Storable a, Integral b) => a -> b
@@ -345,3 +388,10 @@ messageType = \case
   MPeerIntroduce{} -> MIntroducePeerType
   MRatesRequest{} -> MRatesRequestType
   MRatesResponse{} -> MRatesResponseType
+  MFullFilterInv{} -> MFullFilterInvType
+  MGetFullFilter{} -> MGetFullFilterType
+  MFullFilter{} -> MFullFilterType
+  MGetMemFilters{} -> MGetMemFiltersType
+  MMemFilters{} -> MMemFiltersType
+  MGetMempool{} -> MGetMempoolType
+  MMempoolChunk{} -> MMempoolChunkType

@@ -105,11 +105,18 @@ initIndexerConnection sname sa msgE = mdo
   performEvent_ $ ffor (_socketRecvEr s) $ nodeLog sa . showt
 
   -- Track handshake status
-  let verAckE = fforMaybe respE $ \case
-        MVersionACK _ -> Just True
+  let servAckE = fforMaybe respE $ \case
+        MVersionACK _ -> Just ServAck
+        _ -> Nothing
+      ourAckE = fforMaybe hsRespE $ \case
+        MVersionACK _ -> Just OurAck
+        _ -> Nothing
+  shakeStatD <- holdUniqDyn =<< foldDyn updateHsStatus NoAck (leftmost [servAckE, ourAckE])
+  let shakedE = fforMaybe (updated shakeStatD) $ \case
+        HandshakeDone -> Just True
         _ -> Nothing
   versionD <- holdDyn Nothing $ Just <$> versionE
-  shakeD <- holdDyn False $ leftmost [verAckE, False <$ closeE]
+  shakeD <- holdDyn False $ leftmost [shakedE, False <$ closeE]
   let openE = fmapMaybe (\b -> if b then Just () else Nothing) $ updated shakeD
 
   -- Track filters height
@@ -146,7 +153,7 @@ peekMessage :: (MonadPeeker m, MonadIO m, MonadThrow m, PlatformNatives)
   => SockAddr -> m Message
 peekMessage url = do
   MessageHeader !msgType !len <- peekHeader url
-  nodeLog url $ showt (MessageHeader msgType len)
+  -- nodeLog url $ showt (MessageHeader msgType len)
   when (len > 32 * 2 ^ (20 :: Int)) $ do
     nodeLog url "Payload too large"
     throwM (PayloadTooLarge len)
@@ -234,3 +241,15 @@ data PeerException
       -- ^ peer has been asked to kill itself by it's master
     deriving (Eq, Show)
 instance Exception PeerException
+
+data HandshakeStatus = NoAck | OurAck | ServAck | HandshakeDone
+  deriving (Eq, Show)
+
+-- | We wait until both parties sent acks
+updateHsStatus :: HandshakeStatus -> HandshakeStatus -> HandshakeStatus
+updateHsStatus new old = case (new, old) of
+  (NoAck,_) -> old
+  (_,NoAck) -> new
+  (OurAck, OurAck) -> OurAck
+  (ServAck, ServAck) -> ServAck
+  _ -> HandshakeDone

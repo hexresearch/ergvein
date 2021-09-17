@@ -19,11 +19,14 @@ import Ergvein.Types.Fees
 
 import qualified Data.Attoparsec.ByteString as Parse
 import qualified Data.Bitstream             as S
+import qualified Data.ByteString            as BS
 import qualified Data.ByteString.Lazy       as LBS
 import qualified Data.ByteString.Short      as BSS
 import qualified Data.Map.Strict            as M
 import qualified Data.Vector                as V
 import qualified Data.Vector.Unboxed        as UV
+
+import Debug.Trace
 
 word32toMessageType :: Word32 -> Maybe MessageType
 word32toMessageType = \case
@@ -42,6 +45,13 @@ word32toMessageType = \case
   12 -> Just MPongType
   13 -> Just MRatesRequestType
   14 -> Just MRatesResponseType
+  15 -> Just MFullFilterInvType
+  16 -> Just MGetFullFilterType
+  17 -> Just MFullFilterType
+  18 -> Just MGetMemFiltersType
+  19 -> Just MMemFiltersType
+  20 -> Just MGetMempoolType
+  21 -> Just MMempoolChunkType
   _  -> Nothing
 
 currencyCodeParser :: Parser CurrencyCode
@@ -98,7 +108,10 @@ messageLengthParser :: Parser Word32
 messageLengthParser = varInt
 
 messageTypeParser :: Parser MessageType
-messageTypeParser = guardJust "out of message type bounds" . word32toMessageType =<< varInt
+messageTypeParser = do
+  v <- varInt
+  guardJust (show v) . word32toMessageType $ v
+  -- guardJust "out of message type bounds" . word32toMessageType =<<
 
 rejectCodeParser :: Parser RejectCode
 rejectCodeParser = guardJust "out of reject type bounds" . word32toRejectType =<< varInt
@@ -256,6 +269,34 @@ messageParser MRatesResponseType = do
   cfds <- replicateM n cfdParser
   pure $ MRatesResponse $ RatesResponse $ M.fromList cfds
 
+messageParser MFullFilterInvType = pure $ MFullFilterInv FullFilterInv
+messageParser MGetFullFilterType = pure $ MGetFullFilter GetFullFilter
+messageParser MGetMemFiltersType = pure $ MGetMemFilters GetMemFilters
+
+messageParser MFullFilterType = (MFullFilter . MempoolFilter) <$> parseLenBs
+
+messageParser MMemFiltersType = do
+  n <- varInt
+  fmap (MMemFilters . FilterTree . M.fromList) $ replicateM n $ do
+    pref <- (,) <$> anyWord8 <*> anyWord8
+    filt <- fmap MempoolFilter parseLenBs
+    pure (pref, filt)
+
+messageParser MGetMempoolType = do
+  n <- varInt
+  fmap (MGetMempool . GetMempool . V.fromList) $ replicateM n $
+    (,) <$> anyWord8 <*> anyWord8
+
+messageParser MMempoolChunkType = do
+  pref <- (,) <$> anyWord8 <*> anyWord8
+  n <- varInt
+  compressedBs <- takeLazyByteString
+  let unzippedTxs = LBS.toStrict $ decompress compressedBs
+      parser = V.fromList <$> replicateM n parseLenBs
+  case parseOnly parser unzippedTxs of
+    Right txs -> pure $ MMempoolChunk $ MempoolChunk pref txs
+    _ -> error "Failed to parse Txs for mempool chunk"
+
 enumParser :: forall a. (Typeable a, Bounded a, Enum a) => Parser a
 enumParser = do
   n <- fromIntegral <$> varInt @Word32
@@ -307,3 +348,6 @@ parseFeeResp = do
       <$> varInt
       <*> varInt
       <*> varInt
+
+parseLenBs :: Parser BS.ByteString
+parseLenBs = Parse.take =<< varInt

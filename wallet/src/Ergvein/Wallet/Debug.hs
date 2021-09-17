@@ -7,12 +7,14 @@ module Ergvein.Wallet.Debug
 import Control.Lens
 import Control.Monad.IO.Class
 import Data.Maybe (fromMaybe, listToMaybe)
+import Data.Serialize
 import Network.Haskoin.Transaction
 
 import Ergvein.Types.Storage.Currency.Public.Btc
 import Ergvein.Types.Utxo.Btc
 import Sepulcas.Elements
 import Ergvein.Wallet.Monad
+import Ergvein.Text
 import Ergvein.Wallet.Wrapper
 import Ergvein.Wallet.Localize ()
 
@@ -168,6 +170,11 @@ dbgTxsPage = wrapper False "Transactions" (Just $ pure dbgTxsPage) $ divClass "c
   psD <- getPubStorageD
   void $ networkHoldDyn $ ffor psD $ \ps -> do
     let txs = ps ^. btcPubStorage . currencyPubStorage'transactions
-    for_ txs $ \tx -> do
-      el "div" $ text $ showt tx
-      el "div" $ text "------------------------------------------------------"
+    for_ txs $ \case
+      TxBtc (BtcTx tx _) -> do
+        el "h2" $ text $ showt $ txHash tx
+        el "div" $ text $ showt tx
+        el "div" $ text $ "  "
+        el "div" $ text $ bs2Hex $ encode tx
+        el "div" $ text "------------------------------------------------------"
+      _ -> pure ()

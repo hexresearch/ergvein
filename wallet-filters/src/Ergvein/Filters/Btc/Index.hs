@@ -23,6 +23,7 @@ module Ergvein.Filters.Btc.Index(
   , scriptToAddressBS
     -- * Siphash
   , blockSipHash
+  , prefSipHash
   ) where
 
 import Control.Monad.Reader
@@ -35,11 +36,13 @@ import Data.Word
 import Ergvein.Text
 import Network.Haskoin.Address
 import Network.Haskoin.Block
+import Network.Haskoin.Crypto
 import Network.Haskoin.Script
 import Network.Haskoin.Transaction
 
 import qualified Data.Map.Strict as M
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Short as BSS
 
 -- | Default value for P parameter (amount of bits in golomb rice encoding).
 -- Set to fixed `19` according to BIP-158.
@@ -130,3 +133,14 @@ blockSipHash bh = fromBs . encode . getBlockHash $ bh
   k1 bs = toWord64 $ BS.unpack . BS.take 8 $ bs
   k2 bs = toWord64 $ BS.unpack . BS.take 8 . BS.drop 8 $ bs
   fromBs bs = SipKey (k1 bs) (k2 bs)
+
+prefSipHash :: (Word8, Word8) -> SipKey
+prefSipHash (p1, p2) = let
+  toWord64 =
+    fst . foldl (\(!acc, !i) b -> (acc + fromIntegral b * (256 ^ i), i + (1 :: Word64))) (0, 0)
+  seed = BS.pack $ take 16 $ cycle [p1,p2]
+  k256 = BSS.fromShort $ getHash256 $ sha256 seed
+  (bs1, bs2) = BS.splitAt 8 k256
+  k1 = toWord64 $ BS.unpack bs1
+  k2 = toWord64 $ BS.unpack bs2
+  in SipKey k1 k2

@@ -112,6 +112,7 @@ library
     Ergvein.Core.Worker.Height
     Ergvein.Core.Worker.Indexer
     Ergvein.Core.Worker.Keys
+    Ergvein.Core.Worker.Mempool
     Ergvein.Core.Worker.Node
     Ergvein.Core.Worker.Rates
     Ergvein.Core.Worker.Store
@@ -124,7 +125,7 @@ library
     , bytestring
     , cereal
     , conduit
-    , containers
+    , containers                >= 0.6.0  && < 0.7.0
     , cryptonite
     , data-default
     , dependent-map

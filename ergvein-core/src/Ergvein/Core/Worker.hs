@@ -18,6 +18,7 @@ import Ergvein.Core.Worker.Fees
 import Ergvein.Core.Worker.Height
 import Ergvein.Core.Worker.Indexer
 import Ergvein.Core.Worker.Keys
+import Ergvein.Core.Worker.Mempool
 import Ergvein.Core.Worker.Node
 import Ergvein.Core.Worker.Rates
 import Ergvein.Core.Worker.Store
@@ -55,16 +56,16 @@ spawnWorkers = do
 
   -- BTC only workers
   _ <- networkHoldDyn $ ffor btcD $ \b -> when b $ do
+    btcMempoolWorker
     feesWorker
     pubKeysGeneratorBtc
     scanner
     btcNodeController
     updateWalletHeightBtc
-    
+
   -- Ergo only workers
   _ <- networkHoldDyn $ ffor ergoD $ \e -> when e $ do
     pure ()
-
   pure ()
 
 setActiveCurrencies :: (MonadStorage t m

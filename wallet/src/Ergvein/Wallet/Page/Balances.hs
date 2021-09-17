@@ -18,7 +18,6 @@ import qualified Data.List as L
 
 balancesPage :: MonadFront t m=> m ()
 balancesPage = do
-  -- debugWidget
   walletName <- getWalletName
   title <- localized walletName
   wrapper False title (Just $ pure balancesPage) $ do
