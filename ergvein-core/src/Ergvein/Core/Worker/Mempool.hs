@@ -77,7 +77,7 @@ btcMempoolWorkerConn IndexerConnection{..} = void $ workflow waitRestore
     waitIndexerUp :: Workflow t m ()
     waitIndexerUp = Workflow $ do
       workLog "Waiting for indexer to be up"
-      nextE <- fmap (ffilter id) $ updatedWithInit indexConIsUp
+      nextE <- fmap (ffilter id) $ eventToNextFrame =<< updatedWithInit indexConIsUp
       pure ((), requestMempool 0 <$ nextE)
 
     requestMempool :: Int -> Workflow t m ()
