@@ -147,7 +147,8 @@ btcMempoolWorkerConn IndexerConnection{..} = void $ workflow waitRestore
                   pure $ Just $ helper (checkAddrTxResult, utxoUpdates)
         pure val
       insertedE <- insertManyTxsUtxoInPubKeystore "btcMempoolTxInserter" BTC $ ffilter (not . null) valsE
-      nextE <- eventToNextFrame insertedE
+      let noValsE = ffilter null valsE
+      let nextE = leftmost [noValsE, insertedE]
       pure ((), waitNextInv n <$ nextE)
       where
         helper :: ((V.Vector ScanKeyBox, EgvTx), BtcUtxoUpdate) -> (V.Vector (ScanKeyBox, M.Map TxId EgvTx), BtcUtxoUpdate)
