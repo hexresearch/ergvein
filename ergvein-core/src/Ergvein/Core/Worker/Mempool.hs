@@ -107,8 +107,8 @@ btcMempoolWorkerConn IndexerConnection{..} = void $ workflow waitRestore
             pure Nothing
           Right filt -> do
             match <- applyBtcPrefixFilterMany pref filt addrs
-            -- pure $ if match then Just pref else Nothing
-            pure $ Just pref
+            pure $ if match then Just pref else Nothing
+
       buildE <- eventToNextFrame =<< getPostBuild
       workLog $ showt $ length prefixes
       pure $ if null prefixes
@@ -147,7 +147,8 @@ btcMempoolWorkerConn IndexerConnection{..} = void $ workflow waitRestore
                   pure $ Just $ helper (checkAddrTxResult, utxoUpdates)
         pure val
       insertedE <- insertManyTxsUtxoInPubKeystore "btcMempoolTxInserter" BTC $ ffilter (not . null) valsE
-      pure ((), waitNextInv n <$ insertedE)
+      nextE <- eventToNextFrame insertedE
+      pure ((), waitNextInv n <$ nextE)
       where
         helper :: ((V.Vector ScanKeyBox, EgvTx), BtcUtxoUpdate) -> (V.Vector (ScanKeyBox, M.Map TxId EgvTx), BtcUtxoUpdate)
         helper ((vec, tx), utxoUpd) = ((, M.fromList [(egvTxId tx, tx)]) <$> vec, utxoUpd)
