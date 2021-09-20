@@ -89,7 +89,7 @@ sendConfirmationWidget v = do
   walletName <- getWalletName
   title <- localized walletName
   let thisWidget = Just $ pure $ sendConfirmationWidget v
-      navbar = if isAndroid
+  let navbar = if isAndroid
         then blank
         else navbarWidget BTC thisWidget NavbarSend
   wrapperNavbar False title thisWidget navbar $ divClass "send-confirm-box" $ mdo
@@ -103,7 +103,7 @@ sendConfirmationWidget v = do
       goE <- delay 1 =<< outlineButton SendBtnBack
       void $ nextWidget $ ffor goE $ const $ Retractable {
             retractableNext = balancesPage
-          , retractablePrev = Nothing
+          , retractablePrev = thisWidget
         }
 
 btcAddrToBtcOutType :: BtcAddress -> BtcAddressType

@@ -16,11 +16,11 @@ instance LocalizedPrint StorageAlert where
       SANativeAlert a -> localizedShow l a
       SAMnemonicFail t -> "Failed to produce seed from mnemonic: " <> t
       SACryptoError e -> "Cryptographic error: " <> e
-      SADecryptError _ -> "Wrong password. Failed to decrypt"
+      SADecryptError _ -> "Wrong password"
     Russian -> case v of
       SADecodeError e -> "Ошибка загрузки хранилища: " <> e
       SALoadedSucc    -> "Хранилище загружено"
       SANativeAlert a -> localizedShow l a
       SAMnemonicFail t -> "Не удалось создать сид из мнемоники: " <> t
       SACryptoError e -> "Ошибка криптографии: " <> e
-      SADecryptError _ -> "Неправильный пароль. Не удалось расшифровать"
+      SADecryptError _ -> "Неправильный пароль"

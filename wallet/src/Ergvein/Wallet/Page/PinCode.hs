@@ -1,0 +1,100 @@
+{-# OPTIONS_GHC -Wall #-}
+
+module Ergvein.Wallet.Page.PinCode(
+    NumPadBtnAction(..)
+  , PinCodeSetupStep(..)
+  , minPinCodeLength
+  , maxPinCodeLength
+  , pinCodeDots
+  , confirmPinCodeDots
+  , numPadWidget
+  , pinCodeFoldFunc
+  , pinCodeAskWidget
+  ) where
+
+import Data.Traversable (for)
+
+import Ergvein.Wallet.Language
+import Ergvein.Wallet.Monad
+import Sepulcas.Elements
+
+import qualified Data.Text as T
+
+data PinCodeSetupStep =
+    PinCodeSetup
+  | PinCodeConfirm Int -- Сontains the length of the previously entered password
+  deriving (Eq, Show)
+
+data NumPadBtnAction = NumPadDigit Int | NumPadBackspace | NumPadSubmit deriving (Eq, Show)
+
+minPinCodeLength :: Int
+minPinCodeLength = 6
+
+maxPinCodeLength :: Int
+maxPinCodeLength = 12
+
+pinCodeDots :: MonadFrontBase t m => Dynamic t Int -> m ()
+pinCodeDots dotsCountD = divClass "pincode-widget-dots" $ do
+  let classesD = ffor dotsCountD $ \inputLen -> if inputLen == 0
+        then replicate minPinCodeLength "far fa-circle"
+        else replicate inputLen "fas fa-circle"
+  void $ simpleList classesD (\classD -> divClass "pincode-widget-dot" $ elClassDyn "i" classD blank)
+
+-- | Draws circles indicating the number of characters entered
+confirmPinCodeDots :: MonadFrontBase t m => Int -> Dynamic t Int -> m ()
+confirmPinCodeDots totalDotsCount dotsCountD = divClass "pincode-widget-dots" $ do
+  let classesD = ffor dotsCountD $ \inputLen ->
+        let filledDotsCount = if inputLen > totalDotsCount
+              then totalDotsCount
+              else inputLen
+            filledDots = replicate filledDotsCount "fas fa-circle"
+            emptyDots = replicate (totalDotsCount - filledDotsCount) "far fa-circle"
+        in filledDots ++ emptyDots
+  void $ simpleList classesD (\classD -> divClass "pincode-widget-dot" $ elClassDyn "i" classD blank)
+
+btnContainer :: (DomBuilder t m, PostBuild t m) => m a -> m (Event t a)
+btnContainer = divButton "pincode-widget-button font-bold"
+
+-- | Draws a numpad and returns event with pressed button
+numPadWidget :: MonadFrontBase t m => PinCodeSetupStep -> m (Event t NumPadBtnAction)
+numPadWidget step = divClass "pincode-widget-numpad" $ do
+  digitsE <- fmap concat <$> for [1,2,3] $ \rowNum -> do
+    for [1,2,3] $ \colNum -> do
+      let digit = colNum + (rowNum - 1) * 3
+      btnE <- btnContainer $ text $ showt digit
+      pure $ NumPadDigit digit <$ btnE
+  (submitE, zeroE, backspaceE) <- do
+    submitBtnE <- case step of
+      PinCodeSetup -> btnContainer $ elClass "i" "fas fa-check" blank
+      PinCodeConfirm _ -> never <$ divClass "" blank
+    zeroBtnE <- btnContainer $ text "0"
+    backspaceBtnE <- btnContainer $ elClass "i" "fas fa-backspace" blank
+    pure (NumPadSubmit <$ submitBtnE, NumPadDigit 0 <$ zeroBtnE, NumPadBackspace <$ backspaceBtnE)
+  pure $ leftmost $ submitE : zeroE : backspaceE : digitsE
+
+pinCodeFoldFunc :: PinCodeSetupStep -> NumPadBtnAction -> [Int] -> [Int]
+pinCodeFoldFunc step act acc = case act of
+  NumPadDigit n -> if length acc >= maxLength step
+    then acc
+    else acc ++ [n]
+  NumPadBackspace -> if null acc
+    then acc
+    else init acc
+  NumPadSubmit -> acc
+  where
+    maxLength :: PinCodeSetupStep -> Int
+    maxLength PinCodeSetup = maxPinCodeLength
+    maxLength (PinCodeConfirm n) = n
+
+pinCodeAskWidget :: (MonadFrontBase t m, LocalizedPrint l) => l -> m (Event t Password)
+pinCodeAskWidget lbl = divClass "pincode-widget" $ mdo
+  divClass "pincode-widget-title mt-2" $ do
+    h4 $ localizedText lbl
+  inputD <- foldDyn (pinCodeFoldFunc PinCodeSetup) [] actE
+  divClass "pincode-widget-dots-wrapper mb-2" $ do
+    pinCodeDots (length <$> inputD)
+  actE <- numPadWidget PinCodeSetup
+  let passD = T.concat . map showt <$> inputD
+      submitE = ffilter (== NumPadSubmit) actE
+      passE = tagPromptlyDyn passD submitE
+  pure passE

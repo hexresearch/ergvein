@@ -1,6 +1,6 @@
-{-# LANGUAGE CPP #-}
 module Ergvein.Wallet.Page.Initial(
     initialPage
+  , OpenLastWallet(..)
   ) where
 
 import Data.Bifunctor (first)
@@ -11,11 +11,12 @@ import Ergvein.Either
 import Ergvein.Types.Storage
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localize
+import Ergvein.Wallet.Menu
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Password
-import Ergvein.Wallet.Page.PatternKey
 import Ergvein.Wallet.Page.Seed
 import Ergvein.Wallet.Page.Settings.Unauth
+import Ergvein.Wallet.Password
 import Ergvein.Wallet.Wrapper
 import Sepulcas.Alert
 import Sepulcas.Elements
@@ -25,11 +26,13 @@ import qualified Data.Text       as T
 
 data GoPage = GoCreate | GoRestore | GoSettings
 
-initialPage :: MonadFrontBase t m => Bool -> m ()
-initialPage redir = do
+data OpenLastWallet = OpenLastWalletOn | OpenLastWalletOff
+
+initialPage :: MonadFrontBase t m => OpenLastWallet -> m ()
+initialPage openLastWallet = do
   logWrite "Initial page rendering"
   ss <- listStorages
-  if null ss then noWalletsPage else hasWalletsPage redir ss
+  if null ss then noWalletsPage else hasWalletsPage openLastWallet ss
   logWrite "Finished initial page rendering"
 
 noWalletsPage :: MonadFrontBase t m => m ()
@@ -45,19 +48,24 @@ createRestore = do
         GoCreate -> backupPage
         GoRestore -> simpleSeedRestorePage
         GoSettings -> settingsPageUnauth
-    , retractablePrev = Just $ pure $ initialPage False
+    , retractablePrev = Just $ pure $ initialPage OpenLastWalletOff
     }
 
-hasWalletsPage :: MonadFrontBase t m => Bool -> [WalletName] -> m ()
-hasWalletsPage redir ss = do
+hasWalletsPage :: MonadFrontBase t m => OpenLastWallet -> [WalletName] -> m ()
+hasWalletsPage openLastWallet ss = do
   buildE <- getPostBuild
-  mnameE <- performEvent $ getLastStorage <$ buildE
-  void $ nextWidget $ ffor mnameE $ \mname -> Retractable {
-      retractableNext = maybe (selectWalletsPage ss) selectNext mname
-    , retractablePrev = Nothing
+  mNameE <- performEvent $ getLastStorage <$ buildE
+  void $ nextWidget $ ffor mNameE $ \mName -> Retractable {
+      retractableNext = maybe (selectWalletsPage ss) selectNext mName
+    , retractablePrev = selectPrev =<< mName
     }
   where
-    selectNext = if redir then loadWalletPage else const (selectWalletsPage ss)
+    selectNext walletName = case openLastWallet of
+      OpenLastWalletOn -> loadWalletPage walletName
+      OpenLastWalletOff -> selectWalletsPage ss
+    selectPrev _ = case openLastWallet of
+      OpenLastWalletOn -> Just $ pure $ initialPage OpenLastWalletOff
+      OpenLastWalletOff -> Nothing
 
 selectWalletsPage :: MonadFrontBase t m => [WalletName] -> m ()
 selectWalletsPage ss = wrapperSimple True $ divClass "initial-page-options" $ do
@@ -73,19 +81,21 @@ selectWalletsPage ss = wrapperSimple True $ divClass "initial-page-options" $ do
 
 loadWalletPage :: MonadFrontBase t m => WalletName -> m ()
 loadWalletPage name = do
-  buildE <- getPostBuild
-  mPlainE <- performEvent $ loadWalletInfo name "" <$ buildE
-  let oldAuthE' = fmapMaybe eitherToMaybe mPlainE
-  oldAuthE'' <- fmap switchDyn $ networkHold (pure never) $ ffor mPlainE $ \case
-    Right _ -> pure never
-    Left _ -> do
-      passE <- askPasswordPage name
-      mOldAuthE <- performEvent $ loadWalletInfo name <$> passE
-      handleDangerMsg mOldAuthE
-  let oldAuthE = leftmost [oldAuthE', oldAuthE'']
-  mAuthE <- performEvent $ generateMissingPrvKeys <$> oldAuthE
-  authE <- handleDangerMsg mAuthE
-  when isAndroid $ performEvent_ $ ffor authE $ const $ do
-    c <- loadCounter
-    saveCounter $ PatternTries $ M.insert name 0 (patterntriesCount c)
-  void $ setWalletInfo $ Just <$> authE
+  -- We could use `wrapperSimple True` here, but to draw the pin code widget to full screen, we need to use this
+  wrapperSimpleGeneric headerWidgetOnlyBackBtn "password-widget-container" False $ do
+    buildE <- getPostBuild
+    mPlainE <- performEvent $ loadWalletInfo name "" <$ buildE
+    let oldAuthE' = fmapMaybe eitherToMaybe mPlainE
+    oldAuthE'' <- fmap switchDyn $ networkHold (pure never) $ ffor mPlainE $ \case
+      Right _ -> pure never
+      Left _ -> do
+        passE <- askPasswordWidget name True
+        mOldAuthE <- performEvent $ loadWalletInfo name <$> passE
+        handleDangerMsg mOldAuthE
+    let oldAuthE = leftmost [oldAuthE', oldAuthE'']
+    mAuthE <- performEvent $ generateMissingPrvKeys <$> oldAuthE
+    authE <- handleDangerMsg mAuthE
+    when isAndroid $ performEvent_ $ ffor authE $ const $ do
+      c <- loadCounter
+      saveCounter $ PasswordTries $ M.insert name 0 (passwordTriesCount c)
+    void $ setWalletInfo $ Just <$> authE

@@ -1585,18 +1585,6 @@ input:checked + .slider::before
   padding-right   : 25%;
 }
 
-.ask-pattern-modal
-{
-  position         : absolute;
-  top              : 0px;
-  left             : 0px;
-  width            : 100vw;
-  height           : 100vh;
-  z-index          : 2;
-  background-color : #ffffff;
-  justify-content  : center;
-}
-
 .badge-warning
 {
   background-color : #ffc107;

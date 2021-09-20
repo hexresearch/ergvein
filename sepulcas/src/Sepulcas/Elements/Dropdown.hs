@@ -17,8 +17,8 @@ visibilityClass classes False = classes
 
 dropdownContainer :: forall t m lbl a . ( MonadIO m, DomBuilder t m, PostBuild t m, MonadHold t m, MonadLocalized t m, MonadFix m, LocalizedPrint lbl)
   => lbl
-  -> lbl 
-  -> Dynamic t Bool 
+  -> lbl
+  -> Dynamic t Bool
   -> m a
   -> m a
 dropdownContainer lClosed lOpened tglD innerContent = mdo

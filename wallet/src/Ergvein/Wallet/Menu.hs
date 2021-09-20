@@ -1,6 +1,8 @@
 module Ergvein.Wallet.Menu(
     headerWidgetDesktop
   , headerWidgetAndroid
+  , headerWidgetDesktopPasswordModal
+  , headerWidgetAndroidPasswordModal
   , headerWidgetOnlyBackBtn
   , headerWidgetOnlyLogoutBtn
   ) where
@@ -36,6 +38,33 @@ headerAndroid titleD = divClass "header header-black" $ mdo
   divClass "header-wallet-text" $ dynText titleD
   divButton "header-button header-button-right" $ elClass "i" "fas fa-bars" blank
 
+headerWidgetDesktopPasswordModal :: MonadFront t m => Dynamic t Text -> m (Event t ())
+headerWidgetDesktopPasswordModal titleD = divClass "header-wrapper" $ do
+  (closeModalE, menuIsHiddenD) <- headerDesktopPasswordModal titleD
+  menuDesktop menuIsHiddenD Nothing
+  pure closeModalE
+
+headerWidgetAndroidPasswordModal :: MonadFront t m => Dynamic t Text -> m (Event t ())
+headerWidgetAndroidPasswordModal titleD = do
+  (closeModalE, menuOpenE) <- divClass "header-wrapper" $ headerAndroidPasswordModal titleD
+  menuAndroid menuOpenE Nothing
+  pure closeModalE
+
+headerDesktopPasswordModal :: MonadFront t m => Dynamic t Text -> m (Event t (), Dynamic t Bool)
+headerDesktopPasswordModal titleD = divClass "header header-black" $ do
+  closeBtnE <- divButton "header-button header-button-left" $ elClass "i" "fas fa-chevron-left" blank
+  divClass "header-wallet-text" $ dynText titleD
+  menuBtnE <- divButton "header-button header-button-right" $ elClass "i" "fas fa-bars" blank
+  menuIsHiddenD <- toggle True menuBtnE
+  pure (closeBtnE, menuIsHiddenD)
+
+headerAndroidPasswordModal :: MonadFront t m => Dynamic t Text -> m (Event t (), Event t ())
+headerAndroidPasswordModal titleD = divClass "header header-black" $ mdo
+  closeBtnE <- divButton "header-button header-button-left" $ elClass "i" "fas fa-chevron-left" blank
+  divClass "header-wallet-text" $ dynText titleD
+  menuBtnE <- divButton "header-button header-button-right" $ elClass "i" "fas fa-bars" blank
+  pure (closeBtnE, menuBtnE)
+
 menuDesktop :: MonadFront t m => Dynamic t Bool -> Maybe (Dynamic t (m ())) -> m ()
 menuDesktop menuIsHiddenD thisWidget = do
   let menuClassesD = visibilityClass "menu" <$> menuIsHiddenD
@@ -43,7 +72,7 @@ menuDesktop menuIsHiddenD thisWidget = do
     ps <- getPubStorage
     let activeCurrencies = _pubStorage'activeCurrencies ps
     menuButtonsDesktop thisWidget $ case activeCurrencies of
-      cur:[] -> Just cur
+      [cur] -> Just cur
       _ -> Nothing
 
 menuAndroid :: MonadFront t m => Event t () -> Maybe (Dynamic t (m ())) -> m ()
@@ -56,7 +85,7 @@ menuAndroid menuOpenE thisWidget = mdo
     let activeCurrencies = _pubStorage'activeCurrencies ps
     menuBtnE <- divClass "menu-android-header" $ divButton "menu-android-close-button header-button header-button-right" $ elClass "i" "fas fa-times" blank
     divClass "menu-android-buttons-wrapper" $ menuButtonsAndroid thisWidget $ case activeCurrencies of
-      cur:[] -> Just cur
+      [cur] -> Just cur
       _ -> Nothing
     pure menuBtnE
   pure ()
@@ -109,7 +138,7 @@ menuButtonsAndroid thisWidget mCur = do
         elClass "i" (i <> " menu-android-button-icon") blank
         localizedText v
         pure v
-  balE <- menuBtn $ (maybe MenuBalances MenuSingleBalance mCur, "fas fa-wallet")
+  balE <- menuBtn (maybe MenuBalances MenuSingleBalance mCur, "fas fa-wallet")
   setE <- menuBtn (MenuSettings, "fas fa-cog")
   abtE <- menuBtn (MenuAbout, "fas fa-info-circle")
   switchE <- menuBtn (MenuSwitch, "fas fa-sign-out-alt")

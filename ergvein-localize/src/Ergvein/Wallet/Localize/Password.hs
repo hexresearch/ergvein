@@ -3,9 +3,10 @@ module Ergvein.Wallet.Localize.Password
     PasswordPageStrings(..)
   , PasswordWidgetStrings(..)
   , LoginPageStrings(..)
-  , PatternPageStrings(..)
+  , PinCodePageStrings(..)
   , ConfirmEmptyPage(..)
   , StartHeightStrings(..)
+  , PasswordTypePageStrings(..)
   ) where
 
 import Data.Time
@@ -15,6 +16,7 @@ import Ergvein.Types.Transaction
 import Ergvein.Wallet.Language
 
 import qualified Data.Text as T
+import Ergvein.Types (Password)
 
 data LoginPageStrings = LPSTitle | LPSDescr
 
@@ -27,24 +29,45 @@ instance LocalizedPrint LoginPageStrings where
       LPSTitle  -> "Установите логин для кошелька"
       LPSDescr -> "Вы можете иметь несколько кошельков и имя поможет различать их"
 
-data PatternPageStrings = PatPSTitle | PatPSDescr | PatPSPass | PatPSPatt | PatPSUsePass | PatPSUsePattern
+data PasswordTypePageStrings = PasswordTypeTitle | PasswordTypeText | PasswordTypePin | PasswordTypeEmpty
 
-instance LocalizedPrint PatternPageStrings where
+instance LocalizedPrint PasswordTypePageStrings where
   localizedShow l v = case l of
     English -> case v of
-      PatPSTitle      -> "Setup encryption pattern key for your wallet"
-      PatPSDescr      -> "The pattern key is used every time you perform an operation with your money"
-      PatPSPass       -> "Set password"
-      PatPSPatt       -> "Set pattern"
-      PatPSUsePass    -> "Use password"
-      PatPSUsePattern -> "Use pattern"
+      PasswordTypeTitle -> "Select password type"
+      PasswordTypeText  -> "Text password"
+      PasswordTypePin   -> "PIN"
+      PasswordTypeEmpty -> "No password"
     Russian -> case v of
-      PatPSTitle      -> "Установите графический ключ шифрования для кошелька"
-      PatPSDescr      -> "Этот графический ключ используется для каждой операции с вашими деньгами"
-      PatPSPass       -> "Установить пароль"
-      PatPSPatt       -> "Установить ключ"
-      PatPSUsePass    -> "Ввести пароль"
-      PatPSUsePattern -> "Ввести ключ"
+      PasswordTypeTitle -> "Выберите тип пароля"
+      PasswordTypeText  -> "Текстовый пароль"
+      PasswordTypePin   -> "ПИН-код"
+      PasswordTypeEmpty -> "Без пароля"
+
+data PinCodePageStrings =
+    PinCodePSTitle
+  | PinCodePSPinCodeLengthRange
+  | PinCodePSTooShortError
+  | PinCodePSConfirm
+  | PinCodePSConfirmationError
+  | PinCodePSEnterPinCode
+
+instance LocalizedPrint PinCodePageStrings where
+  localizedShow l v = case l of
+    English -> case v of
+      PinCodePSTitle -> "Set security PIN"
+      PinCodePSPinCodeLengthRange -> "PIN must be 6 to 12 digits long"
+      PinCodePSTooShortError -> "PIN code must be at least 6 digits"
+      PinCodePSConfirm -> "Repeat security PIN"
+      PinCodePSConfirmationError -> "PINs do not match"
+      PinCodePSEnterPinCode -> "Enter your secret PIN"
+    Russian -> case v of
+      PinCodePSTitle -> "Задайте ПИН-код"
+      PinCodePSPinCodeLengthRange -> "ПИН-код должен содержать от 6 до 12 цифр"
+      PinCodePSTooShortError -> "ПИН-код должен содержать не менее 6 цифр"
+      PinCodePSConfirm -> "Повторите ПИН-код"
+      PinCodePSConfirmationError -> "ПИН-коды не совпадают"
+      PinCodePSEnterPinCode -> "Введите ПИН-код"
 
 data PasswordPageStrings = PPSTitle | PPSPassTitle | PPSDescr | PPSMnemonicTitle | PPSMnemonicDescr | PPSUnlock | PPSMnemonicUnlock | PPSWrongPassword
   deriving (Eq)
@@ -80,7 +103,6 @@ data PasswordWidgetStrings =
   | PWSLogin
   | PWSEmptyLogin
   | PWSEmptyPassword
-  | PWSEmptyPattern
   | PWSDeriv
   | PWSDerivDescr1
   | PWSDerivDescr2
@@ -100,7 +122,6 @@ instance LocalizedPrint PasswordWidgetStrings where
       PWSLogin         -> "Login"
       PWSEmptyLogin    -> "Login is empty!"
       PWSEmptyPassword -> "Password is empty!"
-      PWSEmptyPattern  -> ""
       PWSDeriv         -> "Derivation path"
       PWSDerivDescr1   -> "You can override the suggested derivation path."
       PWSDerivDescr2   -> "Leave it untouched if not sure what it is."
@@ -117,7 +138,6 @@ instance LocalizedPrint PasswordWidgetStrings where
       PWSLogin         -> "Логин"
       PWSEmptyLogin    -> "Логин пустой!"
       PWSEmptyPassword -> "Пароль пустой!"
-      PWSEmptyPattern  -> ""
       PWSDeriv         -> "Префикс BIP48 для вывода ключей"
       PWSDerivDescr1   -> "Вы можете переназначить префикс дерева для вывода ключей."
       PWSDerivDescr2   -> "Оставьте как есть, если не знаете, что это такое."
@@ -161,4 +181,4 @@ showDate :: BlockHeight -> Text
 showDate h = T.pack $ formatTime defaultTimeLocale "%F" $ addUTCTime delta genDate
   where
     genDate = parseTimeOrError False defaultTimeLocale "%F %T" "2009-01-03 18:15:05"
-    delta = (fromIntegral h) * 9.5 * 60
+    delta = fromIntegral h * 9.5 * 60

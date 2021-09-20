@@ -41,13 +41,6 @@ unitsDropdown initialUnit allUnits = do
   let selD = _dropdown_value dp
   holdUniqDyn selD
 
-displayError :: (MonadFrontBase t m, LocalizedPrint l) => Dynamic t l -> m ()
-displayError errD = do
-  langD <- getLanguage
-  let localizedErrD = zipDynWith localizedShow langD errD
-  dynText localizedErrD
-  br
-
 -- | Input field with units. Converts everything to satoshis and returns the unit.
 sendAmountWidgetBtc :: (MonadFront t m) => Maybe (UnitBTC, Word64) -> Event t () -> m (Dynamic t (Maybe (UnitBTC, Word64)))
 sendAmountWidgetBtc minit submitE = divClass "amount-input" $ mdo

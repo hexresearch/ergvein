@@ -23,12 +23,12 @@ selectCurrenciesPage :: MonadFrontBase t m => WalletSource -> Bool -> Mnemonic -
 selectCurrenciesPage wt seedBackupRequired mnemonic = wrapperSimple True $ do
   e <- selectCurrenciesWidget []
   void $ nextWidget $ ffor e $ \ac -> Retractable {
-#ifdef ANDROID
-      retractableNext = setupLoginPage wt seedBackupRequired Nothing mnemonic ac
-#else
-      retractableNext = setupPasswordPage wt seedBackupRequired Nothing mnemonic ac Nothing
-#endif
-    , retractablePrev = Just $ pure $ selectCurrenciesPage wt seedBackupRequired mnemonic
+      retractableNext = if isAndroid
+        -- On Android login is entered first. After that user is redirected to the password setup page.
+        then setupLoginPage wt seedBackupRequired Nothing mnemonic ac
+        -- On desktop login and passwrod are entered on the same page.
+        else setupPasswordPage wt seedBackupRequired Nothing mnemonic ac Nothing
+    , retractablePrev = Nothing
     }
 
 selectCurrenciesWidget :: MonadFrontBase t m => [Currency] -> m (Event t [Currency])
