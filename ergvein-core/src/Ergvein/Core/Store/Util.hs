@@ -164,7 +164,7 @@ createStorage isRestored seedBackupRequired mpath mnemonic (login, pass) startin
 encryptPrvStorage :: MonadIO m => PrvStorage -> Password -> m (Either StorageAlert EncryptedPrvStorage)
 encryptPrvStorage prvStorage password = liftIO $ do
   salt :: ByteString <- genRandomSalt
-  let secKey = Key (fastPBKDF2_SHA256 defaultPBKDF2Params (encodeUtf8 password) salt) :: Key AES256 ByteString
+  let secKey = Key (scryptGenerateKey scryptDefaultParams (encodeUtf8 password) salt) :: Key AES256 ByteString
   iv <- genRandomIV (undefined :: AES256)
   case iv of
     Nothing -> pure $ Left $ SACryptoError "Failed to generate an AES initialization vector"
@@ -185,7 +185,7 @@ decryptPrvStorage encryptedPrvStorage password =
         Right dps -> Right dps
   where
     salt = _encryptedPrvStorage'salt encryptedPrvStorage
-    secKey = Key (fastPBKDF2_SHA256 defaultPBKDF2Params (encodeUtf8 password) salt) :: Key AES256 ByteString
+    secKey = Key (scryptGenerateKey scryptDefaultParams (encodeUtf8 password) salt) :: Key AES256 ByteString
     iv = _encryptedPrvStorage'iv encryptedPrvStorage
     ciphertext = _encryptedPrvStorage'ciphertext encryptedPrvStorage
 
@@ -197,7 +197,7 @@ encryptStorage storage pubKey = do
     CryptoFailed err -> pure $ Left $ SACryptoError $ showt err
     CryptoPassed (eciesPoint, sharedSecret) -> do
       salt :: ByteString <- genRandomSalt
-      let secKey = Key (fastPBKDF2_SHA256 defaultPBKDF2Params sharedSecret salt) :: Key AES256 ByteString
+      let secKey = Key (scryptGenerateKey scryptDefaultParams sharedSecret salt) :: Key AES256 ByteString
       iv' <- genRandomIV (undefined :: AES256)
       case iv' of
         Nothing -> pure $ Left $ SACryptoError "Failed to generate an initialization vector"
@@ -223,7 +223,7 @@ decryptStorage encryptedStorage prvKey = do
       CryptoPassed sharedSecret -> do
         let ivBS = convert iv :: ByteString
             eciesPointBS = encodePoint curve eciesPoint :: ByteString
-            secKey = Key (fastPBKDF2_SHA256 defaultPBKDF2Params sharedSecret salt) :: Key AES256 ByteString
+            secKey = Key (scryptGenerateKey scryptDefaultParams sharedSecret salt) :: Key AES256 ByteString
             decryptedData = decryptWithAEAD AEAD_GCM secKey iv (BS.concat [salt, ivBS, eciesPointBS]) ciphertext authTag
         case decryptedData of
           Nothing -> Left $ SADecryptError "Failed to decrypt storage"
@@ -236,7 +236,7 @@ decryptStorage encryptedStorage prvKey = do
 encryptBSWithAEAD :: (MonadIO m, MonadRandom m) => ByteString -> Password -> m (Either StorageAlert EncryptedByteString)
 encryptBSWithAEAD bs password = do
   salt <- genRandomSalt32
-  let secKey = Key (fastPBKDF2_SHA256 defaultPBKDF2Params (encodeUtf8 password) salt) :: Key AES256 ByteString
+  let secKey = Key (scryptGenerateKey scryptDefaultParams (encodeUtf8 password) salt) :: Key AES256 ByteString
   iv <- genRandomIV (undefined :: AES256)
   case iv of
     Nothing -> pure $ Left $ SACryptoError "Failed to generate an AES initialization vector"
@@ -258,7 +258,7 @@ decryptBSWithAEAD encryptedBS password =
   where
     salt = encryptedByteString'salt encryptedBS
     saltBS = convert salt :: ByteString
-    secKey = Key (fastPBKDF2_SHA256 defaultPBKDF2Params (encodeUtf8 password) salt) :: Key AES256 ByteString
+    secKey = Key (scryptGenerateKey scryptDefaultParams (encodeUtf8 password) salt) :: Key AES256 ByteString
     iv = encryptedByteString'iv encryptedBS
     ivBS = convert iv :: ByteString
     authTag = encryptedByteString'authTag encryptedBS
@@ -271,7 +271,7 @@ passwordToECIESPrvKey password = case secretKey passwordHash of
   CryptoFailed _ -> Left $ SACryptoError "Failed to generate an ECIES secret key from password"
   CryptoPassed key -> Right key
   where
-    passwordHash = fastPBKDF2_SHA256 defaultPBKDF2Params (encodeUtf8 password) BS.empty :: ByteString
+    passwordHash = scryptGenerateKey scryptDefaultParams (encodeUtf8 password) BS.empty :: ByteString
 
 storageFilePrefix :: Text
 storageFilePrefix = "wallet_"
