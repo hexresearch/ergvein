@@ -7,7 +7,10 @@ module Ergvein.Wallet.Page.Settings(
   , currenciesPage
   ) where
 
+import Control.Concurrent.STM.TMVar
 import Control.Lens
+import Control.Monad.IO.Class
+import Control.Monad.STM
 import Data.List
 import Data.Maybe (fromMaybe, catMaybes)
 import Reflex.Dom
@@ -374,7 +377,9 @@ deleteWalletPage = do
       login <- fmap _authInfo'login . readExternalRef =<< getAuthInfoRef
       let walletName = "wallet_" <> T.replace " " "_" login
           backupName = "backup_" <> walletName
+      logoutTMVar <- getLogoutMVar
       doneE <- performEvent $ ffor delE $ const $ do
+        liftIO $ atomically $ putTMVar logoutTMVar ()
         deleteStoredFile walletName
         deleteStoredFile backupName
         deleteStoredFile ".last-wallet"

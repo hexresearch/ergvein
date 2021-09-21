@@ -42,6 +42,7 @@ module Ergvein.Wallet.Monad.Front(
   , module Ergvein.Wallet.Monad.Client
   ) where
 
+import Control.Concurrent.STM.TMVar
 import Control.Lens
 import Control.Monad
 import Control.Monad.IO.Class
@@ -117,6 +118,8 @@ class MonadFrontBase t m => MonadFrontAuth t m | m -> t where
   getAuthInfoRef :: m (ExternalRef t AuthInfo)
   -- | Get rates (e.g. BTC/USDT) ref
   getRatesRef :: m (ExternalRef t (Map Currency (Map Fiat Centi)))
+  -- | When this TMVar holds value we need to close walletStoreThread
+  getLogoutMVar :: m (TMVar ())
 
 -- | Get connections map
 getNodeConnectionsD :: MonadFrontAuth t m => m (Dynamic t (ConnMap t))

@@ -7,12 +7,13 @@ module Ergvein.Wallet.Monad.Auth(
 import Control.Concurrent
 import Control.Concurrent.Chan (Chan)
 import Control.Concurrent.STM.TChan
+import Control.Concurrent.STM.TMVar
 import Control.Concurrent.STM.TVar
 import Control.Lens
-import Control.Monad.STM
 import Control.Monad.Reader
-import Data.Map.Strict (Map)
+import Control.Monad.STM
 import Data.Fixed
+import Data.Map.Strict (Map)
 import Data.Text as T
 import Data.Time (getCurrentTime, diffUTCTime, NominalDiffTime)
 import Network.Socket
@@ -76,7 +77,7 @@ data Env t = Env {
 , env'logoutFire      :: !(IO ())
 , env'activeCursRef   :: !(ExternalRef t (S.Set Currency))
 , env'filtersHeights  :: !(ExternalRef t (Map Currency BlockHeight))
-, env'statusUpdates    :: !(ExternalRef t (Map Currency StatusUpdate))
+, env'statusUpdates   :: !(ExternalRef t (Map Currency StatusUpdate))
 , env'filtersSyncRef  :: !(ExternalRef t (Map Currency Bool))
 , env'nodeConsRef     :: !(ExternalRef t (ConnMap t))
 , env'nodeReqSelector :: !(NodeReqSelector t)
@@ -84,6 +85,7 @@ data Env t = Env {
 , env'feesStore       :: !(ExternalRef t (Map Currency FeeBundle))
 , env'storeMutex      :: !(MVar ())
 , env'storeChan       :: !(TChan (Text, AuthInfo))
+, env'logoutTMVar     :: !(TMVar ())
 , env'ratesRef        :: !(ExternalRef t (Map Currency (Map Fiat Centi)))
 -- Client context
 , env'addrsArchive    :: !(ExternalRef t (S.Set ErgveinNodeAddr))
@@ -181,6 +183,8 @@ instance MonadFrontBase t m => MonadFrontAuth t (ErgveinM t m) where
   {-# INLINE getRatesRef #-}
   getNodeReqFire = asks env'nodeReqFire
   {-# INLINE getNodeReqFire #-}
+  getLogoutMVar = asks env'logoutTMVar
+  {-# INLINE getLogoutMVar #-}
 
 instance MonadBaseConstr t m => MonadIndexClient t (ErgveinM t m) where
   getActiveAddrsRef = asks env'activeAddrs
@@ -266,8 +270,8 @@ storeTimeBetweenWrites :: NominalDiffTime
 storeTimeBetweenWrites = 20
 
 -- | Thread that writes down updates of wallet storages and checks that write down doesn't occur too frequent.
-walletStoreThread :: PlatformNatives => Text -> MVar () -> TChan (Text, AuthInfo) -> IO ()
-walletStoreThread storeDir mutex updChan = void $ forkOnOther $ do
+walletStoreThread :: PlatformNatives => Text -> MVar () -> TChan (Text, AuthInfo) -> TMVar () -> IO ()
+walletStoreThread storeDir mutex updChan logoutTMVar = void $ forkOnOther $ do
   timeRef <- newTVarIO =<< getCurrentTime
   lastUpdTimeRef <- newTVarIO =<< getCurrentTime
   lastStoreRef <- newTVarIO Nothing
@@ -292,15 +296,22 @@ walletStoreThread storeDir mutex updChan = void $ forkOnOther $ do
           Just val -> do
             currTime <- readTVar timeRef
             updTime <- readTVar lastUpdTimeRef
-            when (diffUTCTime currTime updTime < storeTimeBetweenWrites) retry
-            writeTVar lastUpdTimeRef currTime
-            writeTVar lastStoreRef Nothing
-            pure val
+            mLogout <- tryTakeTMVar logoutTMVar
+            case mLogout of
+              Nothing -> do
+                when (diffUTCTime currTime updTime < storeTimeBetweenWrites) retry
+                writeTVar lastUpdTimeRef currTime
+                writeTVar lastStoreRef Nothing
+                pure $ Just val
+              Just _ -> pure Nothing
   -- Thread that indefinetely queries if we need to write down new state
   fix $ \next -> do
-    (caller, authInfo) <- atomically getTimedWrite
-    storeWalletIO caller storeDir mutex authInfo
-    next
+    mRes <- atomically $ getTimedWrite
+    case mRes of
+      Nothing -> pure ()
+      Just (caller, authInfo) -> do
+        storeWalletIO caller storeDir mutex authInfo
+        next
 
 storeWalletIO :: PlatformNatives => Text -> Text -> MVar () -> AuthInfo -> IO ()
 storeWalletIO caller storeDir mutex ai = do
@@ -361,6 +372,7 @@ liftAuth ma0 ma = mdo
         ratesRef        <- newExternalRef mempty
         storeMutex      <- liftIO $ newMVar ()
         storeChan       <- liftIO newTChanIO
+        logoutTMVar     <- liftIO $ newEmptyTMVarIO
         let env = Env {
                 env'settings = settingsRef
               , env'pauseEF = pauseEF
@@ -387,6 +399,7 @@ liftAuth ma0 ma = mdo
               , env'feesStore = feesRef
               , env'storeMutex = storeMutex
               , env'storeChan = storeChan
+              , env'logoutTMVar = logoutTMVar
               , env'ratesRef  = ratesRef
 
               , env'addrsArchive = urlsArchive
@@ -403,7 +416,7 @@ liftAuth ma0 ma = mdo
               }
 
         flip runReaderT env $ do -- Workers and other routines go here
-          liftIO $ walletStoreThread storeDir storeMutex storeChan
+          liftIO $ walletStoreThread storeDir storeMutex storeChan logoutTMVar
           when isAndroid (deleteTmpFiles storeDir)
           -- initFiltersHeights filtersHeights
           scanner
