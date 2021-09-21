@@ -28,7 +28,7 @@ library
     Ergvein.Crypto.ECIES
     Ergvein.Crypto.Hash
     Ergvein.Crypto.Keys
-    Ergvein.Crypto.PBKDF
+    Ergvein.Crypto.Scrypt
     Ergvein.Crypto.Util
     Ergvein.Crypto.WordLists
   build-depends:

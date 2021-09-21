@@ -18,31 +18,33 @@ module Ergvein.Crypto.AES256 (
   , EncryptedByteString(..)
   ) where
 
-import Crypto.Cipher.AES (AES256)
-import Crypto.Cipher.Types
-import Crypto.Error (CryptoFailable(..), CryptoError(..))
-import Crypto.Random.Types (MonadRandom, getRandomBytes)
 import Data.ByteArray (ByteArray, ByteArrayAccess, convert)
 import Data.ByteArray.Sized (SizedByteArray, unsafeSizedByteArray)
 import Data.ByteString (ByteString)
 import Data.Maybe
 import Data.Serialize
-import Ergvein.Crypto.PBKDF
 
+import Crypto.Cipher.AES (AES256)
+import Crypto.Cipher.Types
+import Crypto.Error (CryptoFailable(..), CryptoError(..))
+import Crypto.Random.Types (MonadRandom, getRandomBytes)
 
 data Key c a where
   Key :: (BlockCipher c, ByteArray a) => a -> Key c a
 
+defaultSaltLength :: Int
+defaultSaltLength = 32
+
 defaultAuthTagLength :: Int
 defaultAuthTagLength = 16
 
--- | Generate a random salt with length equal to 'defaultPBKDF2SaltLength'
+-- | Generate a random salt with length equal to 'defaultSaltLength'
 genRandomSalt32 :: MonadRandom m => m (SizedByteArray 32 ByteString)
-genRandomSalt32 = unsafeSizedByteArray <$> getRandomBytes defaultPBKDF2SaltLength
+genRandomSalt32 = unsafeSizedByteArray <$> getRandomBytes defaultSaltLength
 
--- | Generate a random salt with length equal to 'defaultPBKDF2SaltLength'
+-- | Generate a random salt with length equal to 'defaultSaltLength'
 genRandomSalt :: (MonadRandom m, ByteArray a) => m a
-genRandomSalt = getRandomBytes defaultPBKDF2SaltLength
+genRandomSalt = getRandomBytes defaultSaltLength
 
 -- | Generate a random initialization vector for a given block cipher
 genRandomIV :: forall m c. (MonadRandom m, BlockCipher c) => c -> m (Maybe (IV c))
