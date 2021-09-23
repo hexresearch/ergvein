@@ -65,6 +65,7 @@ instance {-# OVERLAPPABLE #-} (HasStoreEnv t m, MonadStorageConstr t m, HasStore
   {-# INLINE getPubStorageD #-}
   storeWalletNow caller closeWorker e = do
     walletInfoD <- getWalletInfo
+    walletMutex <- getWalletInfoMutex
     chan <- fmap senv'storeChan getStoreEnv
     performFork $ ffor e $ const $ do
       walletInfo <- sampleDyn walletInfoD
