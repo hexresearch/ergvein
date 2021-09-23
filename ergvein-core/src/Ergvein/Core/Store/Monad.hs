@@ -86,10 +86,10 @@ type MonadStorageConstr t m =
 data StoreWalletPriority = StoreWalletPriorityHigh | StoreWalletPriorityLow deriving (Eq, Show)
 
 data StoreWalletMsg = StoreWalletMsg {
-    storeWalletMsg'caller :: Text
-  , storeWalletMsg'walletInfo :: WalletInfo
-  , storeWalletMsg'priority :: StoreWalletPriority
-  , storeWalletMsg'closeStoreWorker :: Bool
+    storeWalletMsg'caller :: !Text
+  , storeWalletMsg'walletInfo :: !WalletInfo
+  , storeWalletMsg'priority :: !StoreWalletPriority
+  , storeWalletMsg'closeStoreWorker :: !Bool
 }
 
 class MonadStorageConstr t m  => MonadStorage t m | m -> t where
