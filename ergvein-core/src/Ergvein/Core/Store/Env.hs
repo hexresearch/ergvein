@@ -68,11 +68,9 @@ instance {-# OVERLAPPABLE #-} (HasStoreEnv t m, MonadStorageConstr t m, HasStore
     walletMutex <- getWalletInfoMutex
     chan <- fmap senv'storeChan getStoreEnv
     performFork $ ffor e $ const $ do
-      _ <- liftIO $ takeMVar walletMutex
       walletInfo <- sampleDyn walletInfoD
       liftIO $ do
         atomically $ (writeTChan chan . (\wInfo -> StoreWalletMsg caller wInfo StoreWalletPriorityHigh closeWorker)) walletInfo
-        putMVar walletMutex ()
   {-# INLINE storeWalletNow #-}
 
   modifyPubStorage :: Text -> Event t (PubStorage -> Maybe PubStorage) -> m (Event t ())
