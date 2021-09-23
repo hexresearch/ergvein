@@ -214,7 +214,7 @@ scanQRBtn :: MonadFrontBase t m => m (Event t ())
 scanQRBtn = outlineTextIconButtonTypeButton CSScanQR "fas fa-qrcode fa-lg"
 
 askSeedPasswordPage :: MonadFrontBase t m => EncryptedByteString -> m ()
-askSeedPasswordPage encryptedMnemonic = do
+askSeedPasswordPage encryptedMnemonic = wrapperSimple True $ do
   passE <- askTextPasswordWidget PPSMnemonicUnlock ("" :: Text)
   let mnemonicBSE = decryptBSWithAEAD encryptedMnemonic <$> passE
   verifiedMnemonicE <- handleDangerMsg mnemonicBSE
@@ -396,5 +396,5 @@ base58RestorePage = wrapperSimple True $ mdo
       goE = fmapMaybe eitherToMaybe validationE
   void $ nextWidget $ ffor goE $ \encryptedMnemonic -> Retractable {
       retractableNext = askSeedPasswordPage encryptedMnemonic
-    , retractablePrev = Just $ pure seedRestorePage
+    , retractablePrev = Just $ pure base58RestorePage
     }
