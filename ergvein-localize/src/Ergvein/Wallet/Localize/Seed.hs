@@ -68,9 +68,9 @@ instance LocalizedPrint SeedPageStrings where
       SPSTypeTitle            -> "Select mnemonic type"
       SPSLengthTitle          -> "Select mnemonic's length"
       SPSPlain                -> "Plain text"
-      SPSBase58               -> "Base58"
+      SPSBase58               -> "Encrypted mnemonic"
       SPSPlainTitle i         -> "Enter the mnemonic phrase of length " <> showt i
-      SPSBase58Title          -> "Enter base58-encoded mnemonic"
+      SPSBase58Title          -> "Enter the encrypted mnemonic"
       SPSBackupTitle          -> "Back up your mnemonic phrase"
       SPSBackupText1          -> "Your secret 12-words recovery phrase is the only way to recover your funds if you lose access to your wallet."
       SPSBackupText2          -> "Write it down safely and store it in a secure location."
@@ -97,9 +97,9 @@ instance LocalizedPrint SeedPageStrings where
       SPSTypeTitle            -> "Выберите тип мнемоники"
       SPSLengthTitle          -> "Выберите длину мнемоники"
       SPSPlain                -> "Словарный"
-      SPSBase58               -> "Base58"
+      SPSBase58               -> "Зашифрованная мнемоника"
       SPSPlainTitle i         -> "Введите мнемоническую фразу длиной " <> showt i
-      SPSBase58Title          -> "Введите мнемоническую фразу в кодировке base58"
+      SPSBase58Title          -> "Введите зашифрованную мнемоническую фразу"
       SPSBackupTitle          -> "Сделайте резервную копию вашей мнемонической фразы"
       SPSBackupText1          -> "Ваша мнемоническая фраза из 12 слов - это единственный способ восстановить ваши средства, если вы потеряли доступ к своему кошельку."
       SPSBackupText2          -> "Запишите ёё и сохраните в надёжном месте."
