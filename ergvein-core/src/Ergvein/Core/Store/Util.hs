@@ -346,7 +346,6 @@ lastWalletFile = ".last-wallet"
 getLastStorage :: (MonadIO m, HasStoreDir m, PlatformNatives)
   => m (Maybe WalletName)
 getLastStorage = do
-  logWrite $ "Reading last storage file " <> lastWalletFile
   mres <- retrieveValue lastWalletFile Nothing
   pure $ either (const Nothing) id $ mres
 
@@ -354,7 +353,6 @@ getLastStorage = do
 setLastStorage :: (MonadIO m, HasStoreDir m, PlatformNatives)
   => Maybe WalletName -> m ()
 setLastStorage mname = do
-  logWrite $ "Writing last storage file " <> lastWalletFile
   storeValue lastWalletFile mname False
 
 -- | Generates new private keys until their number is equal to the number of public keys.
