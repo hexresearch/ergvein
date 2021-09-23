@@ -25,4 +25,5 @@ switchMenu prevWidget e = void $ nextWidget $ fforMaybe e $ \go -> let
       MenuLogs     -> Nothing
       MenuSwitch   -> Just $ mkNext $ do
         buildE <- delay 0.1 =<< getPostBuild
-        void $ setWalletInfo $ Nothing <$ buildE
+        storedE <- storeWalletNow "switch-menu" True buildE
+        void $ setWalletInfo $ Nothing <$ storedE

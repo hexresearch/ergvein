@@ -39,7 +39,7 @@ storeTimeBetweenWrites :: NominalDiffTime
 storeTimeBetweenWrites = 20
 
 -- | Thread that writes down updates of wallet storages and checks that write down doesn't occur too frequent.
-walletStoreThread :: PlatformNatives => Text -> MVar () -> TChan (Text, WalletInfo) -> IO ()
+walletStoreThread :: PlatformNatives => Text -> MVar () -> TChan StoreWalletMsg -> IO ()
 walletStoreThread storeDir mutex updChan = void $ forkOnOther $ do
   timeRef <- newTVarIO =<< getCurrentTime
   lastUpdTimeRef <- newTVarIO =<< getCurrentTime
@@ -62,18 +62,21 @@ walletStoreThread storeDir mutex updChan = void $ forkOnOther $ do
         mval <- readTVar lastStoreRef
         case mval of
           Nothing -> retry
-          Just val -> do
+          Just storeWalletMsg@StoreWalletMsg{..} -> do
             currTime <- readTVar timeRef
             updTime <- readTVar lastUpdTimeRef
-            when (diffUTCTime currTime updTime < storeTimeBetweenWrites) retry
+            when ((diffUTCTime currTime updTime < storeTimeBetweenWrites) && (storeWalletMsg'priority /= StoreWalletPriorityHigh)) retry
             writeTVar lastUpdTimeRef currTime
             writeTVar lastStoreRef Nothing
-            pure val
+            pure storeWalletMsg
   -- Thread that indefinetely queries if we need to write down new state
   fix $ \next -> do
-    (caller, walletInfo) <- atomically getTimedWrite
-    storeWalletIO caller storeDir mutex walletInfo
-    next
+    storeWalletMsg <- atomically getTimedWrite
+    case storeWalletMsg'closeStoreWorker storeWalletMsg of
+      False -> do
+        storeWalletIO (storeWalletMsg'caller storeWalletMsg) storeDir mutex (storeWalletMsg'walletInfo storeWalletMsg)
+        next
+      True -> pure ()
 
 storeWalletIO :: PlatformNatives => Text -> Text -> MVar () -> WalletInfo -> IO ()
 storeWalletIO caller storeDir mutex ai = do

@@ -4,6 +4,8 @@ module Ergvein.Core.Store.Monad(
   , MonadStorage(..)
   , HasPubStorage(..)
   , HasTxStorage(..)
+  , StoreWalletPriority(..)
+  , StoreWalletMsg(..)
   , getPubStorageCurD
   , getPubStorageBtcD
   , getPubStorageErgoD
@@ -81,18 +83,27 @@ type MonadStorageConstr t m =
   , PlatformNatives
   )
 
+data StoreWalletPriority = StoreWalletPriorityHigh | StoreWalletPriorityLow deriving (Eq, Show)
+
+data StoreWalletMsg = StoreWalletMsg {
+    storeWalletMsg'caller :: Text
+  , storeWalletMsg'walletInfo :: WalletInfo
+  , storeWalletMsg'priority :: StoreWalletPriority
+  , storeWalletMsg'closeStoreWorker :: Bool
+}
+
 class MonadStorageConstr t m  => MonadStorage t m | m -> t where
   getAddressByCurIx      :: Currency -> Int -> m Base58
   getEncryptedPrvStorage :: m EncryptedPrvStorage
   getWalletName          :: m Text
   getPubStorage          :: m PubStorage
   getPubStorageD         :: m (Dynamic t PubStorage)
-  storeWallet            :: Text -> Event t () -> m (Event t ())
+  storeWalletNow         :: Text -> Bool -> Event t () -> m (Event t ())
   modifyPubStorage       :: Text -> Event t (PubStorage -> Maybe PubStorage) -> m (Event t ())
   -- | Get mutex that guards writing or reading from storage file
   getStoreMutex          :: m (MVar ())
   -- | Channel that writes down given storage to disk in separate thread. First element in tuple is tracing info (caller).
-  getStoreChan           :: m (TChan (Text, WalletInfo))
+  getStoreChan           :: m (TChan StoreWalletMsg)
 
 class MonadIO m => HasPubStorage m where
   askPubStorage :: m PubStorage
