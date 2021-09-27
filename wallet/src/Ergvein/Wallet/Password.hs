@@ -117,9 +117,9 @@ setupDerivPrefix ac mpath = do
       [c] -> defaultDerivePath c
       _ -> defaultDerivPathPrefix
 
-askPasswordWidget :: MonadFrontBase t m => Text -> Bool -> m (Event t Password)
-askPasswordWidget name writeMeta
-  | isAndroid = askPasswordAndroidWidget name writeMeta
+askPasswordWidget :: MonadFrontBase t m => Text -> Bool -> Event t () -> m (Event t Password)
+askPasswordWidget name writeMeta clearInputE
+  | isAndroid = askPasswordAndroidWidget name writeMeta clearInputE
   | otherwise = askTextPasswordWidget PPSUnlock (PWSPassNamed name)
 
 askTextPasswordWidget :: (MonadFrontBase t m, LocalizedPrint l1, LocalizedPrint l2) => l1 -> l2 -> m (Event t Password)
@@ -130,13 +130,13 @@ askTextPasswordWidget title description = divClass "my-a" $ do
     e <- submitClass "button button-outline" PWSGo
     pure $ tag (current pD) e
 
-askPasswordAndroidWidget :: MonadFrontBase t m => Text -> Bool -> m (Event t Password)
-askPasswordAndroidWidget name writeMeta = mdo
+askPasswordAndroidWidget :: MonadFrontBase t m => Text -> Bool -> Event t () -> m (Event t Password)
+askPasswordAndroidWidget name writeMeta clearInputE = mdo
   let fpath = "meta_wallet_" <> T.replace " " "_" name
   isPass <- fromRight False <$> retrieveValue fpath False
   passE <- if isPass
     then askPasswordImpl name writeMeta
-    else askPinCodeImpl name writeMeta
+    else askPinCodeImpl name writeMeta clearInputE
   pure passE
 
 askPasswordImpl :: MonadFrontBase t m => Text -> Bool -> m (Event t Password)
@@ -150,8 +150,8 @@ askPasswordImpl name writeMeta = do
       e <- divClass "" $ submitClass "button button-outline w-100" PWSGo
       pure $ tag (current pD) e
 
-askPinCodeImpl :: MonadFrontBase t m => Text -> Bool -> m (Event t Password)
-askPinCodeImpl name writeMeta = do
+askPinCodeImpl :: MonadFrontBase t m => Text -> Bool -> Event t () -> m (Event t Password)
+askPinCodeImpl name writeMeta clearInputE = do
   let fpath = "meta_wallet_" <> T.replace " " "_" name
   when writeMeta $ storeValue fpath False True
   pinE <- mdo
@@ -170,7 +170,7 @@ askPinCodeImpl name writeMeta = do
         pure True
       else
         pure False
-    passE <- pinCodeAskWidget PinCodePSEnterPinCode
+    passE <- pinCodeAskWidget clearInputE PinCodePSEnterPinCode
     counterD <- holdDyn cInt $ poke passE $ \_ -> do
       freezeS <- sampleDyn freezeD
       cS <- sampleDyn counterD
@@ -191,7 +191,7 @@ askPasswordModal = mdo
     Just (i, name) -> divClass "ask-password-modal" $ do
       title <- localized PWSPassword
       (closeE', passE') <- wrapperPasswordModal title "password-widget-container" $
-        fmap ((i,) . Just) <$> askPasswordWidget name False
+        fmap ((i,) . Just) <$> askPasswordWidget name False never
       pure (passE', closeE')
     Nothing -> pure (never, never)
   let (passD, closeD) = splitDynPure valD

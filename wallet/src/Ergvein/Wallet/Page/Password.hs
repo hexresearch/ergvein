@@ -138,7 +138,7 @@ confirmPinWidget pass = divClass "pincode-widget" $ mdo
   divClass "pincode-widget-title mt-2" $ do
     h4 $ localizedText PinCodePSConfirm
   let pinCodeLength = T.length pass
-  inputD <- foldDyn (pinCodeFoldFunc (PinCodeConfirm pinCodeLength)) [] actE
+  inputD <- foldDyn (pinCodeFoldFunc (PinCodeConfirm pinCodeLength)) [] $ leftmost [clearE, actE]
   divClass "pincode-widget-dots-wrapper mb-2" $ do
     confirmPinCodeDots pinCodeLength (length <$> inputD)
     void $ divClass "pincode-widget-errors" $ simpleList errsD displayError
@@ -146,7 +146,8 @@ confirmPinWidget pass = divClass "pincode-widget" $ mdo
   errsD <- holdDyn [] matchErrE
   let passD = T.concat . map showt <$> inputD
       matchErrE = [PinCodePSConfirmationError] <$ ffilter (\p -> T.length p == pinCodeLength && p /= pass) (updated passD)
-  passE <- delay 0.2 $ ffilter (== pass) $ updated passD
+  clearE <- delay pinCodeDelayAfterInput $ NumPadClearInput <$ matchErrE -- We need this event to clear the PIN input after a failed attempt
+  passE <- delay pinCodeDelayAfterInput $ ffilter (== pass) $ updated passD
   pure passE
 
 confirmPinPage :: MonadFrontBase t m
