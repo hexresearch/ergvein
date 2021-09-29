@@ -44,7 +44,7 @@ sendWidget mInit title navbar thisWidget = wrapperNavbar False title thisWidget 
     recipientD <- divClass "mb-1" $ recipientWidget ERGO recipientInit submitE
     amountD <- divClass "mb-1" $ sendAmountWidgetErg amountInit submitE
     feeD <- divClass "mb-1" $ feeSelectionWidgetErg (FSRate ERGO) feeInit submitE
-    submitE <- outlineSubmitTextIconButtonClass "w-100 mb-0" SendBtnString "fas fa-paper-plane fa-lg"
+    submitE <- outlineSubmitTextIconButtonClass "w-100 mb-0" SendBtnString "material-icons-round" "send"
     let goE = flip push submitE $ \_ -> do
           mrecipient <- sampleDyn recipientD
           mamount <- sampleDyn amountD

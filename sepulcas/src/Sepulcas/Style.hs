@@ -16,4 +16,4 @@ compileStyles userStyles = frontendCssBS userStyles <$> embedFonts
 frontendCssBS :: Css -> Fonts -> ByteString
 frontendCssBS userStyles r = let
   selfcss = toStrict . encodeUtf8 . renderWith compact [] $ fontStyles r >> userStyles
-  in milligramCss <> tooltipCss <> fontawesomeCss <> selfcss
+  in milligramCss <> tooltipCss <> materialIconsCss <> selfcss

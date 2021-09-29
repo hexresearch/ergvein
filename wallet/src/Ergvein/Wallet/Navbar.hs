@@ -40,7 +40,7 @@ navbarWidgetAndroid :: MonadFront t m => Currency -> Maybe (Dynamic t (m ())) ->
 navbarWidgetAndroid cur prevWidget = divClass "navbar-black py-1 px-2" $ do
     balance <- balanceTitleWidget cur
     divClass "navbar-balance" $ dynText balance
-    divClass "navbar-status"  $ statusBarWidget False cur
+    divClass "navbar-status" $ statusBarWidget False cur
     divClass "navbar-android-controls-wrapper" $ divClass "navbar-android-controls" $ do
       sendE <- divButton "navbar-android-controls-button mx-1" $ headerNavigationButton HeaderNavigationSend
       receiveE <- divButton "navbar-android-controls-button mx-1" $ headerNavigationButton HeaderNavigationReceive
@@ -48,8 +48,8 @@ navbarWidgetAndroid cur prevWidget = divClass "navbar-black py-1 px-2" $ do
   where
     headerNavigationButton btnType = do
       let navIcon = case btnType of
-            HeaderNavigationSend -> elClass "i" "fas fa-arrow-up fa-fw" blank
-            HeaderNavigationReceive -> elClass "i" "fas fa-arrow-down fa-fw" blank
+            HeaderNavigationSend -> materialIconRound "upload"
+            HeaderNavigationReceive -> materialIconRound "download"
           navText = case btnType of
             HeaderNavigationSend -> HistorySend
             HeaderNavigationReceive -> HistoryReceive

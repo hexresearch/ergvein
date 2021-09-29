@@ -36,9 +36,9 @@ maxPinCodeLength = 12
 pinCodeDots :: MonadFrontBase t m => Dynamic t Int -> m ()
 pinCodeDots dotsCountD = divClass "pincode-widget-dots" $ do
   let classesD = ffor dotsCountD $ \inputLen -> if inputLen == 0
-        then replicate minPinCodeLength "far fa-circle"
-        else replicate inputLen "fas fa-circle"
-  void $ simpleList classesD (\classD -> divClass "pincode-widget-dot" $ elClassDyn "i" classD blank)
+        then replicate minPinCodeLength "material-icons-outlined"
+        else replicate inputLen "material-icons-filled"
+  void $ simpleList classesD (\classD -> divClass "pincode-widget-dot" $ dynMaterialIcon classD (pure "circle"))
 
 -- | Draws circles indicating the number of characters entered
 confirmPinCodeDots :: MonadFrontBase t m => Int -> Dynamic t Int -> m ()
@@ -47,10 +47,10 @@ confirmPinCodeDots totalDotsCount dotsCountD = divClass "pincode-widget-dots" $ 
         let filledDotsCount = if inputLen > totalDotsCount
               then totalDotsCount
               else inputLen
-            filledDots = replicate filledDotsCount "fas fa-circle"
-            emptyDots = replicate (totalDotsCount - filledDotsCount) "far fa-circle"
+            filledDots = replicate filledDotsCount "material-icons-filled"
+            emptyDots = replicate (totalDotsCount - filledDotsCount) "material-icons-outlined"
         in filledDots ++ emptyDots
-  void $ simpleList classesD (\classD -> divClass "pincode-widget-dot" $ elClassDyn "i" classD blank)
+  void $ simpleList classesD (\classD -> divClass "pincode-widget-dot" $ dynMaterialIcon classD (pure "circle"))
 
 btnContainer :: (DomBuilder t m, PostBuild t m) => m a -> m (Event t a)
 btnContainer = divButton "pincode-widget-button font-bold"
@@ -65,10 +65,10 @@ numPadWidget step = divClass "pincode-widget-numpad" $ do
       pure $ NumPadDigit digit <$ btnE
   (submitE, zeroE, backspaceE) <- do
     submitBtnE <- case step of
-      PinCodeSetup -> btnContainer $ elClass "i" "fas fa-check" blank
+      PinCodeSetup -> btnContainer $ materialIconRound "done"
       PinCodeConfirm _ -> never <$ divClass "" blank
     zeroBtnE <- btnContainer $ text "0"
-    backspaceBtnE <- btnContainer $ elClass "i" "fas fa-backspace" blank
+    backspaceBtnE <- btnContainer $ materialIconRound "backspace"
     pure (NumPadSubmit <$ submitBtnE, NumPadDigit 0 <$ zeroBtnE, NumPadBackspace <$ backspaceBtnE)
   pure $ leftmost $ submitE : zeroE : backspaceE : digitsE
 

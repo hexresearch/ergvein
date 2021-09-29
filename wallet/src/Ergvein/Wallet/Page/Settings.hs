@@ -250,10 +250,10 @@ btcNodesPage = do
         let clsD = (\b -> if b then onclass else offclass) <$> nodeconIsUp node
         divClass "network-name" $ do
           let addr = nodeconUrl node
-          (e,_) <- elAttr' "span" [("class", "mt-a mb-a mr-1")] $ elClass "i" "fas fa-times" $ pure ()
+          (e,_) <- elAttr' "span" [("class", "mt-a mb-a mr-1")] $ materialIconRound "close"
           let closeE = (addr, NodeMsgClose) <$ domEvent Click e
           postNodeMessage BTC closeE
-          elDynAttr "span" clsD $ elClass "i" "fas fa-circle" $ pure ()
+          elDynAttr "span" clsD $ materialIconRound "circle"
           divClass "mt-a mb-a network-name-txt" $ text $ showt addr
         pure ()
   pure ()

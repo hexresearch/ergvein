@@ -153,7 +153,7 @@ renderActive nsa refrE mconn = mdo
   tglE <- divClass "network-wrapper mt-3" $ case mconn of
     Nothing -> do
       tglE' <- divClass "network-name" $ do
-        elAttr "span" offclass $ elClass "i" "fas fa-circle" $ pure ()
+        elAttr "span" offclass $ materialIconRound "circle"
         divClass "mt-a mb-a network-name-txt" $ text nsa
         editBtn
       stD <- indexerLastStatus nsa
@@ -178,7 +178,7 @@ renderActive nsa refrE mconn = mdo
             then if synced then onclass else unsyncClass
             else offclass
       tglE' <- divClass "network-name" $ do
-        elDynAttr "span" clsD $ elClass "i" "fas fa-circle" $ pure ()
+        elDynAttr "span" clsD $ materialIconRound "circle"
         divClass "mt-a mb-a network-name-txt" $ text nsa
         editBtn
       latD <- indexerConnPingerWidget conn refrE
@@ -236,7 +236,7 @@ renderInactive initPingE nsa = mdo
         fmap switchDyn $ networkHoldDyn $ ffor pingD $ \p -> do
           tglE' <- divClass "network-name" $ do
             let cls = if p == 0 then "mt-a mb-a indexer-offline" else "mt-a mb-a indexer-online"
-            elClass "span" cls $ elClass "i" "fas fa-circle" $ pure ()
+            elClass "span" cls $ materialIconRound "circle"
             divClass "mt-a mb-a network-name-txt" $ text nsa
             tglBtn tglD
           descrOption $ NSSLatency p

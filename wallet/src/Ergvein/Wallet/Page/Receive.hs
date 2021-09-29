@@ -69,10 +69,10 @@ receivePageWidget cur i EgvPubKeyBox{..} = do
     prefixedKeyText = curprefix cur <> keyTxt
 
 shareAddrBtn :: MonadFront t m => m (Event t ())
-shareAddrBtn = divClass "receive-btn-wrapper" $ outlineTextIconButton CSShare "fas fa-share-alt fa-lg"
+shareAddrBtn = divClass "receive-btn-wrapper" $ outlineTextIconButton CSShare "material-icons-round" "share"
 
 shareQRBtn :: MonadFront t m => m (Event t ())
-shareQRBtn = divClass "receive-btn-wrapper" $ outlineTextIconButtonTypeButton CSShareQR "fas fa-qrcode fa-lg"
+shareQRBtn = divClass "receive-btn-wrapper" $ outlineTextIconButtonTypeButton CSShareQR "material-icons-round" "qr_code_2"
 
 #else
 receivePageWidget :: MonadFront t m => Currency -> Int -> EgvPubKeyBox -> m ()
@@ -100,10 +100,10 @@ receivePageWidget cur i EgvPubKeyBox{..} = do
 #endif
 
 newAddrBtn :: MonadFront t m => m (Event t ())
-newAddrBtn = divClass "receive-btn-wrapper" $ outlineTextIconButton RPSGenNew "fas fa-forward fa-lg"
+newAddrBtn = divClass "receive-btn-wrapper" $ outlineTextIconButton RPSGenNew "material-icons-round" "skip_next"
 
 copyAddrBtn :: MonadFront t m => m (Event t ())
-copyAddrBtn = divClass "receive-btn-wrapper" $ outlineTextIconButton CSCopy "fas fa-copy fa-lg"
+copyAddrBtn = divClass "receive-btn-wrapper" $ outlineTextIconButton CSCopy "material-icons-round" "content_copy"
 
 labelAddrBtn :: MonadFront t m => m (Event t ())
-labelAddrBtn = outlineTextIconButton RPSAddLabel "fas fa-tag fa-lg"
+labelAddrBtn = outlineTextIconButton RPSAddLabel "material-icons-round" "sell"

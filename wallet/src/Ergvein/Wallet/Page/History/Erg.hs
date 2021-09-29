@@ -77,10 +77,10 @@ historyTableRowD _ trD = fmap switchDyn $ networkHoldDyn $ ffor trD $ \txView@Tx
       | otherwise = "confirmed"
 
     confsText tr
-      | confs tr  >= confirmationGap = spanClass "history-page-status-icon" $ elClass "i" "fas fa-check fa-fw" blank
+      | confs tr  >= confirmationGap = spanClass "history-page-status-icon" $ materialIconRound "done"
       | unconfirmedParents tr = do
           text $ showt (confs tr) <> "/" <> showt confirmationGap
-          spanClass "history-page-status-text-icon" $ elClass "i" "fas fa-exclamation-triangle fa-fw" blank
+          spanClass "history-page-status-text-icon" $ materialIconRound "warning"
       | otherwise = text $ showt (confs tr) <> "/" <> showt confirmationGap
 
 showTxStatus :: MonadFront t m => TxView -> m ()

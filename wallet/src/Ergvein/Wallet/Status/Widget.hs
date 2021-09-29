@@ -42,7 +42,7 @@ statusBarWidget isVerbose cur = divClass "sync-widget-wrapper" $ do
         Nothing -> fiatWidget eFiatBalance eFiatRate
         Just sp -> do
           renderStatus sp
-          (e,_) <- elAttr' "span" [("class", "ml-1")] $ elClass "i" "fas fa-times" $ pure ()
+          (e,_) <- elAttr' "span" [("class", "ml-1")] $ materialIconRound "close"
           let closeE = domEvent Click e
           timeoutE <- delay statusDisplayTime =<< getPostBuild
           pure $ leftmost [closeE, timeoutE]

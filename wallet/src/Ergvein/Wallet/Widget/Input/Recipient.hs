@@ -27,7 +27,7 @@ recipientWidget cur mInitRecipient submitE = divClass "recipient-input" $ mdo
   recipientErrsD <- holdDyn Nothing $ ffor (current validatedRecipientD `tag` submitE) eitherToMaybe'
   recipientD <- if isAndroid
     then mdo
-      (recipD, events) <- validatedTextFieldWithSetValBtns RecipientString initRecipient recipientErrsD ["fas fa-paste", "fas fa-qrcode"] (leftmost [pasteE, resQRcodeE])
+      (recipD, events) <- validatedTextFieldWithSetValBtns RecipientString initRecipient recipientErrsD ["content_paste", "qr_code_scanner"] (leftmost [pasteE, resQRcodeE])
       let pasteBtnE = head events
           qrBtnE = events !! 1
           stripCurPrefix t = T.dropWhile (== '/') $ fromMaybe t $ T.stripPrefix (curprefix cur) t
@@ -36,7 +36,7 @@ recipientWidget cur mInitRecipient submitE = divClass "recipient-input" $ mdo
       pasteE <- clipboardPaste pasteBtnE
       pure recipD
     else mdo
-      (recipD, events) <- validatedTextFieldWithSetValBtns RecipientString initRecipient recipientErrsD ["fas fa-paste"] pasteE
+      (recipD, events) <- validatedTextFieldWithSetValBtns RecipientString initRecipient recipientErrsD ["content_paste"] pasteE
       let pasteBtnE = head events
       pasteE <- clipboardPaste pasteBtnE
       pure recipD

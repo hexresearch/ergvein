@@ -27,8 +27,8 @@ headerDesktop :: MonadFront t m => Dynamic t Text -> m (Dynamic t Bool)
 headerDesktop titleD = divClass "header header-black" $ mdo
   backButtonRetract
   divClass "header-wallet-text" $ dynText titleD
-  menuBtnE <- divButton "header-button header-button-right" $ elClassDyn "i" menuButtonIconClassD blank
-  let menuButtonIconClassD = menuButtonIconClass <$> menuIsHiddenD
+  menuBtnE <- divButton "header-button header-button-right" $ dynMaterialIconRound menuButtonIconD
+  let menuButtonIconD = menuButtonIcon <$> menuIsHiddenD
   menuIsHiddenD <- toggle True menuBtnE
   pure menuIsHiddenD
 
@@ -36,7 +36,7 @@ headerAndroid :: MonadFront t m => Dynamic t Text -> m (Event t ())
 headerAndroid titleD = divClass "header header-black" $ mdo
   backButtonRetract
   divClass "header-wallet-text" $ dynText titleD
-  divButton "header-button header-button-right" $ elClass "i" "fas fa-bars" blank
+  divButton "header-button header-button-right" $ materialIconRound "close"
 
 headerWidgetDesktopPasswordModal :: MonadFront t m => Dynamic t Text -> m (Event t ())
 headerWidgetDesktopPasswordModal titleD = divClass "header-wrapper" $ do
@@ -52,17 +52,17 @@ headerWidgetAndroidPasswordModal titleD = do
 
 headerDesktopPasswordModal :: MonadFront t m => Dynamic t Text -> m (Event t (), Dynamic t Bool)
 headerDesktopPasswordModal titleD = divClass "header header-black" $ do
-  closeBtnE <- divButton "header-button header-button-left" $ elClass "i" "fas fa-chevron-left" blank
+  closeBtnE <- divButton "header-button header-button-left" $ materialIconRound "arrow_back"
   divClass "header-wallet-text" $ dynText titleD
-  menuBtnE <- divButton "header-button header-button-right" $ elClass "i" "fas fa-bars" blank
+  menuBtnE <- divButton "header-button header-button-right" $ materialIconRound "menu"
   menuIsHiddenD <- toggle True menuBtnE
   pure (closeBtnE, menuIsHiddenD)
 
 headerAndroidPasswordModal :: MonadFront t m => Dynamic t Text -> m (Event t (), Event t ())
 headerAndroidPasswordModal titleD = divClass "header header-black" $ mdo
-  closeBtnE <- divButton "header-button header-button-left" $ elClass "i" "fas fa-chevron-left" blank
+  closeBtnE <- divButton "header-button header-button-left" $ materialIconRound "arrow_back"
   divClass "header-wallet-text" $ dynText titleD
-  menuBtnE <- divButton "header-button header-button-right" $ elClass "i" "fas fa-bars" blank
+  menuBtnE <- divButton "header-button header-button-right" $ materialIconRound "menu"
   pure (closeBtnE, menuBtnE)
 
 menuDesktop :: MonadFront t m => Dynamic t Bool -> Maybe (Dynamic t (m ())) -> m ()
@@ -83,7 +83,7 @@ menuAndroid menuOpenE thisWidget = mdo
   closeMenuE <- divClassDyn menuWrapperClassesD $ divClassDyn menuClassesD $ do
     ps <- getPubStorage
     let activeCurrencies = _pubStorage'activeCurrencies ps
-    menuBtnE <- divClass "menu-android-header" $ divButton "menu-android-close-button header-button header-button-right" $ elClass "i" "fas fa-times" blank
+    menuBtnE <- divClass "menu-android-header" $ divButton "menu-android-close-button header-button header-button-right" $ materialIconRound "close"
     divClass "menu-android-buttons-wrapper" $ menuButtonsAndroid thisWidget $ case activeCurrencies of
       [cur] -> Just cur
       _ -> Nothing
@@ -94,7 +94,7 @@ menuAndroid menuOpenE thisWidget = mdo
 backButton :: MonadFrontBase t m => Text -> Dynamic t Bool -> (Event t () -> m (Event t ())) -> m ()
 backButton classes isHiddenD handler = do
   let backButtonClassesD = visibilityClass classes <$> isHiddenD
-  e <- divButton backButtonClassesD $ elClass "i" "fas fa-chevron-left" blank
+  e <- divButton backButtonClassesD $ materialIconRound "arrow_back"
   void $ handler e
 
 -- | Button for going back on widget history
@@ -108,9 +108,9 @@ backButtonLogout :: MonadFrontBase t m => m ()
 backButtonLogout = do
   backButton "header-button header-button-left" (constDyn False) (\e -> setWalletInfo $ Nothing <$ e)
 
-menuButtonIconClass :: Bool -> Text
-menuButtonIconClass True = "fas fa-bars"
-menuButtonIconClass False = "fas fa-times"
+menuButtonIcon :: Bool -> Text
+menuButtonIcon True = "menu"
+menuButtonIcon False = "close"
 
 -- | Appends "hidden" class to the given classes if the second argument equals True
 visibilityClass :: Text -> Bool -> Text
@@ -135,11 +135,11 @@ menuButtonsDesktop thisWidget mCur = do
 menuButtonsAndroid :: MonadFront t m => Maybe (Dynamic t (m ())) -> Maybe Currency -> m ()
 menuButtonsAndroid thisWidget mCur = do
   let menuBtn (v, i) = divButton "menu-android-button" $ do
-        elClass "i" (i <> " menu-android-button-icon") blank
+        spanClass "menu-android-button-icon" $ materialIconRound i
         localizedText v
         pure v
-  balE <- menuBtn (maybe MenuBalances MenuSingleBalance mCur, "fas fa-wallet")
-  setE <- menuBtn (MenuSettings, "fas fa-cog")
-  abtE <- menuBtn (MenuAbout, "fas fa-info-circle")
-  switchE <- menuBtn (MenuSwitch, "fas fa-sign-out-alt")
+  balE <- menuBtn (maybe MenuBalances MenuSingleBalance mCur, "account_balance_wallet")
+  setE <- menuBtn (MenuSettings, "settings")
+  abtE <- menuBtn (MenuAbout, "info")
+  switchE <- menuBtn (MenuSwitch, "logout")
   switchMenu thisWidget $ leftmost [balE, setE, abtE, switchE]

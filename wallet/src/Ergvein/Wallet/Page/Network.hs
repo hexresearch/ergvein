@@ -116,7 +116,7 @@ serversInfoPage initCur = do
           let onclass = [("class", "mt-a mb-a indexer-online")]
           let maybe' m n j = maybe n j m
           let clsD = maybe' mconn (pure offclass) $ \con -> ffor (indexConIsUp con) $ \up -> if up then onclass else offclass
-          elDynAttr "span" clsD $ elClass "i" "fas fa-circle" $ pure ()
+          elDynAttr "span" clsD $ materialIconRound "circle"
           divClass "mt-a mb-a network-name-txt" $ text nsa
         case mconn of
           Nothing -> pure ()

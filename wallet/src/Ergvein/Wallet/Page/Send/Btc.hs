@@ -69,7 +69,7 @@ sendWidget mInit title navbar thisWidget = wrapperNavbar False title thisWidget 
     rbfEnabledD <- divClass "mb-2" $ do
       label "" $ localizedText SSRbf
       toggler $ pure rbfInit'
-    submitE <- outlineSubmitTextIconButtonClass "w-100 mb-0" SendBtnString "fas fa-paper-plane fa-lg"
+    submitE <- outlineSubmitTextIconButtonClass "w-100 mb-0" SendBtnString "material-icons-round" "send"
     let goE = flip push submitE $ \_ -> do
           mrecipient <- sampleDyn recipientD
           mamount <- sampleDyn amountD

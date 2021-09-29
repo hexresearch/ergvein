@@ -46,7 +46,7 @@ data GoPage = GoBackupNow | GoBackupLater
 
 backupPage :: MonadFrontBase t m => m ()
 backupPage = wrapperSimple True $ do
-  divClass "backup-page-icon mb-2" $ elClass "i" "fas fa-exclamation-triangle" blank
+  divClass "backup-page-icon mb-2" $ materialIconRound "warning_amber"
   h4 $ localizedText SPSBackupTitle
   par $ localizedText SPSBackupText1
   par $ localizedText SPSBackupText2
@@ -192,7 +192,7 @@ mnemonicCheckWidget mnemonic = mdo
           pure ()
         else
           spanClass "mnemonic-verification-error" $ do
-            elClass "i" "fas fa-exclamation-circle" blank
+            materialIconRound "error"
             text " "
             localizedText SPSVerifyError
     pure unselectedE
@@ -208,10 +208,10 @@ mnemonicCheckWidget mnemonic = mdo
   pure $ fforMaybe goE $ \ok -> if ok then Just mnemonic else Nothing
 
 pasteBtn :: MonadFrontBase t m => m (Event t ())
-pasteBtn = outlineTextIconButtonTypeButton CSPaste "fas fa-clipboard fa-lg"
+pasteBtn = outlineTextIconButtonTypeButton CSPaste "material-icon-round" "content_paste"
 
 scanQRBtn :: MonadFrontBase t m => m (Event t ())
-scanQRBtn = outlineTextIconButtonTypeButton CSScanQR "fas fa-qrcode fa-lg"
+scanQRBtn = outlineTextIconButtonTypeButton CSScanQR "material-icon-round" "qr_code_scanner"
 
 askSeedPasswordPage :: MonadFrontBase t m => EncryptedByteString -> m ()
 askSeedPasswordPage encryptedMnemonic = do

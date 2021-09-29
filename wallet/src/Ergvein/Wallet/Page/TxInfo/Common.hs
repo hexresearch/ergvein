@@ -38,20 +38,20 @@ infoPageElementExpEl hps m = divClass "tx-info-page-element" $ do
 symb :: MonadFront t m => TransType -> m a -> m a
 symb txType ma = case txType of
   TransRefill -> do
-    spanClass "history-page-sign-icon" $ elClass "i" "fas fa-plus fa-fw" blank
+    spanClass "history-page-sign-icon" $ materialIconRound "add"
     ma
   TransWithdraw -> do
-    spanClass "history-page-sign-icon" $ elClass "i" "fas fa-minus fa-fw" blank
+    spanClass "history-page-sign-icon" $ materialIconRound "remove"
     ma
 
 symbCol :: MonadFront t m => TransType -> m a -> m a
 symbCol txType ma = divClass ("history-amount-" <> (T.toLower . showt) txType) $ do
   case txType of
     TransRefill -> do
-      spanClass "history-page-sign-icon" $ elClass "i" "fas fa-plus fa-fw" blank
+      spanClass "history-page-sign-icon" $ materialIconRound "add"
       ma
     TransWithdraw -> do
-      spanClass "history-page-sign-icon" $ elClass "i" "fas fa-minus fa-fw" blank
+      spanClass "history-page-sign-icon" $ materialIconRound "remove"
       ma
 
 transTypeCol :: MonadFront t m => TransType -> m a -> m a

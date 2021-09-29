@@ -246,8 +246,8 @@ passFieldWithEye lbl = mdo
         <> "type"        =: initType
         ))
     passwordVisibleD <- toggle False eyeE
-    let eyeButtonIconClassD = eyeButtonIconClass <$> passwordVisibleD
-    eyeE' <- divButton "small-eye" $ elClassDyn "i" eyeButtonIconClassD blank
+    let eyeButtonIconD = eyeButtonIcon <$> passwordVisibleD
+    eyeE' <- divButton "small-eye" $ dynMaterialIconRound eyeButtonIconD
     pure (valD', eyeE')
   pure valD
 
@@ -275,9 +275,9 @@ valueField lbl av0D = mdo
   performEvent_ $ ffor (updated resD) $ liftIO . print
   holdUniqDyn =<< holdDyn av0 valE
 
-eyeButtonIconClass :: Bool -> Text
-eyeButtonIconClass True = "far fa-eye-slash fa-fw"
-eyeButtonIconClass _ = "far fa-eye fa-fw"
+eyeButtonIcon :: Bool -> Text
+eyeButtonIcon True = "visibility_off"
+eyeButtonIcon _ = "visibility"
 
 -- | Form submit button
 submitClass :: (MonadReflex t m, LocalizedPrint l, MonadLocalized t m) => Dynamic t Text -> l -> m (Event t ())
@@ -319,7 +319,7 @@ validatedTextFieldWithSetValBtns lbl v0 mErrsD btns setValE = mdo
     errsD = fmap (maybe [] id) mErrsD
     inputClass = "text-input-with-btns" <> if isAndroid then "-android" else "-desktop"
     isInvalidD = fmap (maybe "text-input-with-btns-wrapper" (const "text-input-with-btns-wrapper is-invalid")) mErrsD
-    mkBtn iconClass = divButton "text-input-btn" $ elClass "i" iconClass blank
+    mkBtn icon = divButton "text-input-btn" $ materialIconRound icon
     inputField = fmap _inputElement_value $ textInput $ def
       & inputElementConfig_initialValue .~ v0
       & inputElementConfig_setValue .~ setValE

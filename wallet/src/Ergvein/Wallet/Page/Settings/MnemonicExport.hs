@@ -58,13 +58,13 @@ mnemonicExportResutlPage mnemonic pass = do
           void $ shareShareQR $ attachPromptlyDynWithMaybe (\m _ -> (, "qr_code") <$> m) base64D shareQRE
 
 copyBtn :: MonadFront t m => m (Event t ())
-copyBtn = divClass "mnemonic-export-btn-wrapper" $ outlineTextIconButton CSCopy "fas fa-copy fa-lg"
+copyBtn = divClass "mnemonic-export-btn-wrapper" $ outlineTextIconButton CSCopy "material-icons-round" "content_copy"
 
 shareBtn :: MonadFront t m => m (Event t ())
-shareBtn = divClass "mnemonic-export-btn-wrapper" $ outlineTextIconButton CSShare "fas fa-share-alt fa-lg"
+shareBtn = divClass "mnemonic-export-btn-wrapper" $ outlineTextIconButton CSShare "material-icons-round" "share"
 
 shareQRBtn :: MonadFront t m => m (Event t ())
-shareQRBtn = divClass "mnemonic-export-btn-wrapper" $ outlineTextIconButton CSShareQR "fas fa-qrcode fa-lg"
+shareQRBtn = divClass "mnemonic-export-btn-wrapper" $ outlineTextIconButton CSShareQR "material-icons-round" "qr_code_2"
 
 encryptMnemonic :: (MonadIO m, MonadRandom m) => Mnemonic -> Password -> m Text
 encryptMnemonic mnemonic "" = pure mnemonic

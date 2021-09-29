@@ -510,16 +510,15 @@ toggleSwitchCss =
       transition "left" (sec 0.3) easeOut (sec 0)
 
     ".toggle-switch label::before" ? do
-      fontFamily ["Font Awesome 5 Free"] []
-      fontWeight $ weight 900
+      fontFamily ["Material Icons Round"] []
       color white
     
     ".toggle-switch input:not(:checked) + label::before" ? do
-      content $ stringContent "\\f00d"
+      content $ stringContent "close"
       fontSize $ 1.1 *@ toggleSwitchFontSize
 
     ".toggle-switch input:checked + label::before" ? do
-      content $ stringContent "\\f00c"
+      content $ stringContent "done"
       fontSize toggleSwitchFontSize
 
     ".toggle-switch input:checked + label" ? do

@@ -26,9 +26,9 @@ dropdownContainer lClosed lOpened tglD innerContent = mdo
   valD' <- holdUniqDyn valD
   clickE <- fmap switchDyn $ networkHoldDyn $ ffor valD' $ \v ->
     divClass "dropdown-header-containter" $ divButton "dropdown-header" $ elClass "h5" "mb-0" $ do
-      let (lbl, chevronTypeClass) = if v then (lClosed, "down") else (lOpened, "up")
+      let (lbl, icon) = if v then (lClosed, "arrow_drop_down") else (lOpened, "arrow_drop_up")
       localizedText lbl
       text " "
-      elClass "i" ("fa fa-fw fa-chevron-" <> chevronTypeClass) blank
+      materialIconRound icon
   let backButtonClassesD = visibilityClass "" <$> valD'
   elClassDyn "div" backButtonClassesD innerContent

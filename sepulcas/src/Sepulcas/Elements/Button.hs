@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedLists #-}
 module Sepulcas.Elements.Button(
     mkButtonDynAttr
-  , mkButton 
+  , mkButton
   , buttonClass
   , buttonClassDynLabel
   , outlineButton
@@ -13,12 +13,17 @@ module Sepulcas.Elements.Button(
   , outlineTextIconButtonTypeButton
   , outlineIconButtonClass
   , outlineSubmitTextIconButtonClass
+  , hyperlink
   ) where
 
+import Control.Monad.IO.Unlift
 import Data.Map (Map)
 import Data.Text (Text)
 import Reflex.Dom
 import Reflex.Localize
+import Sepulcas.Elements.Markup
+import Sepulcas.Monad
+import Sepulcas.OpenUrl
 
 -- | Button with dynamic attributes
 mkButtonDynAttr :: (DomBuilder t m, PostBuild t m) => Text -> Dynamic t (Map Text Text) -> m a -> m (Event t a)
@@ -68,46 +73,54 @@ spanButton classValD lbl = mkButton "span" [] classValD . dynText =<< localized 
 divButton :: (DomBuilder t m, PostBuild t m) => Dynamic t Text -> m a -> m (Event t a)
 divButton = mkButton "div" []
 
--- outlineButton with icon from Font Awesome library
+-- outlineButton with icon from Google Material Icons library
 -- The first parameter is the button text
--- The second parameter is the icon class
+-- The second parameter is the icon class and ligature
 -- Usage example:
--- >>> outlineTextIconButton CSPaste "fas fa-clipboard"
+-- >>> outlineTextIconButton CSPaste "material-icons-round" "warning_amber"
 -- As a result, such an element will be created:
 -- <button class="button button-outline href="return false;">
 --   Scan QR code
 --   <span class="button-icon-wrapper">
---     <i class="fas fa-qrcode"></i>
+--     <span class="material-icons-round">warning_amber</span>
 --   </span>
 -- </button>
 outlineTextIconButtonClass :: (DomBuilder t m, PostBuild t m, MonadLocalized t m, LocalizedPrint lbl)
-  => Dynamic t Text -> lbl -> Text -> m (Event t ())
-outlineTextIconButtonClass classValD lbl i =
+  => Dynamic t Text -> lbl -> Text -> Text -> m (Event t ())
+outlineTextIconButtonClass classValD lbl iconStyle icon =
   mkButton "button" [("onclick", "return false;")] (("button button-outline " <>) <$> classValD) $ do
     dynText =<< localized lbl
-    elClass "span" "button-icon-wrapper" $ elClass "i" i blank
+    elClass "span" "button-icon-wrapper" $ materialIcon iconStyle icon
 
 outlineTextIconButton :: (DomBuilder t m, PostBuild t m, MonadLocalized t m, LocalizedPrint lbl)
-  => lbl -> Text -> m (Event t ())
-outlineTextIconButton lbl i =
+  => lbl -> Text -> Text -> m (Event t ())
+outlineTextIconButton lbl iconStyle icon =
   mkButton "button" [("onclick", "return false;")] "button button-outline" $ do
     dynText =<< localized lbl
-    elClass "span" "button-icon-wrapper" $ elClass "i" i blank
+    elClass "span" "button-icon-wrapper" $ materialIcon iconStyle icon
 
 outlineTextIconButtonTypeButton :: (DomBuilder t m, PostBuild t m, MonadLocalized t m, LocalizedPrint lbl)
-  => lbl -> Text -> m (Event t ())
-outlineTextIconButtonTypeButton lbl i =
+  => lbl -> Text -> Text -> m (Event t ())
+outlineTextIconButtonTypeButton lbl iconStyle icon =
   mkButton "button" [("onclick", "return false;"), ("type", "button")] "button button-outline" $ do
     dynText =<< localized lbl
-    elClass "span" "button-icon-wrapper" $ elClass "i" i blank
+    elClass "span" "button-icon-wrapper" $ materialIcon iconStyle icon
 
-outlineIconButtonClass :: (DomBuilder t m, PostBuild t m) => Dynamic t Text -> Text -> m (Event t ())
-outlineIconButtonClass classValD i =
-  mkButton "button" [("onclick", "return false;")] (("button button-outline " <>) <$> classValD) $ elClass "i" i blank
+outlineIconButtonClass :: (DomBuilder t m, PostBuild t m) => Dynamic t Text -> Text -> Text -> m (Event t ())
+outlineIconButtonClass classValD iconStyle icon =
+  mkButton "button" [("onclick", "return false;")] (("button button-outline " <>) <$> classValD) $ materialIcon iconStyle icon
 
 outlineSubmitTextIconButtonClass :: (DomBuilder t m, PostBuild t m, MonadLocalized t m, LocalizedPrint lbl)
-  => Dynamic t Text -> lbl -> Text -> m (Event t ())
-outlineSubmitTextIconButtonClass classValD lbl i =
+  => Dynamic t Text -> lbl -> Text -> Text -> m (Event t ())
+outlineSubmitTextIconButtonClass classValD lbl iconStyle icon  =
   mkButton "button" [("onclick", "return false;"), ("type", "submit")] (("button button-outline " <>) <$> classValD) $ do
     dynText =<< localized lbl
-    elClass "span" "button-icon-wrapper" $ elClass "i" i blank
+    elClass "span" "button-icon-wrapper" $ materialIcon iconStyle icon
+
+-- | Link with custom click handler which opens link in external browser
+hyperlink :: (DomBuilder t m, PostBuild t m, PerformEvent t m, TriggerEvent t m, MonadHasMain m, MonadUnliftIO (Performable m), PlatformNatives, MonadLocalized t m)
+  => Dynamic t Text -> Text -> Text -> m ()
+hyperlink classValD lbl url = do
+  clickeE <- spanButton classValD lbl
+  _ <- openOpenUrl $ url <$ clickeE
+  pure ()

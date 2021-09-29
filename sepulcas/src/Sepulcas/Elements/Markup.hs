@@ -20,8 +20,11 @@ module Sepulcas.Elements.Markup(
   , bold
   , imgClass
   , linedText
-  , hyperlink
   , badge
+  , materialIcon
+  , materialIconRound
+  , dynMaterialIcon
+  , dynMaterialIconRound
   ) where
 
 import Control.Monad.Fix
@@ -30,9 +33,7 @@ import Data.Functor
 import Data.Text (Text)
 import Reflex.Dom
 import Reflex.Localize
-import Sepulcas.Elements.Button
 import Sepulcas.Monad
-import Sepulcas.OpenUrl
 
 import qualified Data.Text as T
 
@@ -102,13 +103,17 @@ imgClass src classVal = elAttr "img" [
 linedText :: (DomBuilder t m, PostBuild t m, MonadHold t m, MonadFix m) => Dynamic t Text -> m ()
 linedText textD = void $ simpleList (T.lines <$> textD) (\t -> dynText t >> br)
 
--- | Link with custom click handler which opens link in external browser
-hyperlink :: (DomBuilder t m, PostBuild t m, PerformEvent t m, TriggerEvent t m, MonadHasMain m, MonadUnliftIO (Performable m), PlatformNatives, MonadLocalized t m)
-  => Dynamic t Text -> Text -> Text -> m ()
-hyperlink classValD lbl url = do
-  clickeE <- spanButton classValD lbl
-  _ <- openOpenUrl $ url <$ clickeE
-  pure ()
-
 badge :: (DomBuilder t m, PostBuild t m, MonadLocalized t m, LocalizedPrint lbl) => Text -> lbl -> m ()
 badge classes lbl = elClass "code" classes $ dynText =<< localized lbl
+
+materialIcon :: DomBuilder t m => Text -> Text -> m ()
+materialIcon iconStyle icon = elClass "span" iconStyle $ text icon
+
+materialIconRound :: DomBuilder t m => Text -> m ()
+materialIconRound = materialIcon "material-icons-round"
+
+dynMaterialIcon :: (DomBuilder t m, PostBuild t m) => Dynamic t Text -> Dynamic t Text -> m ()
+dynMaterialIcon iconStyleD iconD = elClassDyn "span" iconStyleD $ dynText iconD
+
+dynMaterialIconRound :: (DomBuilder t m, PostBuild t m) => Dynamic t Text -> m ()
+dynMaterialIconRound = dynMaterialIcon (pure "material-icons-round")
