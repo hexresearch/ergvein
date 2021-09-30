@@ -104,9 +104,11 @@ backButtonRetract = do
   backButton "header-button header-button-left" (null <$> stD) retract
 
 -- | Button for logging out (used on restore page)
-backButtonLogout :: MonadFrontBase t m => m ()
+backButtonLogout :: MonadFront t m => m ()
 backButtonLogout = do
-  backButton "header-button header-button-left" (constDyn False) (\e -> setWalletInfo $ Nothing <$ e)
+  backButton "header-button header-button-left" (constDyn False) (\e -> do
+    storedE <- storeWalletNow "back-button-logout" True e
+    setWalletInfo $ Nothing <$ storedE)
 
 menuButtonIconClass :: Bool -> Text
 menuButtonIconClass True = "fas fa-bars"
@@ -120,7 +122,7 @@ visibilityClass classes False = classes
 headerWidgetOnlyBackBtn :: MonadFrontBase t m => m ()
 headerWidgetOnlyBackBtn = divClass "header" backButtonRetract
 
-headerWidgetOnlyLogoutBtn :: MonadFrontBase t m => m ()
+headerWidgetOnlyLogoutBtn :: MonadFront t m => m ()
 headerWidgetOnlyLogoutBtn = divClass "header" backButtonLogout
 
 menuButtonsDesktop :: MonadFront t m => Maybe (Dynamic t (m ())) -> Maybe Currency -> m ()

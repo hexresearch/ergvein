@@ -32,11 +32,15 @@ frontend = do
 
 startPage :: MonadFront t m => m ()
 startPage = do
-  _ <- storeWallet "start-page" =<< delay 0.1 =<< getPostBuild
+  buildE <- getPostBuild
+  storedE <- storeWalletNow "start-page" False buildE
   ps <- getPubStorage
-  if _pubStorage'restoring ps
-    then restorePage
-    else balancesPage
+  void $ nextWidget $ ffor storedE $ const Retractable {
+      retractableNext = if _pubStorage'restoring ps
+        then restorePage
+        else balancesPage
+    , retractablePrev = Nothing
+    }
 
 #ifdef TESTNET
 mainpageDispatcher :: MonadFrontBase t m => m ()

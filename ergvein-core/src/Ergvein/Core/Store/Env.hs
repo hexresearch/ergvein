@@ -29,7 +29,7 @@ import qualified Data.Map.Strict as M
 
 data StoreEnv t = StoreEnv {
   senv'storeMutex      :: !(MVar ())
-, senv'storeChan       :: !(TChan (Text, WalletInfo))
+, senv'storeChan       :: !(TChan StoreWalletMsg)
 }
 
 type StoreM t m = ReaderT (StoreEnv t) m
@@ -63,14 +63,17 @@ instance {-# OVERLAPPABLE #-} (HasStoreEnv t m, MonadStorageConstr t m, HasStore
     walletInfoD <- getWalletInfo
     pure $ ffor walletInfoD $ \ai -> ai ^. walletInfo'storage. storage'pubStorage
   {-# INLINE getPubStorageD #-}
-  storeWallet caller e = do
+  storeWalletNow caller closeWorker e = do
     walletInfoD <- getWalletInfo
-    performEvent $ ffor e $ \_ -> do
-        walletInfo <- sampleDyn walletInfoD
-        let storage = _walletInfo'storage walletInfo
-        let eciesPubKey = _walletInfo'eciesPubKey walletInfo
-        saveStorageToFile caller eciesPubKey storage
-  {-# INLINE storeWallet #-}
+    walletMutex <- getWalletInfoMutex
+    chan <- fmap senv'storeChan getStoreEnv
+    performFork $ ffor e $ const $ do
+      _ <- liftIO $ takeMVar walletMutex
+      walletInfo <- sampleDyn walletInfoD
+      liftIO $ do
+        atomically $ (writeTChan chan . (\wInfo -> StoreWalletMsg caller wInfo StoreWalletPriorityHigh closeWorker)) walletInfo
+        putMVar walletMutex ()
+  {-# INLINE storeWalletNow #-}
 
   modifyPubStorage :: Text -> Event t (PubStorage -> Maybe PubStorage) -> m (Event t ())
   modifyPubStorage caller fe = do
@@ -84,7 +87,7 @@ instance {-# OVERLAPPABLE #-} (HasStoreEnv t m, MonadStorageConstr t m, HasStore
           mai = (\ps' -> ai & walletInfo'storage . storage'pubStorage .~ ps') <$> mps'
       traverse_ (setWalletInfoNow (Proxy :: Proxy m) . Just) mai
       liftIO $ do
-        atomically $ traverse_ (writeTChan chan . (caller, )) mai
+        atomically $ traverse_ (writeTChan chan . (\wInfo -> StoreWalletMsg caller wInfo StoreWalletPriorityLow False)) mai
         putMVar walletMutex ()
   {-# INLINE modifyPubStorage #-}
 

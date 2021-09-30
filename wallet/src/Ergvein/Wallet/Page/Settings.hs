@@ -113,11 +113,11 @@ currenciesPage = do
               authN2 = authNew & walletInfo'storage . storage'pubStorage . pubStorage'currencyPubStorages %~ Map.union mL
           pure $ Just authN2
       setWalletInfoE <- setWalletInfo updateAE
-      void $ storeWallet "currenciesPage" (void $ updated authD)
-      showSuccessMsg $ STPSSuccess <$ setWalletInfoE
+      doneE <- storeWalletNow "currenciesPage" False (void $ setWalletInfoE)
+      showSuccessMsg $ STPSSuccess <$ doneE
       pure ()
   where
-    uac cE =  updateActiveCurs $ const . S.fromList <$> cE
+    uac cE = updateActiveCurs $ const . S.fromList <$> cE
     mkStore mpath prvStr currency = createCurrencyPubStorage mpath (_prvStorage'rootPrvKey prvStr) (filterStartingHeight currency) currency
 
 unitsPage :: MonadFront t m => m ()
@@ -318,7 +318,9 @@ deleteWalletPage = do
       login <- fmap _walletInfo'login . sampleDyn =<< getWalletInfo
       let walletName = "wallet_" <> T.replace " " "_" login
           backupName = "backup_" <> walletName
-      doneE <- performEvent $ ffor delE $ const $ do
+      -- We need this to stop walletStoreThread
+      storedE <- storeWalletNow "delete-wallet-page" True delE
+      doneE <- performEvent $ ffor storedE $ const $ do
         deleteStoredFile walletName
         deleteStoredFile backupName
         deleteStoredFile ".last-wallet"

@@ -302,7 +302,8 @@ setNewPassword passE = do
   when isAndroid $ performEvent_ $ ffor walletInfoE $ \(walletInfo, isTextPassword) -> do
     let fpath = "meta_wallet_" <> T.replace " " "_" (_walletInfo'login walletInfo)
     storeValue fpath isTextPassword True
-  storeWallet "passwordChangePage" =<< setWalletInfo (fmap (Just . fst) walletInfoE)
+  setE <- setWalletInfo (fmap (Just . fst) walletInfoE)
+  storeWalletNow "passwordChangePage" False setE
 
 changePasswordPage :: MonadFront t m => m ()
 changePasswordPage = if isAndroid

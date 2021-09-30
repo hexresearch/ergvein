@@ -65,7 +65,7 @@ wrapperSimple :: MonadFrontBase t m => Bool -> m a -> m a
 wrapperSimple = wrapperSimpleGeneric headerWidgetOnlyBackBtn ""
 
 -- | Same as 'wrapperSimple' but "back" buttons performs logout and redirects to the wallet selection page
-wrapperSimpleLogout :: MonadFrontBase t m => Bool -> m a -> m a
+wrapperSimpleLogout :: MonadFront t m => Bool -> m a -> m a
 wrapperSimpleLogout = wrapperSimpleGeneric headerWidgetOnlyLogoutBtn ""
 
 -- | Wrapper for password modal page.
