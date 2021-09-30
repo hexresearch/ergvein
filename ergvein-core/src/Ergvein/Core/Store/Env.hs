@@ -79,7 +79,7 @@ instance {-# OVERLAPPABLE #-} (HasStoreEnv t m, MonadStorageConstr t m, HasStore
   modifyPubStorage caller fe = do
     walletInfoD <- getWalletInfo
     walletMutex <- getWalletInfoMutex
-    chan      <- fmap senv'storeChan getStoreEnv
+    chan        <- fmap senv'storeChan getStoreEnv
     performFork $ ffor fe $ \f -> do
       _ <- liftIO $ takeMVar walletMutex
       ai <- sampleDyn walletInfoD

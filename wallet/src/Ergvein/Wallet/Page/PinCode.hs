@@ -5,6 +5,7 @@ module Ergvein.Wallet.Page.PinCode(
   , PinCodeSetupStep(..)
   , minPinCodeLength
   , maxPinCodeLength
+  , pinCodeDelayAfterInput
   , pinCodeDots
   , confirmPinCodeDots
   , numPadWidget
@@ -12,6 +13,7 @@ module Ergvein.Wallet.Page.PinCode(
   , pinCodeAskWidget
   ) where
 
+import Data.Time
 import Data.Traversable (for)
 
 import Ergvein.Wallet.Language
@@ -25,13 +27,16 @@ data PinCodeSetupStep =
   | PinCodeConfirm Int -- Сontains the length of the previously entered password
   deriving (Eq, Show)
 
-data NumPadBtnAction = NumPadDigit Int | NumPadBackspace | NumPadSubmit deriving (Eq, Show)
+data NumPadBtnAction = NumPadDigit Int | NumPadBackspace | NumPadSubmit | NumPadClearInput deriving (Eq, Show)
 
 minPinCodeLength :: Int
 minPinCodeLength = 6
 
 maxPinCodeLength :: Int
 maxPinCodeLength = 12
+
+pinCodeDelayAfterInput :: NominalDiffTime
+pinCodeDelayAfterInput = 0.2
 
 pinCodeDots :: MonadFrontBase t m => Dynamic t Int -> m ()
 pinCodeDots dotsCountD = divClass "pincode-widget-dots" $ do
@@ -81,20 +86,22 @@ pinCodeFoldFunc step act acc = case act of
     then acc
     else init acc
   NumPadSubmit -> acc
+  NumPadClearInput -> []
   where
     maxLength :: PinCodeSetupStep -> Int
     maxLength PinCodeSetup = maxPinCodeLength
     maxLength (PinCodeConfirm n) = n
 
-pinCodeAskWidget :: (MonadFrontBase t m, LocalizedPrint l) => l -> m (Event t Password)
-pinCodeAskWidget lbl = divClass "pincode-widget" $ mdo
+pinCodeAskWidget :: (MonadFrontBase t m, LocalizedPrint l) => Event t () -> l -> m (Event t Password)
+pinCodeAskWidget clearInputE lbl = divClass "pincode-widget" $ mdo
   divClass "pincode-widget-title mt-2" $ do
     h4 $ localizedText lbl
-  inputD <- foldDyn (pinCodeFoldFunc PinCodeSetup) [] actE
+  inputD <- foldDyn (pinCodeFoldFunc PinCodeSetup) [] $ leftmost [clearE, actE]
   divClass "pincode-widget-dots-wrapper mb-2" $ do
     pinCodeDots (length <$> inputD)
   actE <- numPadWidget PinCodeSetup
   let passD = T.concat . map showt <$> inputD
       submitE = ffilter (== NumPadSubmit) actE
       passE = tagPromptlyDyn passD submitE
+  clearE <- delay pinCodeDelayAfterInput $ NumPadClearInput <$ clearInputE
   pure passE

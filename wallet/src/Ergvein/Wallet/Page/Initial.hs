@@ -4,6 +4,7 @@ module Ergvein.Wallet.Page.Initial(
   ) where
 
 import Data.Bifunctor (first)
+import Data.Either (isLeft)
 import Data.Foldable (for_)
 import Data.Traversable (for)
 
@@ -84,14 +85,15 @@ loadWalletPage name = do
   -- We could use `wrapperSimple True` here, but to draw the pin code widget to full screen, we need to use this
   wrapperSimpleGeneric headerWidgetOnlyBackBtn "password-widget-container" False $ do
     buildE <- getPostBuild
-    mPlainE <- performEvent $ loadWalletInfo name "" <$ buildE
-    let oldAuthE' = fmapMaybe eitherToMaybe mPlainE
-    oldAuthE'' <- fmap switchDyn $ networkHold (pure never) $ ffor mPlainE $ \case
+    ePlainE <- performEvent $ loadWalletInfo name "" <$ buildE
+    let oldAuthE' = fmapMaybe eitherToMaybe ePlainE
+    oldAuthE'' <- fmap switchDyn $ networkHold (pure never) $ ffor ePlainE $ \case
       Right _ -> pure never
-      Left _ -> do
-        passE <- askPasswordWidget name True
-        mOldAuthE <- performEvent $ loadWalletInfo name <$> passE
-        handleDangerMsg mOldAuthE
+      Left _ -> mdo
+        passE <- askPasswordWidget name True invalidPassE
+        eOldAuthE <- performEvent $ loadWalletInfo name <$> passE
+        let invalidPassE = void $ ffilter isLeft eOldAuthE -- We need this event to clear the PIN input after a failed attempt
+        handleDangerMsg eOldAuthE
     let oldAuthE = leftmost [oldAuthE', oldAuthE'']
     mAuthE <- performEvent $ generateMissingPrvKeys <$> oldAuthE
     authE <- handleDangerMsg mAuthE
