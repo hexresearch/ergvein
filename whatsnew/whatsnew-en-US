@@ -1,3 +1,4 @@
-* Reduce lags on getting current height 
-* Send page redesign
-* RBF is fully functional on send and receive
+* Pincode is now number based and hardened with more rounds of hashing 
+* Fixed bugs with wallet saving. 
+* PBKDF2 replaced with scrypt key stretching to improve resistance to bruteforce attacks.
+* Mempool scanning using the same BIP158 filters.
