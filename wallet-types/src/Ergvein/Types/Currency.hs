@@ -104,7 +104,7 @@ instance IsMoneyUnit UnitBTC where
   unitIsSmallest = isSmallestUnitBTC
 
 defUnitBTC :: UnitBTC
-defUnitBTC = BtcWhole
+defUnitBTC = BtcSat
 
 smallestUnitBTC :: UnitBTC
 smallestUnitBTC = BtcSat
@@ -178,8 +178,8 @@ ergoSymbolUnit u = case u of
 
 -- | Amount of digits after point for currency
 currencyResolution :: Currency -> Int
-currencyResolution BTC = btcResolution defUnitBTC
-currencyResolution ERGO = ergoResolution defUnitERGO
+currencyResolution BTC = btcResolution BtcWhole
+currencyResolution ERGO = ergoResolution ErgWhole
 {-# INLINE currencyResolution #-}
 
 currencyName :: Currency -> Text
