@@ -30,9 +30,9 @@ recipientWidget cur mInitRecipient submitE = divClass "recipient-input" $ mdo
       (recipD, events) <- validatedTextFieldWithSetValBtns RecipientString initRecipient recipientErrsD ["fas fa-paste", "fas fa-qrcode"] (leftmost [pasteE, resQRcodeE])
       let pasteBtnE = head events
           qrBtnE = events !! 1
-          stripCurPrefix t = T.dropWhile (== '/') $ fromMaybe t $ T.stripPrefix (curprefix cur) t
+          getAddrFromUri t = T.takeWhile (/= '?') $ fromMaybe t $ T.stripPrefix (curprefix cur) t
       openE <- delay 1.0 =<< openCamara qrBtnE
-      resQRcodeE <- fmap stripCurPrefix <$> waiterResultCamera openE
+      resQRcodeE <- fmap getAddrFromUri <$> waiterResultCamera openE
       pasteE <- clipboardPaste pasteBtnE
       pure recipD
     else mdo

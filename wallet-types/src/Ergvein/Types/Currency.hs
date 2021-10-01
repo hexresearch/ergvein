@@ -257,5 +257,5 @@ showMoneyRated m r = T.pack $ printf "%.2f" $ (realToFrac r :: Double) * realToF
 -- See BIP 21
 curprefix :: Currency -> Text
 curprefix cur = case cur of
-  BTC ->  "bitcoin://"
+  BTC ->  "bitcoin:"
   ERGO -> "ergo://"
