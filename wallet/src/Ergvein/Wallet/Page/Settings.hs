@@ -113,7 +113,7 @@ currenciesPage = do
               authN2 = authNew & walletInfo'storage . storage'pubStorage . pubStorage'currencyPubStorages %~ Map.union mL
           pure $ Just authN2
       setWalletInfoE <- setWalletInfo updateAE
-      doneE <- storeWalletNow "currenciesPage" False (void $ setWalletInfoE)
+      doneE <- storeWalletNow "currenciesPage" False (void setWalletInfoE)
       showSuccessMsg $ STPSSuccess <$ doneE
       pure ()
   where
