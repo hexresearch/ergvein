@@ -7,6 +7,7 @@ import Control.Concurrent.MVar
 import Control.Lens
 import Control.Monad.IO.Class
 import Data.Proxy
+
 import Ergvein.Core.Password
 import Ergvein.Core.Store.Constants
 import Ergvein.Core.Store.Util
@@ -32,7 +33,7 @@ withWallet reqE = do
   walletName  <- getWalletName
   walletInfoD <- getWalletInfo
   widgD <- holdDyn Nothing $ Just <$> reqE
-  isPlainE <- performEvent $ ffor reqE $ const $ fmap _walletInfo'isPlain $ sampleDyn walletInfoD
+  isPlainE <- performEvent $ ffor reqE $ const $ _walletInfo'isPlain <$> sampleDyn walletInfoD
   let passE' = ("" <$) $ ffilter id isPlainE
   passE'' <- requestPasssword $ walletName <$ (ffilter not isPlainE)
   let passE = leftmost [passE', passE'']
@@ -110,7 +111,7 @@ decryptAndValidatePrvStorage proxy mutex pass walletInfoD = do
           , V.length $ prvKeystore'internal keystore
           )) $ _prvStorage'currencyPrvStorages prv
     let diff = M.differenceWith (\a b -> if a == b then Nothing else Just a) pubKeysNumber prvKeysNumber
-    if M.null diff then (withMutexRelease $ Right prv) else do
+    if M.null diff then withMutexRelease $ Right prv else do
       let updatedPrvStorage = set prvStorage'currencyPrvStorages (updatedPrvKeystore $ _prvStorage'currencyPrvStorages prv) prv
       eeps <- encryptPrvStorage updatedPrvStorage pass
       either' eeps (withMutexRelease . Left) $ \eps' -> do

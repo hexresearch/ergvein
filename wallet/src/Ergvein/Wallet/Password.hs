@@ -35,7 +35,7 @@ import qualified Data.Map.Strict as Map
 import qualified Data.Set as S
 import qualified Data.Text as T
 
-data PasswordTries = PasswordTries {
+newtype PasswordTries = PasswordTries {
   passwordTriesCount  :: Map.Map Text Integer
 } deriving (Eq, Show)
 
@@ -49,7 +49,7 @@ saveCounter :: (MonadIO m, PlatformNatives, HasStoreDir m) => PasswordTries -> m
 saveCounter pt = storeValue "tries.json" pt True
 
 loadCounter :: (MonadIO m, PlatformNatives, HasStoreDir m) => m PasswordTries
-loadCounter = fmap (fromRight emptyPT) $ retrieveValue "tries" emptyPT
+loadCounter = fromRight emptyPT <$> retrieveValue "tries" emptyPT
 
 -- | Helper to throw error when predicate is not 'True'
 check :: MonadError a m => a -> Bool -> m ()
