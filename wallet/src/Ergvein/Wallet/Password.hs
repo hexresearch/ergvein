@@ -154,7 +154,7 @@ askPinCodeImpl :: MonadFrontBase t m => Text -> Bool -> Event t () -> m (Event t
 askPinCodeImpl name writeMeta clearInputE = do
   let fpath = "meta_wallet_" <> T.replace " " "_" name
   when writeMeta $ storeValue fpath False True
-  pinE <- mdo
+  mdo
     c <- loadCounter
     let cInt = fromMaybe 0 $ Map.lookup name (passwordTriesCount c)
     now <- liftIO getCurrentTime
@@ -180,19 +180,21 @@ askPinCodeImpl name writeMeta clearInputE = do
     performEvent_ $ ffor (updated counterD) $ \cS ->
       saveCounter $ PasswordTries $ Map.insert name cS (passwordTriesCount c)
     pure $ attachPromptlyDynWithMaybe (\freeze p -> if not freeze then Just p else Nothing) freezeD passE
-  pure pinE
 
 askPasswordModal :: MonadFront t m => m ()
 askPasswordModal = mdo
   goE <- fmap fst getPasswordModalEF
   fire <- fmap snd getPasswordSetEF
-  let redrawE = leftmost [Just <$> goE, Nothing <$ passE, Nothing <$ closeE]
+  let redrawE = leftmost [Just <$> goE, Nothing <$ closeE]
   valD <- networkHold (pure (never, never)) $ ffor redrawE $ \case
-    Just (i, name) -> divClass "ask-password-modal" $ do
+    Just (i, passwordValidationResultE, name) -> divClass "ask-password-modal" $ do
       title <- localized PWSPassword
-      (closeE', passE') <- wrapperPasswordModal title "password-widget-container" $
-        fmap ((i,) . Just) <$> askPasswordWidget name False never
-      pure (passE', closeE')
+      let invalidPassE = fmapMaybe (\res -> if res == PasswordInvalid then Just () else Nothing) passwordValidationResultE
+          validPassE = fmapMaybe (\res -> if res == PasswordValid then Just () else Nothing) passwordValidationResultE
+      (closeBtnE, passE') <- wrapperPasswordModal title "password-widget-container" $
+         askPasswordWidget name False invalidPassE
+      let closeModalE = leftmost [closeBtnE, validPassE]
+      pure ((i,) . Just <$> passE', closeModalE)
     Nothing -> pure (never, never)
   let (passD, closeD) = splitDynPure valD
       passE = switchDyn passD

@@ -5,6 +5,7 @@ module Ergvein.Core.Store.Crypto(
 import Control.Concurrent.MVar
 import Control.Lens
 import Control.Monad.IO.Class
+import Data.Either (isLeft)
 import Data.Proxy
 
 import Ergvein.Core.Password
@@ -28,19 +29,20 @@ import qualified Data.Vector as V
 withWallet :: forall t m a . (MonadWallet t m, PasswordAsk t m, LocalizedPrint StorageAlert)
   => Event t (PrvStorage -> Performable m a)    -- ^ Event with a callback
   -> m (Event t a)                              -- ^ results of applying the callback to the wallet
-withWallet reqE = do
+withWallet reqE = mdo
   walletName  <- getWalletName
   walletInfoD <- getWalletInfo
   widgD <- holdDyn Nothing $ Just <$> reqE
   isPlainE <- performEvent $ ffor reqE $ const $ _walletInfo'isPlain <$> sampleDyn walletInfoD
   let passE' = ("" <$) $ ffilter id isPlainE
-  passE'' <- requestPasssword $ walletName <$ (ffilter not isPlainE)
+  passE'' <- requestPasssword (walletName <$ ffilter not isPlainE) passwordValidationResultE
   let passE = leftmost [passE', passE'']
   mutex <- getStoreMutex
   let goE = attachWithMaybe (\mwid pass -> (pass, ) <$> mwid) (current widgD) passE
   eresE <- performEvent $ ffor goE $ \(pass, f) -> do
     eprv <- decryptAndValidatePrvStorage (Proxy :: Proxy m) mutex pass walletInfoD
     either (pure . Left) (fmap Right . f) eprv
+  let passwordValidationResultE = (\eRes -> if isLeft eRes then PasswordInvalid else PasswordValid) <$> eresE
   handleDangerMsg eresE
 
 -- | Decrypt the private storage and run validation routines before returning it
