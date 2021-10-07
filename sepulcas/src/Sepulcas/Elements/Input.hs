@@ -225,7 +225,7 @@ displayError errD = do
 passField :: (MonadReflex t m, LocalizedPrint l, MonadLocalized t m)
   => l -- ^ Label
   -> m (Dynamic t Text)
-passField lbl = fmap _inputElement_value $ labeledTextInput lbl ("type" =: "password") def
+passField lbl = _inputElement_value <$> labeledTextInput lbl ("type" =: "password") def
 
 -- | Password field with toggleable visibility
 passFieldWithEye :: (MonadReflex t m, LocalizedPrint l, MonadLocalized t m) => l -> m (Dynamic t Text)
