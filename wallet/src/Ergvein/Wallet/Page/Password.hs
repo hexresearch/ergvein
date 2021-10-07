@@ -68,8 +68,9 @@ setupPasswordPage wt seedBackupRequired mpath mnemonic curs mlogin = wrapperSimp
   rec
     existingWalletNames <- listStorages
     (_, pathD, heightD, logPassE) <- divClass "setup-password" $ form $ fieldset $ mdo
-      p1D <- passFieldWithEye PWSPassword
-      p2D <- passFieldWithEye PWSRepeat
+      p1D <- passFieldWithEye PWSPassword noMatchE
+      p2D <- passFieldWithEye PWSRepeat noMatchE
+      let noMatchE = checkPasswordsMatch e p1D p2D
       lpE <- validateEvent $ poke btnE $ const $ runExceptT $ do
         p1 <- sampleDyn p1D
         p2 <- sampleDyn p2D

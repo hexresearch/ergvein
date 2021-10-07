@@ -13,6 +13,7 @@ module Ergvein.Wallet.Page.Seed(
 
 import Control.Monad.Random.Strict
 import Data.Bifunctor
+import Data.Either (isLeft)
 import Data.Maybe
 import Data.Text.Encoding (decodeUtf8With)
 import Data.Text.Encoding.Error (lenientDecode)
@@ -214,9 +215,10 @@ scanQRBtn :: MonadFrontBase t m => m (Event t ())
 scanQRBtn = outlineTextIconButtonTypeButton CSScanQR "fas fa-qrcode fa-lg"
 
 askSeedPasswordPage :: MonadFrontBase t m => EncryptedByteString -> m ()
-askSeedPasswordPage encryptedMnemonic = wrapperSimple True $ do
-  passE <- askTextPasswordWidget PPSMnemonicUnlock ("" :: Text)
+askSeedPasswordPage encryptedMnemonic = wrapperSimple True $ mdo
+  passE <- askTextPasswordWidget PPSMnemonicUnlock ("" :: Text) clearInputE
   let mnemonicBSE = decryptBSWithAEAD encryptedMnemonic <$> passE
+      clearInputE = () <$ ffilter isLeft mnemonicBSE
   verifiedMnemonicE <- handleDangerMsg mnemonicBSE
   void $ nextWidget $ ffor (decodeUtf8With lenientDecode <$> verifiedMnemonicE) $ \mnem -> Retractable {
       retractableNext = setLoginPasswordPage WalletRestored False mnem

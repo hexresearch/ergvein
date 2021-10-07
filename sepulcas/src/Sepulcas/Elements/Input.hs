@@ -228,8 +228,8 @@ passField :: (MonadReflex t m, LocalizedPrint l, MonadLocalized t m)
 passField lbl = _inputElement_value <$> labeledTextInput lbl ("type" =: "password") def
 
 -- | Password field with toggleable visibility
-passFieldWithEye :: (MonadReflex t m, LocalizedPrint l, MonadLocalized t m) => l -> m (Dynamic t Text)
-passFieldWithEye lbl = mdo
+passFieldWithEye :: (MonadReflex t m, LocalizedPrint l, MonadLocalized t m) => l -> Event t () -> m (Dynamic t Text)
+passFieldWithEye lbl clearInputE = mdo
   i <- genId
   label i $ localizedText lbl
   let initType = "password"
@@ -237,14 +237,15 @@ passFieldWithEye lbl = mdo
     v <- sampleDyn typeD
     pure $ if v == "password" then "text" else "password"
   (valD, eyeE) <- divClass "password-field" $ do
-    valD' <- textInputTypeDyn (updated typeD) (def &
-      inputElementConfig_elementConfig . elementConfig_initialAttributes .~
+    valD' <- textInputTypeDyn (updated typeD) (def
+      & inputElementConfig_elementConfig . elementConfig_initialAttributes .~
         (  "id"          =: i
         <> "class"       =: "eyed-field"
         <> "name"        =: ("password-" <> i)
         <> "placeholder" =: "******"
         <> "type"        =: initType
-        ))
+        )
+      & inputElementConfig_setValue .~ ("" <$ clearInputE))
     passwordVisibleD <- toggle False eyeE
     let eyeButtonIconClassD = eyeButtonIconClass <$> passwordVisibleD
     eyeE' <- divButton "small-eye" $ elClassDyn "i" eyeButtonIconClassD blank
