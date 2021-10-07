@@ -1,6 +1,5 @@
 module Ergvein.Core.Store.Crypto(
     withWallet
-  , modifyPrvStorage
   ) where
 
 import Control.Concurrent.MVar
@@ -43,41 +42,6 @@ withWallet reqE = do
     eprv <- decryptAndValidatePrvStorage (Proxy :: Proxy m) mutex pass walletInfoD
     either (pure . Left) (fmap Right . f) eprv
   handleDangerMsg eresE
-
--- | More specialized version. Provide an update function to manually update the private storage
-modifyPrvStorage :: forall t m . (MonadWallet t m, PasswordAsk t m, LocalizedPrint StorageAlert)
-  => Event t (PrvStorage -> Performable m (Maybe PrvStorage)) -- ^ updater. Nothing == no update
-  -> m (Event t ())
-modifyPrvStorage updE = do
-  walletName <- getWalletName
-  walletInfoD <- getWalletInfo
-  updD <- holdDyn Nothing $ Just <$> updE
-  isPlainE <- performEvent $ ffor updE $ const $ fmap _walletInfo'isPlain $ sampleDyn walletInfoD
-  let passE' = ("" <$) $ ffilter id isPlainE
-  passE'' <- requestPasssword $ walletName <$ (ffilter not isPlainE)
-  let passE = leftmost [passE', passE'']
-  mutex <- getStoreMutex
-  let goE = attachWithMaybe (\mupd pass -> (pass, ) <$> mupd) (current updD) passE
-  errE <- performEvent $ ffor goE $ \(pass, upd) -> do
-    liftIO $ takeMVar mutex                                       -- We want the next part to not interfere with any store changes
-    let withMutexRelease a = liftIO $ putMVar mutex () >> pure a  -- release the mutex and return the value
-    ai <- sampleDyn walletInfoD
-    let WalletStorage eps pub _ = _walletInfo'storage ai
-    let eciesPubKey = _walletInfo'eciesPubKey ai
-    either' (decryptPrvStorage eps pass) (withMutexRelease . Left) $ \prv -> do
-      mprv <- upd prv
-      maybe' mprv (withMutexRelease $ Right ()) $ \prv' -> do
-        eeps <- encryptPrvStorage prv' pass
-        either' eeps (withMutexRelease . Left) $ \eps' -> do
-          let wallet = WalletStorage eps' pub walletName
-          err <- saveStorageSafelyToFile "modifyPrvStorage" eciesPubKey wallet
-          either' err (withMutexRelease . Left) $ const $ do
-            setWalletInfoNow (Proxy :: Proxy m) $ Just $ ai {_walletInfo'storage = wallet}
-            withMutexRelease $ Right ()
-  handleDangerMsg errE
-  where
-    maybe' m n j = maybe n j m
-    either' e l r = either l r e
 
 -- | Decrypt the private storage and run validation routines before returning it
 -- This is important because this is the only point the app has access to the private storage
