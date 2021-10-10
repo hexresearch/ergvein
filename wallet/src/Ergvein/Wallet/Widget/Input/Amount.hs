@@ -42,20 +42,22 @@ unitsDropdown initialUnit allUnits = do
   holdUniqDyn selD
 
 -- | Input field with units. Converts everything to satoshis and returns the unit.
-sendAmountWidgetBtc :: (MonadFront t m) => Maybe (UnitBTC, Word64) -> Event t () -> m (Dynamic t (Maybe (UnitBTC, Word64)))
+sendAmountWidgetBtc :: MonadFront t m => Maybe (UnitBTC, Word64) -> Event t () -> m (Dynamic t (Maybe (UnitBTC, Word64)))
 sendAmountWidgetBtc minit submitE = divClass "amount-input" $ mdo
   let errsD = fromMaybe [] <$> amountErrsD
-      isInvalidD = fmap (maybe "" (const "is-invalid")) amountErrsD
+      invalidClassD = fmap (maybe "" (const "is-invalid")) amountErrsD
   amountValD <- do
     el "label" $ localizedText AmountString
     divClass "row" $ mdo
       textInputValueD <- divClass "column column-67" $ do
-        textInputValueD' <- do
+        textInputValueD' <- mdo
           txtInit <- do
             units <- getSettingsUnitBtc
             let unitInit = maybe units fst minit
             pure $ maybe "" (\(_, amount) -> showMoneyUnit (Money BTC amount) unitInit) minit
-          divClassDyn isInvalidD $ textFieldAttrNoLabel (M.singleton "class" "mb-0") never never txtInit
+          setAmountE <- performFork $ ffor sendAllBtnE calcMaxAvailableBalance
+          (txtValD, sendAllBtnE) <- validatedTextFieldWithSetValTextBtnNoLabel "mb-0" SendAll setAmountE txtInit invalidClassD
+          pure txtValD
         when isAndroid (availableBalanceWidget BTC unitD)
         pure textInputValueD'
       unitD <- divClass "column column-33" $ do
@@ -66,6 +68,8 @@ sendAmountWidgetBtc minit submitE = divClass "amount-input" $ mdo
   void $ divClass "form-field-errors" $ simpleList errsD displayError
   amountErrsD <- holdDyn Nothing $ ffor (current amountValD `tag` submitE) eitherToMaybe'
   pure $ eitherToMaybe <$> amountValD
+
+calcMaxAvailableBalance = undefined
 
 -- | Input field with units. Converts everything to satoshis and returns the unit.
 sendAmountWidgetErg :: (MonadFront t m) => Maybe (UnitERGO, Word64) -> Event t () -> m (Dynamic t (Maybe (UnitERGO, Word64)))

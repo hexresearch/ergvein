@@ -15,6 +15,7 @@ data SendStrings
   | SendBtnSign
   | SendBtnSend
   | SendBtnBack
+  | SendAll
   | SSFee
   | SSTotal
   | SSConfirm
@@ -33,6 +34,7 @@ instance LocalizedPrint SendStrings where
       SendBtnSign -> "Sign tx"
       SendBtnSend -> "Send tx"
       SendBtnBack -> "Back"
+      SendAll -> "All"
       SSFee -> "Fee"
       SSTotal -> "Total"
       SSConfirm -> "Confirm the transaction"
@@ -48,6 +50,7 @@ instance LocalizedPrint SendStrings where
       SendBtnSign -> "Подписать транзакцию"
       SendBtnSend -> "Отправить транзакцию"
       SendBtnBack -> "Назад"
+      SendAll -> "Всё"
       SSFee -> "Комиссия"
       SSTotal -> "Итого"
       SSConfirm -> "Подтвердите транзакцию"

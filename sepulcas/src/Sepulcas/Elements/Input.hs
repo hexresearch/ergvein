@@ -20,11 +20,13 @@ module Sepulcas.Elements.Input(
   , textInputTypeDyn
   , validatedTextFieldWithSetValBtns
   , displayError
+  , validatedTextFieldWithSetValTextBtnNoLabel
   ) where
 
 import Control.Lens
 import Control.Monad.IO.Class
 import Data.Functor (void)
+import Data.Maybe (fromMaybe)
 import Data.Proxy
 import Data.Text (Text)
 import Reflex.Dom hiding (textInput)
@@ -42,6 +44,7 @@ import Sepulcas.Native
 import Sepulcas.Text
 
 import qualified Data.Map.Strict as M
+import qualified Data.Text as T
 
 textInput :: MonadReflex t m
   => InputElementConfig EventResult t (DomBuilderSpace m)
@@ -316,10 +319,32 @@ validatedTextFieldWithSetValBtns lbl v0 mErrsD btns setValE = mdo
   void $ divClass "form-field-errors" $ simpleList errsD displayError
   pure (iD, bE)
   where
-    errsD = fmap (maybe [] id) mErrsD
+    errsD = fmap (fromMaybe []) mErrsD
     inputClass = "text-input-with-btns" <> if isAndroid then "-android" else "-desktop"
     isInvalidD = fmap (maybe "text-input-with-btns-wrapper" (const "text-input-with-btns-wrapper is-invalid")) mErrsD
     mkBtn iconClass = divButton "text-input-btn" $ elClass "i" iconClass blank
+    inputField = fmap _inputElement_value $ textInput $ def
+      & inputElementConfig_initialValue .~ v0
+      & inputElementConfig_setValue .~ setValE
+      & inputElementConfig_elementConfig . elementConfig_initialAttributes %~ (\as -> "class" =: inputClass <> as)
+
+validatedTextFieldWithSetValTextBtnNoLabel :: (MonadReflex t m, LocalizedPrint l, MonadLocalized t m)
+  => Text -- ^ CSS classes
+  -> l -- ^ Button text
+  -> Event t Text -- ^ Event that may change the input field value
+  -> Text -- ^ Initial value
+  -> Dynamic t Text -- ^ Dynamic that contains info about errors
+  -> m (Dynamic t Text, Event t ())
+validatedTextFieldWithSetValTextBtnNoLabel classes btnText setValE v0 invalidClassesD = mdo
+  (iD, bE) <- divClassDyn (wrapperClasses invalidClassesD) $ do
+    textInputValueD <- inputField
+    btnE <- divClass "text-input-btns" $ divButton "text-input-btn" $ localizedText btnText
+    pure (textInputValueD, btnE)
+  pure (iD, bE)
+  where
+    inputClass = "text-input-with-btns" <> if isAndroid then "-android" else "-desktop" <> padClasses classes
+    padClasses c = if T.null c then c else " " <> c
+    wrapperClasses invClassesD = (\cls -> "text-input-with-btns-wrapper" <> padClasses cls) <$> invClassesD
     inputField = fmap _inputElement_value $ textInput $ def
       & inputElementConfig_initialValue .~ v0
       & inputElementConfig_setValue .~ setValE
