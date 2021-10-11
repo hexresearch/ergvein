@@ -6,6 +6,7 @@ module Ergvein.Wallet.Password(
   , loadCounter
   , setupPassword
   , submitSetBtn
+  , checkPasswordsMatch
   , setupLoginPassword
   , askTextPasswordWidget
   , askPasswordWidget
@@ -35,7 +36,7 @@ import qualified Data.Map.Strict as Map
 import qualified Data.Set as S
 import qualified Data.Text as T
 
-data PasswordTries = PasswordTries {
+newtype PasswordTries = PasswordTries {
   passwordTriesCount  :: Map.Map Text Integer
 } deriving (Eq, Show)
 
@@ -49,7 +50,7 @@ saveCounter :: (MonadIO m, PlatformNatives, HasStoreDir m) => PasswordTries -> m
 saveCounter pt = storeValue "tries.json" pt True
 
 loadCounter :: (MonadIO m, PlatformNatives, HasStoreDir m) => m PasswordTries
-loadCounter = fmap (fromRight emptyPT) $ retrieveValue "tries" emptyPT
+loadCounter = fromRight emptyPT <$> retrieveValue "tries" emptyPT
 
 -- | Helper to throw error when predicate is not 'True'
 check :: MonadError a m => a -> Bool -> m ()
@@ -59,10 +60,19 @@ check _ True = pure ()
 submitSetBtn :: MonadFrontBase t m => m (Event t ())
 submitSetBtn = submitClass "button button-outline" PWSSet
 
+checkPasswordsMatch :: Reflex t => Event t () -> Dynamic t Text -> Dynamic t Text -> Event t ()
+checkPasswordsMatch e d1 d2 = flip push e $ const $ do
+  v1 <- sampleDyn d1
+  v2 <- sampleDyn d2
+  pure $ if v1 /= v2
+    then Just ()
+    else Nothing
+
 setupPassword :: MonadFrontBase t m => Event t () -> m (Event t Password)
 setupPassword e = divClass "setup-password" $ form $ fieldset $ mdo
-  p1D <- passFieldWithEye PWSPassword
-  p2D <- passFieldWithEye PWSRepeat
+  p1D <- passFieldWithEye PWSPassword noMatchE
+  p2D <- passFieldWithEye PWSRepeat noMatchE
+  let noMatchE = checkPasswordsMatch e p1D p2D
   validateEvent $ poke e $ const $ runExceptT $ do
     p1 <- sampleDyn p1D
     p2 <- sampleDyn p2D
@@ -73,8 +83,9 @@ setupLoginPassword :: MonadFrontBase t m => Maybe Text -> Event t () -> m (Event
 setupLoginPassword mlogin e = divClass "setup-password" $ form $ fieldset $ mdo
   existingWalletNames <- listStorages
   loginD <- textFieldAttr PWSLogin ("placeholder" =: "my wallet name") $ fromMaybe (nameProposal existingWalletNames) mlogin
-  p1D <- passFieldWithEye PWSPassword
-  p2D <- passFieldWithEye PWSRepeat
+  p1D <- passFieldWithEye PWSPassword noMatchE
+  p2D <- passFieldWithEye PWSRepeat noMatchE
+  let noMatchE = checkPasswordsMatch e p1D p2D
   validateEvent $ poke e $ const $ runExceptT $ do
     p1 <- sampleDyn p1D
     p2 <- sampleDyn p2D
@@ -120,13 +131,13 @@ setupDerivPrefix ac mpath = do
 askPasswordWidget :: MonadFrontBase t m => Text -> Bool -> Event t () -> m (Event t Password)
 askPasswordWidget name writeMeta clearInputE
   | isAndroid = askPasswordAndroidWidget name writeMeta clearInputE
-  | otherwise = askTextPasswordWidget PPSUnlock (PWSPassNamed name)
+  | otherwise = askTextPasswordWidget PPSUnlock (PWSPassNamed name) clearInputE
 
-askTextPasswordWidget :: (MonadFrontBase t m, LocalizedPrint l1, LocalizedPrint l2) => l1 -> l2 -> m (Event t Password)
-askTextPasswordWidget title description = divClass "my-a" $ do
+askTextPasswordWidget :: (MonadFrontBase t m, LocalizedPrint l1, LocalizedPrint l2) => l1 -> l2 -> Event t () -> m (Event t Password)
+askTextPasswordWidget title description clearInputE = divClass "my-a" $ do
   h4 $ localizedText title
   divClass "" $ do
-    pD <- passFieldWithEye description
+    pD <- passFieldWithEye description clearInputE
     e <- submitClass "button button-outline" PWSGo
     pure $ tag (current pD) e
 
@@ -135,17 +146,17 @@ askPasswordAndroidWidget name writeMeta clearInputE = mdo
   let fpath = "meta_wallet_" <> T.replace " " "_" name
   isPass <- fromRight False <$> retrieveValue fpath False
   passE <- if isPass
-    then askPasswordImpl name writeMeta
+    then askPasswordImpl name writeMeta clearInputE
     else askPinCodeImpl name writeMeta clearInputE
   pure passE
 
-askPasswordImpl :: MonadFrontBase t m => Text -> Bool -> m (Event t Password)
-askPasswordImpl name writeMeta = do
+askPasswordImpl :: MonadFrontBase t m => Text -> Bool -> Event t () -> m (Event t Password)
+askPasswordImpl name writeMeta clearInputE = do
   let fpath = "meta_wallet_" <> T.replace " " "_" name
   when writeMeta $ storeValue fpath True True
   divClass "ask-password my-a" $ form $ fieldset $ do
     h4 $ localizedText PPSUnlock
-    pD <- passFieldWithEye $ PWSPassNamed name
+    pD <- passFieldWithEye (PWSPassNamed name) clearInputE
     divClass "fit-content ml-a mr-a" $ do
       e <- divClass "" $ submitClass "button button-outline w-100" PWSGo
       pure $ tag (current pD) e
@@ -154,7 +165,7 @@ askPinCodeImpl :: MonadFrontBase t m => Text -> Bool -> Event t () -> m (Event t
 askPinCodeImpl name writeMeta clearInputE = do
   let fpath = "meta_wallet_" <> T.replace " " "_" name
   when writeMeta $ storeValue fpath False True
-  pinE <- mdo
+  mdo
     c <- loadCounter
     let cInt = fromMaybe 0 $ Map.lookup name (passwordTriesCount c)
     now <- liftIO getCurrentTime
@@ -180,19 +191,21 @@ askPinCodeImpl name writeMeta clearInputE = do
     performEvent_ $ ffor (updated counterD) $ \cS ->
       saveCounter $ PasswordTries $ Map.insert name cS (passwordTriesCount c)
     pure $ attachPromptlyDynWithMaybe (\freeze p -> if not freeze then Just p else Nothing) freezeD passE
-  pure pinE
 
 askPasswordModal :: MonadFront t m => m ()
 askPasswordModal = mdo
   goE <- fmap fst getPasswordModalEF
   fire <- fmap snd getPasswordSetEF
-  let redrawE = leftmost [Just <$> goE, Nothing <$ passE, Nothing <$ closeE]
+  let redrawE = leftmost [Just <$> goE, Nothing <$ closeE]
   valD <- networkHold (pure (never, never)) $ ffor redrawE $ \case
-    Just (i, name) -> divClass "ask-password-modal" $ do
+    Just (i, passwordValidationResultE, name) -> divClass "ask-password-modal" $ do
       title <- localized PWSPassword
-      (closeE', passE') <- wrapperPasswordModal title "password-widget-container" $
-        fmap ((i,) . Just) <$> askPasswordWidget name False never
-      pure (passE', closeE')
+      let invalidPassE = fmapMaybe (\res -> if res == PasswordInvalid then Just () else Nothing) passwordValidationResultE
+          validPassE = fmapMaybe (\res -> if res == PasswordValid then Just () else Nothing) passwordValidationResultE
+      (closeBtnE, passE') <- wrapperPasswordModal title "password-widget-container" $
+         askPasswordWidget name False invalidPassE
+      let closeModalE = leftmost [closeBtnE, validPassE]
+      pure ((i,) . Just <$> passE', closeModalE)
     Nothing -> pure (never, never)
   let (passD, closeD) = splitDynPure valD
       passE = switchDyn passD
