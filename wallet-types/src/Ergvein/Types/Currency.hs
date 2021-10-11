@@ -104,7 +104,7 @@ instance IsMoneyUnit UnitBTC where
   unitIsSmallest = isSmallestUnitBTC
 
 defUnitBTC :: UnitBTC
-defUnitBTC = BtcWhole
+defUnitBTC = BtcSat
 
 smallestUnitBTC :: UnitBTC
 smallestUnitBTC = BtcSat
@@ -178,8 +178,8 @@ ergoSymbolUnit u = case u of
 
 -- | Amount of digits after point for currency
 currencyResolution :: Currency -> Int
-currencyResolution BTC = btcResolution defUnitBTC
-currencyResolution ERGO = ergoResolution defUnitERGO
+currencyResolution BTC = btcResolution BtcWhole
+currencyResolution ERGO = ergoResolution ErgWhole
 {-# INLINE currencyResolution #-}
 
 currencyName :: Currency -> Text
@@ -244,15 +244,17 @@ moneyFromRationalUnit units amount = Money cur val
     val = round $ amount * (10 ^ resolution)
 {-# INLINE moneyFromRationalUnit #-}
 
--- | Print amount of cryptocurrency
+-- | Print amount of cryptocurrency in smallest units
 showMoney :: Money -> Text
-showMoney m = T.pack $ printf "%f" (realToFrac (moneyToRational m) :: Double)
+showMoney money = T.pack $ printf "%u" $ moneyAmount money
 
 showMoneyUnit :: (IsMoneyUnit a) => Money -> a -> Text
-showMoneyUnit m units = T.pack $ printf "%f" (realToFrac (moneyToRationalUnit m units) :: Double)
+showMoneyUnit money units = if unitIsSmallest units
+  then showMoney money
+  else T.pack $ printf "%f" (realToFrac (moneyToRationalUnit money units) :: Double)
 
 showMoneyRated :: Money -> Centi -> Text
-showMoneyRated m r = T.pack $ printf "%.2f" $ (realToFrac r :: Double) * realToFrac (moneyToRational m)
+showMoneyRated money r = T.pack $ printf "%.2f" $ (realToFrac r :: Double) * realToFrac (moneyToRational money)
 
 -- See BIP 21
 curprefix :: Currency -> Text

@@ -64,7 +64,7 @@ fiatWidget eBal eRate = do
         Left e -> localizedText e
         Right mRate -> text $ fromMaybe "" mRate
   balanceText
-  text " "
+  br
   rateText
   pure never
 
