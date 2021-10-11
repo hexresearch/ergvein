@@ -77,21 +77,21 @@ nothingIf p x = if p x then Nothing else Just x
 dbgPrintE :: (PerformEvent t m, Show a, MonadIO (Performable m)) => Event t a -> m ()
 dbgPrintE = performEvent_ . fmap (liftIO . print)
 
-eventToNextFrame :: (PerformEvent t m, MonadIO (Performable m)) => Event t a -> m (Event t a)
-eventToNextFrame = performEvent . fmap (liftIO . pure)
+eventToNextFrame :: (PerformEvent t m, TriggerEvent t m, MonadIO (Performable m)) => Event t a -> m (Event t a)
+eventToNextFrame = delay 0
 
-eventToNextFrame' :: (PerformEvent t m, MonadIO (Performable m)) => m (Event t a) -> m (Event t a)
+eventToNextFrame' :: (PerformEvent t m, TriggerEvent t m, MonadIO (Performable m)) => m (Event t a) -> m (Event t a)
 eventToNextFrame' evtM = do
   evt <- evtM
   eventToNextFrame evt
 
-eventToNextFrameN :: (PerformEvent t m, MonadIO (Performable m)) => Int -> Event t a -> m (Event t a)
+eventToNextFrameN :: (PerformEvent t m, TriggerEvent t m, MonadIO (Performable m)) => Int -> Event t a -> m (Event t a)
 eventToNextFrameN n evt
   | n < 1     = do performEvent $ fmap (liftIO . pure) evt
   | otherwise = do evtN <- performEvent $ fmap (liftIO . pure) evt
                    eventToNextFrameN (n - 1) evtN
 
-eventToNextFrameN' :: (PerformEvent t m, MonadIO (Performable m)) => Int -> m (Event t a) -> m (Event t a)
+eventToNextFrameN' :: (PerformEvent t m, TriggerEvent t m, MonadIO (Performable m)) => Int -> m (Event t a) -> m (Event t a)
 eventToNextFrameN' n evtM = do
   evt <- evtM
   eventToNextFrameN n evt
