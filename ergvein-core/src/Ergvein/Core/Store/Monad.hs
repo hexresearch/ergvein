@@ -203,14 +203,15 @@ insertManyTxsUtxoInPubKeystore caller cur reqE = do
     inserter ps (vec, (o,i)) =
       if (V.null vec && M.null o && null i) then ps else let
         txmap = M.unions $ V.toList $ snd $ V.unzip vec
-        ps1 = modifyCurrStorage cur (currencyPubStorage'transactions %~ M.union txmap) ps
+        -- Flip is important here as we want avoid readding transactions into storage. See #1018
+        ps1 = modifyCurrStorage cur (currencyPubStorage'transactions %~ flip M.union txmap) ps
         ps2 = case cur of
           BTC -> updateBtcUtxoSet (o,i) ps1
           _ -> ps1
         upd ps' (ScanKeyBox{..}, txm) = fromMaybe ps' $
           let txs = M.elems txm
           in updateKeyBoxWith cur scanBox'purpose scanBox'index
-                (\kb -> kb {pubKeyBox'txs = S.union (pubKeyBox'txs kb) $ S.fromList (fmap egvTxId txs)}) ps'
+                (\kb -> kb { pubKeyBox'txs = S.union (S.fromList (fmap egvTxId txs)) $ pubKeyBox'txs kb }) ps'
         ps3 = V.foldl' upd ps2 vec
         in ps3
 
