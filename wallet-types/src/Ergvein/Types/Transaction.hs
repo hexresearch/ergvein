@@ -12,7 +12,6 @@ module Ergvein.Types.Transaction (
     , egvBlockHashToHk
     , EgvTx(..)
     , toTxBtc
-    , toTxErg
     , egvTxToString
     , egvTxCurrency
     , getEgvTxMeta
@@ -21,13 +20,11 @@ module Ergvein.Types.Transaction (
     , ErgTxId(..)
     , TxHash(..)
     , toBtcTxHash
-    , toErgTxHash
     , egvTxHashToStr
     , egvTxHashFromStr
     , hkTxHashToEgv
     , egvTxId
     , egvTxsToBtc
-    , egvTxsToErg
     , module Reexport
   ) where
 
@@ -88,42 +85,30 @@ type TxOutIndex = Word
 -- | index of the first block in blockchain
 currencyHeightStart :: Currency -> BlockHeight
 currencyHeightStart = \case BTC  -> 0
-                            ERGO -> 1
 {-# INLINE currencyHeightStart #-}
 
 data EgvTx
   = TxBtc !BtcTx
-  | TxErg !ErgTx
   deriving (Eq, Show, Read)
 
 instance SafeCopy EgvTx where
   putCopy v = contain $ case v of
     TxBtc tx -> put BTC >> safePut tx
-    TxErg tx -> put ERGO >> safePut tx
   getCopy = contain $ do
     c <- get
     case c of
       BTC -> TxBtc <$> safeGet
-      ERGO -> TxErg <$> safeGet
 
 toTxBtc :: EgvTx -> Maybe BtcTx
 toTxBtc = \case
   TxBtc t -> Just t
-  _ -> Nothing
-
-toTxErg :: EgvTx -> Maybe ErgTx
-toTxErg = \case
-  TxErg t -> Just t
-  _ -> Nothing
 
 egvTxToString :: EgvTx -> Text
 egvTxToString (TxBtc (BtcTx tx _)) = btcTxToString tx
-egvTxToString (TxErg (ErgTx tx _)) = ergTxToString tx
 
 egvTxCurrency :: EgvTx -> Currency
 egvTxCurrency e = case e of
   TxBtc{} -> BTC
-  TxErg{} -> ERGO
 
 egvTxFromJSON :: Currency -> Value -> Parser EgvTx
 egvTxFromJSON = \case
@@ -131,20 +116,11 @@ egvTxFromJSON = \case
     case btcTxFromString t of
       Nothing -> fail "could not decode Bitcoin transaction"
       Just x  -> return $ TxBtc $ BtcTx x Nothing
-  ERGO -> withText "Ergo transaction" $ \t ->
-    case ergTxFromString t of
-      Nothing -> fail "could not decode Ergo transaction"
-      Just x  -> return $ TxErg $ ErgTx x Nothing
 
 instance ToJSON EgvTx where
   toJSON (TxBtc (BtcTx tx meta)) = object [
       "currency"  .= toJSON BTC
     , "tx"        .= btcTxToString tx
-    , "meta"      .= toJSON meta
-    ]
-  toJSON (TxErg (ErgTx tx meta)) = object [
-      "currency"  .= toJSON ERGO
-    , "tx"        .= ergTxToString tx
     , "meta"      .= toJSON meta
     ]
 
@@ -161,17 +137,14 @@ type TxId = TxHash
 getEgvTxMeta :: EgvTx -> Maybe EgvTxMeta
 getEgvTxMeta etx= case etx of
   TxBtc (BtcTx _ m) -> m
-  TxErg (ErgTx _ m) -> m
 
 setEgvTxMeta :: EgvTx -> Maybe EgvTxMeta -> EgvTx
 setEgvTxMeta etx mh = case etx of
   TxBtc (BtcTx tx _) -> TxBtc (BtcTx tx mh)
-  TxErg (ErgTx tx _) -> TxErg (ErgTx tx mh)
 
 -- | Hash of transaction
 data TxHash
   = BtcTxHash {getBtcTxHash :: !BtcTxId}
-  | ErgTxHash {getErgTxHash :: !ErgTxId}
   deriving (Eq, Show, Read, Ord, Hashable, Serialize, Generic, NFData)
 
 instance SafeCopy TxHash where
@@ -181,20 +154,12 @@ instance SafeCopy TxHash where
 toBtcTxHash :: TxHash -> Maybe BtcTxId
 toBtcTxHash = \case
   BtcTxHash t -> Just t
-  _ -> Nothing
-
-toErgTxHash :: TxHash -> Maybe ErgTxId
-toErgTxHash = \case
-  ErgTxHash t -> Just t
-  _ -> Nothing
 
 egvTxHashToStr :: TxHash -> Text
 egvTxHashToStr (BtcTxHash h) = btcTxHashToStr h
-egvTxHashToStr (ErgTxHash h) = ergTxHashToStr h
 
 egvTxHashFromStr :: Currency -> Text -> Maybe TxHash
 egvTxHashFromStr BTC  addr = BtcTxHash <$> btcTxHashFromStr addr
-egvTxHashFromStr ERGO addr = ErgTxHash <$> ergTxHashFromStr addr
 
 egvTxHashToJSON :: TxHash -> Value
 egvTxHashToJSON = A.String . egvTxHashToStr
@@ -205,18 +170,10 @@ egvTxHashFromJSON = \case
     case btcTxHashFromStr t of
       Nothing -> fail "could not decode transaction hash"
       Just x  -> return $ BtcTxHash x
-  ERGO -> withText "txHash" $ \t ->
-    case ergTxHashFromStr t of
-      Nothing -> fail "could not decode transaction hash"
-      Just x  -> return $ ErgTxHash x
 
 instance ToJSON TxHash where
   toJSON egvTxHash@(BtcTxHash _) = object [
       "currency" .= toJSON BTC
-    , "txHash"   .= egvTxHashToJSON egvTxHash
-    ]
-  toJSON egvTxHash@(ErgTxHash _) = object [
-      "currency" .= toJSON ERGO
     , "txHash"   .= egvTxHashToJSON egvTxHash
     ]
 
@@ -234,10 +191,7 @@ hkTxHashToEgv = BtcTxHash
 
 egvTxId :: EgvTx -> TxId
 egvTxId (TxBtc (BtcTx tx _)) = hkTxHashToEgv $ HK.txHash tx
-egvTxId (TxErg (ErgTx _ _))  = error "egvTxId: implement for Ergo!"
 
 egvTxsToBtc :: Map TxId EgvTx -> Map BtcTxId BtcTxRaw
 egvTxsToBtc = M.mapKeys (fromMaybe (error "impossible: btcTxs") . toBtcTxHash) . M.mapMaybe (fmap getBtcTx . toTxBtc)
 
-egvTxsToErg :: Map TxId EgvTx -> Map ErgTxId ErgTxRaw
-egvTxsToErg = M.mapKeys (fromMaybe (error "impossible: ergoTxs") . toErgTxHash) . M.mapMaybe (fmap getErgTx . toTxErg)
