@@ -8,7 +8,6 @@ module Ergvein.Core.Store.Monad(
   , StoreWalletMsg(..)
   , getPubStorageCurD
   , getPubStorageBtcD
-  , getPubStorageErgoD
   , addTxToPubStorage
   , addTxMapToPubStorage
   , removeRbfTxsFromStorage1
@@ -55,7 +54,6 @@ import Ergvein.Types.Keys
 import Ergvein.Types.Storage
 import Ergvein.Types.Storage.Currency.Public (currencyPubStorage'outgoing, currencyPubStorage'pubKeystore)
 import Ergvein.Types.Storage.Currency.Public.Btc
-import Ergvein.Types.Storage.Currency.Public.Ergo (ErgoPubStorage(..))
 import Ergvein.Types.Transaction
 import Ergvein.Types.Utxo.Btc
 import Ergvein.Types.WalletInfo
@@ -133,13 +131,6 @@ getPubStorageBtcD = do
     v <- mv
     v ^? currencyPubStorage'meta . _PubStorageBtc
 
-getPubStorageErgoD :: MonadStorage t m => m (Dynamic t (Maybe ErgoPubStorage))
-getPubStorageErgoD = do
-  d <- getPubStorageCurD BTC
-  pure $ ffor d $ \mv -> do
-    v <- mv
-    v ^? currencyPubStorage'meta . _PubStorageErgo
-
 addTxToPubStorage :: MonadStorage t m => Text -> Event t (TxId, EgvTx) -> m ()
 addTxToPubStorage caller txE = void . modifyPubStorage clr $ ffor txE $ \(txid, etx) ps -> Just $ let
   cur = egvTxCurrency etx
@@ -177,8 +168,8 @@ insertTxsUtxoInPubKeystore caller cur reqE = do
       txmap = M.unions $ V.toList $ snd $ V.unzip vec
       ps1 = modifyCurrStorage cur (currencyPubStorage'transactions %~ M.union txmap) ps
       ps2 = case cur of
-        BTC -> updateBtcUtxoSet (o,i) ps1
-        _ -> ps1
+        BTC -> updateBtcUtxoSet (o,i) ps1 
+      
       upd ps' (ScanKeyBox{..}, txm) = fromMaybe ps' $
         let txs = M.elems txm
         in updateKeyBoxWith cur scanBox'purpose scanBox'index
@@ -206,8 +197,8 @@ insertManyTxsUtxoInPubKeystore caller cur reqE = do
         -- Flip is important here as we want avoid readding transactions into storage. See #1018
         ps1 = modifyCurrStorage cur (currencyPubStorage'transactions %~ flip M.union txmap) ps
         ps2 = case cur of
-          BTC -> updateBtcUtxoSet (o,i) ps1
-          _ -> ps1
+          BTC -> updateBtcUtxoSet (o,i) ps1 
+          
         upd ps' (ScanKeyBox{..}, txm) = fromMaybe ps' $
           let txs = M.elems txm
           in updateKeyBoxWith cur scanBox'purpose scanBox'index
@@ -345,7 +336,6 @@ updateKeyBoxWith cur kp i f ps =
 
 updateKeyLabel :: Text -> EgvXPubKey -> EgvXPubKey
 updateKeyLabel l key = case key of
-  ErgXPubKey k _ -> ErgXPubKey k l
   BtcXPubKey k _ -> BtcXPubKey k l
 
 reconfirmBtxUtxoSet :: MonadStorage t m => Text -> Event t BlockHeight -> m ()
@@ -432,7 +422,6 @@ getBlockHeaderByHash bh = do
 
 getTxHeight :: EgvTx -> Maybe BlockHeight
 getTxHeight (TxBtc tx) = (etxMetaHeight <=< getBtcTxMeta) tx
-getTxHeight (TxErg tx) = (etxMetaHeight <=< getErgTxMeta) tx
 
 getConfirmedTxs :: HasTxStorage m => m (Map TxId EgvTx)
 getConfirmedTxs = do

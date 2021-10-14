@@ -26,8 +26,6 @@ import qualified Data.Map.Strict            as M
 import qualified Data.Vector                as V
 import qualified Data.Vector.Unboxed        as UV
 
-import Debug.Trace
-
 word32toMessageType :: Word32 -> Maybe MessageType
 word32toMessageType = \case
   0  -> Just MVersionType

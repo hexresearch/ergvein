@@ -98,7 +98,6 @@ checkTxInBtc addr txIn = do
   mtx <- getTxById $ hkTxHashToEgv spentTxHash
   case mtx of
     Nothing -> pure False
-    Just (TxErg _) -> pure False -- TODO: impl for Ergo
     Just (TxBtc BtcTx{..}) -> checkTxOutBtcLog addr $ HT.txOut getBtcTx !! fromIntegral spentOutputIndex
 
 decodeBtcOutHelper :: TxOut -> Either Text HS.ScriptOutput
@@ -186,7 +185,6 @@ getOutputByOutPoint HT.OutPoint{..} = do
   mtx <- getTxById $ hkTxHashToEgv outPointHash
   case mtx of
     Nothing -> pure Nothing
-    Just (TxErg _) -> pure Nothing -- TODO: impl for Ergo
     Just (TxBtc BtcTx{..}) -> pure $ Just $ HT.txOut getBtcTx !! fromIntegral outPointIndex
 
 getOutputsByOutPoints :: (HasTxStorage m, PlatformNatives) => [HT.OutPoint] -> m [Maybe HT.TxOut]

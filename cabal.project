@@ -5,9 +5,6 @@ packages:
   ./common
   ./crypto
   ./data-merkle-tree
-  ./ergo-api
-  ./ergo-protocol
-  ./ergo-protocol-client
   ./ergvein-core
   ./ergvein-localize
   ./ergvein-website
@@ -17,7 +14,6 @@ packages:
   ./index-protocol
   ./index-protocol-client
   ./index-server
-  ./interfaces/ergo
   ./node-discovery
   ./reflex-external-ref
   ./reflex-flunky

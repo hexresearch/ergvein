@@ -71,7 +71,7 @@ This docker-compose uses official docker image [ergvein/ergvein-index-server](ht
 cd index-server/docker-compose-example
 ```
 
-Adjust connection settings for bitcoin and ergo nodes in config.yml and run:
+Adjust connection settings for bitcoin node in config.yml and run:
 
 ``` sh
 docker-compose up -d
@@ -85,12 +85,12 @@ Stop and purge all data:
 docker-compose down -v
 ```
 
-Note that you need to have running and synced bitcoin/ergo nodes.
+Note that you need to have running and synced bitcoin nodes.
 
-If you have no btc/ergo nodes, you may run them along with ergvein indexer like that:
+If you have no btc nodes, you may run them along with ergvein indexer like that:
 
 ``` sh
-docker-compose -f docker-compose.yml -f docker-compose-btc.yml -f docker-compose-ergo.yml up -d
+docker-compose -f docker-compose.yml -f docker-compose-btc.yml up -d
 ```
 
 Also pay attention to `BTCNodeUser` and `BTCNodePassword` parameters in config.yml. In production environmnet use strong password for bitcoin node and generate `rpcauth` string (have a look at docker-compose-btc.yml file) with official bitcoin project python script:
@@ -104,13 +104,13 @@ In docker-compose file you have to escape `$` symbol with `$` (yes, should looks
 If you want to run on tesnet networks update settings in config.yml and use CHAIN=test environment variable:
 
 ``` sh
-CHAIN=test docker-compose -f docker-compose.yml -f docker-compose-btc.yml -f docker-compose-ergo.yml up -d
+CHAIN=test docker-compose -f docker-compose.yml -f docker-compose-btc.yml up -d
 ```
 
-Stop and purge all data (including btc and ergo nodes):
+Stop and purge all data (including btc node):
 
 ``` sh
-docker-compose -f docker-compose.yml -f docker-compose-btc.yml -f docker-compose-ergo.yml up -d
+docker-compose -f docker-compose.yml -f docker-compose-btc.yml up -d
 ```
 
 

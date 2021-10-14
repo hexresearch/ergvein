@@ -33,17 +33,14 @@ library
     Ergvein.Types.Storage.Currency.Private
     Ergvein.Types.Storage.Currency.Public
     Ergvein.Types.Storage.Currency.Public.Btc
-    Ergvein.Types.Storage.Currency.Public.Ergo
     Ergvein.Types.Storage.Private
     Ergvein.Types.Storage.Public
     Ergvein.Types.Storage.Wallet
     Ergvein.Types.Transaction
     Ergvein.Types.Transaction.Btc
-    Ergvein.Types.Transaction.Ergo
     Ergvein.Types.Transaction.Meta
     Ergvein.Types.Utxo
     Ergvein.Types.Utxo.Btc
-    Ergvein.Types.Utxo.Ergo
     Ergvein.Types.Utxo.Status
     Ergvein.Types.WalletInfo
   default-language:    Haskell2010
@@ -70,7 +67,6 @@ library
     , vector                    >= 0.12     && < 0.13
     , safecopy                  >= 0.9      && < 0.10
     , sepulcas
-    , ergo-protocol
   if flag(testnet)
     cpp-options: -DTESTNET
   default-extensions:

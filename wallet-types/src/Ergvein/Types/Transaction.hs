@@ -17,7 +17,6 @@ module Ergvein.Types.Transaction (
     , getEgvTxMeta
     , setEgvTxMeta
     , TxId
-    , ErgTxId(..)
     , TxHash(..)
     , toBtcTxHash
     , egvTxHashToStr
@@ -46,7 +45,6 @@ import Ergvein.Types.Currency
 import Ergvein.Types.Height
 import Ergvein.Types.Orphanage ()
 import Ergvein.Types.Transaction.Btc as Reexport
-import Ergvein.Types.Transaction.Ergo as Reexport
 import Ergvein.Types.Transaction.Meta as Reexport
 
 import qualified Data.ByteString.Short       as BSS

@@ -24,7 +24,6 @@ import Data.Traversable (for)
 import Network.Socket (SockAddr)
 
 import Ergvein.Core.Node.Btc
-import Ergvein.Core.Node.Ergo
 import Ergvein.Core.Node.Monad
 import Ergvein.Core.Node.Types
 import Ergvein.Core.Settings
@@ -49,10 +48,7 @@ addNodeConn :: NodeConn t -> ConnMap t -> ConnMap t
 addNodeConn nc cm = case nc of
   NodeConnBtc conn -> let
     u = nodeconUrl conn
-    in DM.insertWith M.union BtcTag (M.singleton u conn) cm
-  NodeConnErgo conn -> let
-    u = nodeconUrl conn
-    in DM.insertWith M.union ErgoTag (M.singleton u conn) cm
+    in DM.insertWith M.union BtcTag (M.singleton u conn) cm 
 
 addMultipleConns :: Foldable f => ConnMap t -> f (NodeConn t) -> ConnMap t
 addMultipleConns = foldl' (flip addNodeConn)
@@ -69,7 +65,6 @@ initNode :: (MonadSettings t m)
   -> SockAddr -> m (NodeConn t)
 initNode cur sel url = case cur of
   BTC  -> NodeConnBtc <$> initBtcNode True url reqE
-  ERGO -> NodeConnErgo <$> initErgoNode url reqE
   where
     reqE = extractReq sel cur url
 
@@ -100,13 +95,7 @@ reinitNodes urls cs sel conMap = foldlM updCurr conMap $ M.toList cs
           pure $ addMultipleConns cm conns
         (Just _, False) -> pure $ DM.delete BtcTag cm
         _ -> pure cm
-      ERGO -> case (DM.lookup ErgoTag cm, b) of
-        (Nothing, True) -> do
-          let conns0 = fromMaybe [] $ M.lookup ERGO urls
-          conns <- for conns0 $ \u -> fmap NodeConnErgo $ initErgoNode u $ extractReq sel ERGO u
-          pure $ addMultipleConns cm conns
-        (Just _, False) -> pure $ DM.delete ErgoTag cm
-        _ -> pure cm
+
 
 -- Send a request to a node. Wait until the connection is up
 requestNodeWait :: (MonadNode t m, HasNode cur)
@@ -133,10 +122,7 @@ requestRandomNode reqE = do
         let nodes = M.elems $ fromMaybe M.empty $ DM.lookup BtcTag cm
         mn <- randomOne nodes
         pure $ fmap (\n -> ((nodeconUrl n, req), NodeRespBtc <$> nodeconRespE n)) mn
-      NodeReqErgo{} -> do
-        let nodes = M.elems $ fromMaybe M.empty $ DM.lookup ErgoTag cm
-        mn <- randomOne nodes
-        pure $ fmap (\n -> ((nodeconUrl n, req), NodeRespErgo <$> nodeconRespE n)) mn
+
   let reqE' = fmapMaybe id mreqE
   _ <- requestFromNode $ fmap fst reqE'
   switchHold never $ fmap snd reqE'

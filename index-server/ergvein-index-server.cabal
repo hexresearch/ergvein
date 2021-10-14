@@ -122,14 +122,12 @@ library
       , warp                     >= 3.2     &&  < 3.3
       , yaml                     >= 0.11    &&  < 0.12
       , coinbase-client
-      , ergo-api
       , ergvein-common
       , ergvein-crypto
       , ergvein-index-api
       , ergvein-index-client
       , ergvein-index-protocol
       , ergvein-index-protocol-client
-      , ergvein-interface-ergo
       , ergvein-filters
       , ergvein-types
 

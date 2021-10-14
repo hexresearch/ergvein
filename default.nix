@@ -14,9 +14,6 @@ let
       cbitstream = ./cbitstream;
       coinbase-client = ./coinbase-client;
       data-merkle-tree = ./data-merkle-tree;
-      ergo-api = ./ergo-api;
-      ergo-protocol = ./ergo-protocol;
-      ergo-protocol-client = ./ergo-protocol-client;
       ergvein-checkpoint-generator = ./checkpoint-generator;
       ergvein-common = ./common;
       ergvein-core = ./ergvein-core;
@@ -27,7 +24,6 @@ let
       ergvein-index-protocol = ./index-protocol;
       ergvein-index-protocol-client = ./index-protocol-client;
       ergvein-index-server = ./index-server;
-      ergvein-interface-ergo = ./interfaces/ergo;
       ergvein-localize = ./ergvein-localize;
       ergvein-node-discovery = ./node-discovery;
       ergvein-types = ./wallet-types;
@@ -57,9 +53,6 @@ let
         "cbitstream"
         "coinbase-client"
         "data-merkle-tree"
-        "ergo-api"
-        "ergo-protocol-client"
-        "ergo-protocol"
         "ergvein-checkpoint-generator"
         "ergvein-common"
         "ergvein-core"
@@ -70,7 +63,6 @@ let
         "ergvein-index-protocol-client"
         "ergvein-index-protocol"
         "ergvein-index-server"
-        "ergvein-interface-ergo"
         "ergvein-localize"
         "ergvein-node-discovery"
         "ergvein-types"

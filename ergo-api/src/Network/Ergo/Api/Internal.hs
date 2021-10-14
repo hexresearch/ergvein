@@ -1,1 +1,0 @@
-module Network.Ergo.Api.Internal where
