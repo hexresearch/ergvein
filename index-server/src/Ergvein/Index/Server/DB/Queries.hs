@@ -236,7 +236,6 @@ performBtcRollback = do
 
 addTxIndexInfo :: (HasUtxoDB m, MonadLogger m) => Currency -> TxIndexInfo -> m ()
 addTxIndexInfo cur = case cur of
-  ERGO -> const $ pure ()
   BTC -> addBtcTxIndexInfo
 
 addBtcTxIndexInfo :: (HasUtxoDB m, MonadLogger m) => TxIndexInfo -> m ()

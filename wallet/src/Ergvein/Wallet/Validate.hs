@@ -5,9 +5,7 @@ module Ergvein.Wallet.Validate (
   , validateAmount
   , validateFeeRate
   , validateBtcAddr
-  , validateErgAddr
   , validateBtcRecipient
-  , validateErgRecipient
   , ValidationError(..)
   , Validation(..)
   ) where
@@ -57,7 +55,6 @@ validateFeeRate cur mPrevFeeRate feeRateText = case validateNonEmptyText feeRate
   where
     units = case cur of
       BTC -> display smallestUnitBTC
-      ERGO -> display smallestUnitERGO
     printer x = showt x <> " " <> units
 
 validateBtcAddr :: Text -> Validation [ValidationError] BtcAddress
@@ -65,21 +62,9 @@ validateBtcAddr addrText = case btcAddrFromText addrText of
   Nothing   -> _Failure # [InvalidAddress]
   Just addr -> _Success # addr
 
-validateErgAddr :: Text -> Validation [ValidationError] ErgAddress
-validateErgAddr addrText = case ergAddrFromText addrText of
-  Nothing   -> _Failure # [InvalidAddress]
-  Just addr -> _Success # addr
-
 validateBtcRecipient :: Text -> Validation [ValidationError] BtcAddress
 validateBtcRecipient addrText = case validateNonEmptyText addrText of
   Failure errs -> _Failure # errs
   Success (NonEmptyText nonEmptyAddrText) -> case validateBtcAddr nonEmptyAddrText of
-    Failure errs' -> _Failure # errs'
-    Success addr -> _Success # addr
-
-validateErgRecipient :: Text -> Validation [ValidationError] ErgAddress
-validateErgRecipient addrText = case validateNonEmptyText addrText of
-  Failure errs -> _Failure # errs
-  Success (NonEmptyText nonEmptyAddrText) -> case validateErgAddr nonEmptyAddrText of
     Failure errs' -> _Failure # errs'
     Success addr -> _Success # addr

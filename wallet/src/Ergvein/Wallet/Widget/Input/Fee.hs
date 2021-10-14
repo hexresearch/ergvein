@@ -4,7 +4,6 @@
 
 module Ergvein.Wallet.Widget.Input.Fee(
       feeSelectionWidgetBtc
-    , feeSelectionWidgetErg
   ) where
 
 import Data.Bifunctor (second)
@@ -92,45 +91,3 @@ feeSelectionWidgetBtc lbl minit mPrevRate submitE = do
       (Nothing, FeeModeManual)      ->                                                              pure Nothing
       (Nothing, _)              -> parClass "mb-0" (localizedText FSNoFees)                  >> pure Nothing
 
--- | Ergo fee selector
-feeSelectionWidgetErg :: forall t m l . (MonadFront t m, LocalizedPrint l)
-  => l                             -- ^ Label
-  -> Maybe (FeeMode, Word64)       -- ^ Inital mode and value
-  -> Event t ()                    -- ^ Send event. Triggers fileds validation
-  -> m (Dynamic t (Maybe (FeeMode, Word64)))
-feeSelectionWidgetErg lbl minit submitE = do
-  feesD <- getFeesD
-  initFees <- sampleDyn feesD
-  let getInitFeeRateByLvl lvl = fmap (fst . extractFee lvl) (M.lookup ERGO initFees)
-      (initFeeMode, mInitFeeRate) = maybe (FeeModeMid, getInitFeeRateByLvl FeeModerate) (second Just) minit
-      initFeeRateText = maybe "" showt mInitFeeRate
-      initInputIsDisabled = initFeeMode /= FeeModeManual
-  divClass "fee-input" $ do
-    el "label" $ localizedText lbl
-    selectedD <- row $ mdo
-      feeRateD <- column67 $ mdo
-        feeModeE <- updated <$> holdUniqDyn feeModeD
-        let modifyAttrsE = feeModeToAttr <$> feeModeE
-            setValE = attachPromptlyDynWithMaybe (feeModeToRateText ERGO) feesD feeModeE
-        feeRateErrsD <- holdDyn Nothing $ ffor (current validatedRateD `tag` submitE) eitherToMaybe'
-        selectedRateD <- manualFeeSelector initFeeRateText initInputIsDisabled setValE modifyAttrsE feeRateErrsD
-        let validatedRateD = toEither . validateFeeRate ERGO Nothing <$> selectedRateD
-        pure $ eitherToMaybe <$> validatedRateD
-      feeModeD <- column33 $ do
-        langD <- getLanguage
-        l <- sampleDyn langD
-        let feeModeOptionsD = constDyn $ M.fromList $ (\feeLevel -> (feeLevel, localizedShow l feeLevel)) <$> [minBound .. maxBound]
-            ddnCfg = DropdownConfig {
-                _dropdownConfig_setValue   = never
-              , _dropdownConfig_attributes = constDyn ("class" =: "mb-0")
-              }
-        feeModeDropdown <- dropdown initFeeMode feeModeOptionsD ddnCfg
-        pure $ _dropdown_value feeModeDropdown
-      pure $ ffor2 feeRateD feeModeD (,)
-    networkHoldDyn $ ffor selectedD $ \case
-      (Just feeRate, FeeModeManual) -> parClass "mb-0" (localizedText   FSFee                  ) >> pure (Just (FeeModeManual, feeRate))
-      (Just feeRate, FeeModeLow)    -> parClass "mb-0" (localizedText $ FSRateDesc FeeCheap    ) >> pure (Just (FeeModeLow,    feeRate))
-      (Just feeRate, FeeModeMid)    -> parClass "mb-0" (localizedText $ FSRateDesc FeeModerate ) >> pure (Just (FeeModeMid,    feeRate))
-      (Just feeRate, FeeModeHigh)   -> parClass "mb-0" (localizedText $ FSRateDesc FeeFast     ) >> pure (Just (FeeModeHigh,   feeRate))
-      (Nothing, FeeModeManual)      ->                                                              pure Nothing
-      (Nothing, _)                  -> parClass "mb-0" (localizedText FSNoFees)                  >> pure Nothing

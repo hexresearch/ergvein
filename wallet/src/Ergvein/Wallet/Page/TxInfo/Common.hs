@@ -63,7 +63,6 @@ makeNumberedTxIdLink currency (num, txId) = do
   let txIdText = egvTxHashToStr txId
       urlPrefixes = case currency of
           BTC -> btcSettings'explorerUrls $ getBtcSettings settings
-          ERGO -> ergSettings'explorerUrls $ getErgoSettings settings
       urlPrefix = if isTestnet then testnetUrl urlPrefixes else mainnetUrl urlPrefixes
   text $ showt num <> ". "
   hyperlink "link" txIdText (urlPrefix <> "/tx/" <> txIdText)

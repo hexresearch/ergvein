@@ -35,7 +35,6 @@ import qualified Data.Map.Strict             as M
 import qualified Data.Sequence               as Seq
 import qualified Data.Set                    as Set
 import qualified Network.Bitcoin.Api.Client  as BitcoinApi
-import qualified Network.Ergo.Api.Client     as ErgoApi
 import qualified Network.Haskoin.Constants   as HK
 import qualified Network.HTTP.Client         as HC
 
@@ -46,7 +45,6 @@ data ServerEnv = ServerEnv
     , envIndexerDBContext         :: !LevelDB
     , envUtxoDBContext            :: !LevelDB
     , envBitcoinNodeNetwork       :: !HK.Network
-    , envErgoNodeClient           :: !ErgoApi.Client
     , envClientManager            :: !HC.Manager
     , envBitcoinClient            :: !BitcoinApi.Client
     , envBitcoinSocket            :: !BtcSocket
@@ -100,7 +98,6 @@ withNewServerEnv useTcp overrideFilters overridesIndexers overridesUtxo btcClien
     logger <- liftIO newChan
     liftIO $ hSetBuffering stdout LineBuffering
     void $ liftIO $ forkIO $ runStdoutLoggingT $ unChanLoggingT logger
-    ergoNodeClient <- liftIO $ ErgoApi.newClient cfgERGONodeHost cfgERGONodePort
     tlsManager     <- liftIO $ newTlsManager
     feeEstimates   <- liftIO $ newTVarIO M.empty
     shutdownVar    <- liftIO $ newTVarIO False
@@ -139,7 +136,6 @@ withNewServerEnv useTcp overrideFilters overridesIndexers overridesUtxo btcClien
             , envIndexerDBContext        = indexerDB
             , envUtxoDBContext           = utxoDB
             , envBitcoinNodeNetwork      = bitcoinNodeNetwork
-            , envErgoNodeClient          = ergoNodeClient
             , envClientManager           = tlsManager
             , envBitcoinClient           = btcClient
             , envBitcoinSocket           = btcsock

@@ -177,8 +177,6 @@ in {
           BTCNodePassword          : "_env:BTC_PASSWORD:"
           BTCNodeTCPHost           : ${cfg.btcHost}
           BTCNodeTCPPort           : ${toString cfg.btcTcpPort}
-          ERGONodeHost             : localhost
-          ERGONodePort             : 9052
           blockchainScanDelay      : 10000000
           ownPeerAddress           : ${if cfg.nodeExternalAddress != null then makePeerAddress cfg.nodeExternalAddress else "null"}
           knownPeers               : []

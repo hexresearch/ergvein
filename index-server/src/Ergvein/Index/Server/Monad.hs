@@ -20,7 +20,6 @@ import Ergvein.Index.Server.Dependencies
 import Ergvein.Index.Server.Environment
 
 import qualified Data.Map.Strict as M
-import qualified Network.Ergo.Api.Client     as ErgoApi
 
 newtype ServerM a = ServerM { unServerM :: ReaderT ServerEnv (LoggingT IO) a }
   deriving newtype ( Functor, Applicative, Monad, MonadIO, MonadLogger
@@ -48,10 +47,6 @@ instance HasUtxoDB ServerM where
 instance HasBtcRollback ServerM where
   getBtcRollbackVar = asks envBtcRollback
   {-# INLINE getBtcRollbackVar #-}
-
-instance ErgoApi.ApiMonad ServerM where
-  getClient = asks envErgoNodeClient
-  {-# INLINE getClient #-}
 
 instance HasBitcoinNodeNetwork ServerM where
   currentBitcoinNetwork = asks envBitcoinNodeNetwork

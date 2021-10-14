@@ -2,7 +2,6 @@
 
 module Ergvein.Wallet.Widget.Input.Amount(
       sendAmountWidgetBtc
-    , sendAmountWidgetErg
   ) where
 
 import Control.Monad.Except
@@ -62,32 +61,6 @@ sendAmountWidgetBtc minit submitE = divClass "amount-input" $ mdo
           units <- getSettingsUnitBtc
           let unitInit = maybe units fst minit
           unitsDropdown unitInit allUnitsBTC
-      pure $ zipDynWith (\u v -> fmap (u,) $ toEither $ validateAmount 0 u v) unitD textInputValueD
-  void $ divClass "form-field-errors" $ simpleList errsD displayError
-  amountErrsD <- holdDyn Nothing $ ffor (current amountValD `tag` submitE) eitherToMaybe'
-  pure $ eitherToMaybe <$> amountValD
-
--- | Input field with units. Converts everything to satoshis and returns the unit.
-sendAmountWidgetErg :: (MonadFront t m) => Maybe (UnitERGO, Word64) -> Event t () -> m (Dynamic t (Maybe (UnitERGO, Word64)))
-sendAmountWidgetErg minit submitE = divClass "amount-input" $ mdo
-  let errsD = fromMaybe [] <$> amountErrsD
-      isInvalidD = fmap (maybe "" (const "is-invalid")) amountErrsD
-  amountValD <- do
-    el "label" $ localizedText AmountString
-    divClass "row" $ mdo
-      textInputValueD <- divClass "column column-67" $ do
-        textInputValueD' <- do
-          txtInit <- do
-            units <- getSettingsUnitErg
-            let unitInit = maybe units fst minit
-            pure $ maybe "" (\(_, amount) -> showMoneyUnit (Money ERGO amount) unitInit) minit
-          divClassDyn isInvalidD $ textFieldAttrNoLabel (M.singleton "class" "mb-0") never never txtInit
-        when isAndroid (availableBalanceWidget ERGO unitD)
-        pure textInputValueD'
-      unitD <- divClass "column column-33" $ do
-          units <- getSettingsUnitErg
-          let unitInit = maybe units fst minit
-          unitsDropdown unitInit allUnitsERGO
       pure $ zipDynWith (\u v -> fmap (u,) $ toEither $ validateAmount 0 u v) unitD textInputValueD
   void $ divClass "form-field-errors" $ simpleList errsD displayError
   amountErrsD <- holdDyn Nothing $ ffor (current amountValD `tag` submitE) eitherToMaybe'

@@ -10,8 +10,6 @@ BTCNodeUser              : bitcoin
 BTCNodePassword          : AeNungaengohpeeG4eX5
 BTCNodeTCPHost           : localhost
 BTCNodeTCPPort           : 8333
-ERGONodeHost             : localhost
-ERGONodePort             : 9052
 blockchainScanDelay      : 10000000
 ownPeerAddress           : null
 knownPeers               : []
