@@ -248,7 +248,7 @@ moneyFromRationalUnit units amount = Money cur val
 showMoney :: Money -> Text
 showMoney m = T.pack $ printf "%f" (realToFrac (moneyToRational m) :: Double)
 
-showMoneyUnit :: (IsMoneyUnit a) => Money -> a -> Text
+showMoneyUnit :: IsMoneyUnit a => Money -> a -> Text
 showMoneyUnit m units = T.pack $ printf "%f" (realToFrac (moneyToRationalUnit m units) :: Double)
 
 showMoneyRated :: Money -> Centi -> Text

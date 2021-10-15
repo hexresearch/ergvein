@@ -65,7 +65,6 @@ data RbfTxData = RbfTxData {
 
 -- | Keep all inputs, keep all outputs that are not our change,
 -- allow adding new inputs.
--- FIXME: localize errors
 prepareTxData :: MonadFront t m => Event t (BtcTx, (FeeMode, Word64)) -> m (Event t RbfTxData)
 prepareTxData e = do
   pubStorage <- getPubStorage

@@ -78,7 +78,7 @@ staleGap = 2016     -- ~1 blk / 10 min. 14 days * 24 h * 6 blocks/h.
 
 reconfirmBtcUtxoSetPure :: BlockHeight -> BtcUtxoSet -> BtcUtxoSet
 reconfirmBtcUtxoSetPure bh bs = flip M.mapMaybe bs $ \meta -> case btcUtxo'status meta of
-  EUtxoConfirmed -> Just $ meta
+  EUtxoConfirmed -> Just meta
   EUtxoSemiConfirmed bh0 -> Just $ if bh - bh0 >= confirmationGap - 1 then meta {btcUtxo'status = EUtxoConfirmed} else meta
   EUtxoSending mh -> case mh of
     Nothing -> Just $ meta {btcUtxo'status = EUtxoSending $ Just bh}
@@ -109,11 +109,11 @@ data UtxoPoint = UtxoPoint {
 } deriving (Show)
 
 instance Eq UtxoPoint where
-  a == b = (btcUtxo'amount $ upMeta a) == (btcUtxo'amount $ upMeta b)
+  a == b = btcUtxo'amount (upMeta a) == btcUtxo'amount (upMeta b)
 
 -- | We need to sort in desc order to reduce Tx size
 instance Ord UtxoPoint where
-  a `compare` b = (btcUtxo'amount $ upMeta b) `compare` (btcUtxo'amount $ upMeta a)
+  a `compare` b = btcUtxo'amount (upMeta b) `compare` btcUtxo'amount (upMeta a)
 
 type ConfirmedUtxoPoints = [UtxoPoint]
 
