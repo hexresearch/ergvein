@@ -44,6 +44,7 @@ data ValidationError
   | MustBeGreaterThan Text
   | InvalidAddress
   | EnterFeeRateFirst
+  | EnterRecipientFirst
   deriving (Show)
 
 validateNonEmptyText :: Text -> Validation [ValidationError] NonEmptyText

@@ -7,6 +7,7 @@ module Ergvein.Types.Address (
     , btcAddrToText
     , btcAddrFromText
     , BtcAddressType(..)
+    , btcAddrToBtcOutType
     , ergAddrToText
     , ergAddrFromText
     , egvAddrToText
@@ -168,3 +169,10 @@ data BtcAddressType =
   | BtcP2WSH
   | BtcDataCarrier
   deriving (Read, Show, Eq)
+
+btcAddrToBtcOutType :: BtcAddress -> BtcAddressType
+btcAddrToBtcOutType = \case
+  HA.PubKeyAddress _ -> BtcP2PKH
+  HA.ScriptAddress _ -> BtcP2SH
+  HA.WitnessPubKeyAddress _ -> BtcP2WPKH
+  HA.WitnessScriptAddress _ -> BtcP2WSH

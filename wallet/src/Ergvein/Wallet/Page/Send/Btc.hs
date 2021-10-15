@@ -34,7 +34,6 @@ import Network.Haskoin.Network (Inv(..), InvVector(..), InvType(..), Message(..)
 
 import qualified Data.List as L
 import qualified Data.Text as T
-import qualified Network.Haskoin.Address as HA
 import qualified Network.Haskoin.Transaction as HT
 
 sendPageBtc :: MonadFront t m => Maybe ((UnitBTC, Word64), (FeeMode, Word64), BtcAddress, RbfEnabled) -> m ()
@@ -105,13 +104,6 @@ sendConfirmationWidget v = do
             retractableNext = balancesPage
           , retractablePrev = thisWidget
         }
-
-btcAddrToBtcOutType :: BtcAddress -> BtcAddressType
-btcAddrToBtcOutType = \case
-  HA.PubKeyAddress _ -> BtcP2PKH
-  HA.ScriptAddress _ -> BtcP2SH
-  HA.WitnessPubKeyAddress _ -> BtcP2WPKH
-  HA.WitnessScriptAddress _ -> BtcP2WSH
 
 makeTxWidget :: MonadFront t m =>
   ((UnitBTC, Word64), Word64, BtcAddress, RbfEnabled) ->

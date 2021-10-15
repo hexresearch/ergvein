@@ -16,6 +16,8 @@ instance LocalizedPrint ValidationError where
       MustBeGreaterThan t       -> "Value must be greater than " <> t
       InvalidAddress            -> "Invalid address"
       EnterFeeRateFirst         -> "First enter the fee rate"
+      EnterRecipientFirst       -> "First enter the recipient"
+
     Russian -> case v of
       MustNotBeEmpty            -> "Заполните это поле"
       MustBeRational            -> "Введите корректное значение (пример: 1.23)"
@@ -23,3 +25,4 @@ instance LocalizedPrint ValidationError where
       MustBeGreaterThan t       -> "Значение должно быть больше " <> t
       InvalidAddress            -> "Неверный адрес"
       EnterFeeRateFirst         -> "Сначала выберите размер комиссии"
+      EnterRecipientFirst       -> "Cначала укажите получателя"

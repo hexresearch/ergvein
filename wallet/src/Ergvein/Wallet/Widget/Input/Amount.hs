@@ -47,49 +47,60 @@ sendAmountWidgetBtc :: MonadFront t m => Maybe (UnitBTC, Word64) -> Event t () -
 sendAmountWidgetBtc minit submitE recipientD feeRateD = divClass "amount-input" $ mdo
   let errsD = fromMaybe [] <$> amountErrsD
       invalidClassD = fmap (maybe "" (const "is-invalid")) amountErrsD
-  (amountValD, sendAllNoFeeRateE''') <- do
+  (amountValD, sendAllErrE''') <- do
     el "label" $ localizedText AmountString
     divClass "row" $ mdo
-      (textInputValueD', sendAllNoFeeRateE'') <- divClass "column column-67" $ do
-        (textInputValueD, sendAllNoFeeRateE') <- mdo
+      (textInputValueD', sendAllErrE'') <- divClass "column column-67" $ do
+        (textInputValueD, sendAllErrE') <- mdo
           txtInit <- do
             units <- getSettingsUnitBtc
             let unitInit = maybe units fst minit
             pure $ maybe "" (\(_, amount) -> showMoneyUnit (Money BTC amount) unitInit) minit
+          -- If both the fee rate and the recipient are specified and valid, we can calculate the maximum amount.
           let sendAllE = flip push sendAllBtnE $ const $ do
                 mFeeRate <- sampleDyn feeRateD
-                pure $ snd <$> mFeeRate
-              sendAllNoFeeRateE = poke sendAllBtnE $ const $ do
+                mRecipient <- sampleDyn recipientD
+                case (mFeeRate, mRecipient) of
+                  (Just (_, feeRate), Just recipient) -> pure $ Just (feeRate, recipient)
+                  _ -> pure Nothing
+          -- If the recipient or the fee rate is not specified, then we show an error msg.
+              sendAllErrE = poke sendAllBtnE $ const $ do
                 mFeeRate <- sampleDyn feeRateD
-                pure $ if isNothing mFeeRate then Just [EnterFeeRateFirst] else Nothing
+                mRecipient <- sampleDyn recipientD
+                case (mFeeRate, mRecipient) of
+                  (Just _, Just _) -> pure Nothing
+                  (Nothing, Just _) -> pure $ Just [EnterFeeRateFirst]
+                  (Just _, Nothing) -> pure $ Just [EnterRecipientFirst]
+                  (Nothing, Nothing) -> pure $ Just [EnterFeeRateFirst, EnterRecipientFirst]
           pubStorageD <- getPubStorageD
-          let setAmountSatE = poke sendAllE $ \feeRate -> do
+          let setAmountSatE = poke sendAllE $ \(feeRate, recipient) -> do
                 pubStorage <- sampleDyn pubStorageD
-                pure $ calcMaxAvailableAmount pubStorage feeRate
+                pure $ calcMaxAvailableAmount pubStorage feeRate recipient
               setAmountE = poke setAmountSatE $ \amount -> do
                 units <- sampleDyn unitD
                 pure $ showMoneyUnit (Money BTC amount) units
           (txtValD, sendAllBtnE) <- validatedTextFieldWithSetValTextBtnNoLabel "mb-0" SendAll setAmountE txtInit invalidClassD
-          pure (txtValD, sendAllNoFeeRateE)
+          pure (txtValD, sendAllErrE)
         when isAndroid (availableBalanceWidget BTC unitD)
-        pure (textInputValueD, sendAllNoFeeRateE')
+        pure (textInputValueD, sendAllErrE')
       unitD <- divClass "column column-33" $ do
           units <- getSettingsUnitBtc
           let unitInit = maybe units fst minit
           unitsDropdown unitInit allUnitsBTC
-      pure (zipDynWith (\u v -> fmap (u,) $ toEither $ validateAmount 0 u v) unitD textInputValueD', sendAllNoFeeRateE'')
+      pure (zipDynWith (\u v -> fmap (u,) $ toEither $ validateAmount 0 u v) unitD textInputValueD', sendAllErrE'')
   void $ divClass "form-field-errors" $ simpleList errsD displayError
   let amountErrE = ffor (current amountValD `tag` submitE) eitherToMaybe'
-  amountErrsD <- holdDyn Nothing $ leftmost [amountErrE, sendAllNoFeeRateE''']
+  amountErrsD <- holdDyn Nothing $ leftmost [amountErrE, sendAllErrE''']
   pure $ eitherToMaybe <$> amountValD
 
 -- | Returns maximum available balance to send in satoshis.
-calcMaxAvailableAmount :: PubStorage -> Word64 -> Word64
-calcMaxAvailableAmount pubStorage feeRate =
+calcMaxAvailableAmount :: PubStorage -> Word64 -> BtcAddress-> Word64
+calcMaxAvailableAmount pubStorage feeRate recipient =
   let utxos = filter (not . isSendingUtxo . btcUtxo'status) $ M.elems $ getBtcUtxos pubStorage
       maxSpendableAmount = sum $ btcUtxo'amount <$> utxos
       inTypes = btcScriptOutputToAddressType . btcUtxo'script <$> utxos
-      outTypes = [BtcP2WPKH]
+      -- Since all the money is being sent, no change is needed.
+      outTypes = [btcAddrToBtcOutType recipient]
       fee = guessTxFee feeRate outTypes inTypes
   in if maxSpendableAmount > fee then maxSpendableAmount - fee else 0
 
