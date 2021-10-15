@@ -34,6 +34,7 @@ import Data.Map (Map)
 import Data.Maybe
 import Data.Proxy
 import Data.Text (Text)
+import Data.Traversable (for)
 import Ergvein.Core.Client.Monad
 import Ergvein.Core.Node.Monad
 import Ergvein.Core.Settings.Monad
@@ -227,7 +228,7 @@ getOpenSyncedConns cur = do
   conns <- readExternalRef =<< getActiveConnsRef
   logWrite $ "Has " <> showt (length conns) <> " active connections to indexers"
   walletHeightD <- getCurrentHeight cur
-  fmap catMaybes $ flip traverse (M.elems conns) $ \con -> do
+  fmap catMaybes $ for (M.elems conns) $ \con -> do
     isUp <- sampleDyn $ indexConIsUp con
     logWrite $ "Connection " <> showt (indexConAddr con) <> " is up: " <> showt isUp
     walletHeight <- sampleDyn walletHeightD
@@ -242,7 +243,7 @@ getOpenSyncedConns cur = do
 getRateByFiatD :: MonadWallet t m => Currency -> Fiat -> m (Dynamic t (Maybe Centi))
 getRateByFiatD c f = do
   ratesD <- externalRefDynamic =<< getRatesRef
-  pure $ ffor ratesD $ join . fmap (M.lookup f ) . M.lookup c
+  pure $ ffor ratesD $ M.lookup f <=< M.lookup c
 
 randomElem :: MonadIO m => [a] -> m (Maybe a)
 randomElem xs = case xs of

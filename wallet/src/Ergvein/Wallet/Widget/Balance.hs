@@ -12,6 +12,7 @@ import Control.Lens
 import Data.Fixed (Centi)
 import Text.Printf
 
+import Ergvein.Types.Currency (smallestUnitBTC)
 import Ergvein.Types.Storage.Currency.Public.Btc
 import Ergvein.Types.Utxo.Btc
 import Ergvein.Wallet.Localize.Status
@@ -90,9 +91,12 @@ btcFiatRateWidget = do
 
 showFiatRate :: Currency -> Fiat -> Maybe Centi -> Either ExchangeRatesError (Maybe Text)
 showFiatRate _ _ Nothing = Left ExchangeRatesUnavailable
-showFiatRate cur fiat (Just rate) =
-  let rateText = T.pack $ printf "%.2f" (realToFrac rate :: Double)
-  in Right $ Just $ "(1 " <> showt cur <> " = " <> rateText <> " " <> showt fiat <> ")"
+showFiatRate ERGO _ _ = Left ExchangeRatesUnavailable
+showFiatRate BTC fiat (Just rate) =
+  let resolution = fromIntegral ((10 ^ currencyResolution BTC) :: Integer)
+      rateToSat = (resolution / realToFrac rate) :: Double
+      rateText = T.pack $ printf "%.2f" rateToSat
+  in Right $ Just $ "1 " <> showt fiat <> " ≈ " <> rateText <> " " <> display smallestUnitBTC <> ""
 
 ergFiatRateWidget :: MonadFront t m => m (Dynamic t (Either ExchangeRatesError (Maybe Text)))
 ergFiatRateWidget = pure $ pure $ Left ExchangeRatesUnavailable

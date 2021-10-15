@@ -68,8 +68,9 @@ setupPasswordPage wt seedBackupRequired mpath mnemonic curs mlogin = wrapperSimp
   rec
     existingWalletNames <- listStorages
     (_, pathD, heightD, logPassE) <- divClass "setup-password" $ form $ fieldset $ mdo
-      p1D <- passFieldWithEye PWSPassword
-      p2D <- passFieldWithEye PWSRepeat
+      p1D <- passFieldWithEye PWSPassword noMatchE
+      p2D <- passFieldWithEye PWSRepeat noMatchE
+      let noMatchE = checkPasswordsMatch btnE p1D p2D
       lpE <- validateEvent $ poke btnE $ const $ runExceptT $ do
         p1 <- sampleDyn p1D
         p2 <- sampleDyn p2D
@@ -303,7 +304,7 @@ setNewPassword passE = do
   when isAndroid $ performEvent_ $ ffor walletInfoE $ \(walletInfo, isTextPassword) -> do
     let fpath = "meta_wallet_" <> T.replace " " "_" (_walletInfo'login walletInfo)
     storeValue fpath isTextPassword True
-  setE <- setWalletInfo (fmap (Just . fst) walletInfoE)
+  setE <- eventToNextFrame =<< setWalletInfo (fmap (Just . fst) walletInfoE)
   storeWalletNow "passwordChangePage" False setE
 
 changePasswordPage :: MonadFront t m => m ()
