@@ -15,9 +15,11 @@ instance LocalizedPrint ValidationError where
       MustBeNatural             -> "Enter a valid natural number"
       MustBeGreaterThan t       -> "Value must be greater than " <> t
       InvalidAddress            -> "Invalid address"
+      EnterFeeRateFirst         -> "First enter the fee rate"
     Russian -> case v of
       MustNotBeEmpty            -> "Заполните это поле"
       MustBeRational            -> "Введите корректное значение (пример: 1.23)"
       MustBeNatural             -> "Введите корректное натуральное число"
       MustBeGreaterThan t       -> "Значение должно быть больше " <> t
       InvalidAddress            -> "Неверный адрес"
+      EnterFeeRateFirst         -> "Сначала выберите размер комиссии"

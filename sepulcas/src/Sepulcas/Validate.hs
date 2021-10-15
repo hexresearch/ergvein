@@ -43,6 +43,7 @@ data ValidationError
   | MustBeNatural
   | MustBeGreaterThan Text
   | InvalidAddress
+  | EnterFeeRateFirst
   deriving (Show)
 
 validateNonEmptyText :: Text -> Validation [ValidationError] NonEmptyText

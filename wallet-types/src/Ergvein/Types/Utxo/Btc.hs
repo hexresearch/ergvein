@@ -6,6 +6,7 @@ module Ergvein.Types.Utxo.Btc
   , updateBtcUtxoSetPure
   , reconfirmBtcUtxoSetPure
   , confirmationGap
+  , btcScriptOutputToAddressType
   , getBtcOutputType
   , UtxoPoint(..)
   , ConfirmedUtxoPoints

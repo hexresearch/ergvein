@@ -10,6 +10,7 @@ import Data.Maybe
 import Data.Word
 
 import Ergvein.Either
+import Ergvein.Types.Utxo.Btc
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
@@ -42,37 +43,62 @@ unitsDropdown initialUnit allUnits = do
   holdUniqDyn selD
 
 -- | Input field with units. Converts everything to satoshis and returns the unit.
-sendAmountWidgetBtc :: MonadFront t m => Maybe (UnitBTC, Word64) -> Event t () -> m (Dynamic t (Maybe (UnitBTC, Word64)))
-sendAmountWidgetBtc minit submitE = divClass "amount-input" $ mdo
+sendAmountWidgetBtc :: MonadFront t m => Maybe (UnitBTC, Word64) -> Event t () -> Dynamic t (Maybe BtcAddress) -> Dynamic t (Maybe (FeeMode, Word64)) -> m (Dynamic t (Maybe (UnitBTC, Word64)))
+sendAmountWidgetBtc minit submitE recipientD feeRateD = divClass "amount-input" $ mdo
   let errsD = fromMaybe [] <$> amountErrsD
       invalidClassD = fmap (maybe "" (const "is-invalid")) amountErrsD
-  amountValD <- do
+  (amountValD, sendAllNoFeeRateE''') <- do
     el "label" $ localizedText AmountString
     divClass "row" $ mdo
-      textInputValueD <- divClass "column column-67" $ do
-        textInputValueD' <- mdo
+      (textInputValueD', sendAllNoFeeRateE'') <- divClass "column column-67" $ do
+        (textInputValueD, sendAllNoFeeRateE') <- mdo
           txtInit <- do
             units <- getSettingsUnitBtc
             let unitInit = maybe units fst minit
             pure $ maybe "" (\(_, amount) -> showMoneyUnit (Money BTC amount) unitInit) minit
-          setAmountE <- performFork $ ffor sendAllBtnE calcMaxAvailableBalance
+          let sendAllE = flip push sendAllBtnE $ const $ do
+                mFeeRate <- sampleDyn feeRateD
+                pure $ snd <$> mFeeRate
+              sendAllNoFeeRateE = poke sendAllBtnE $ const $ do
+                mFeeRate <- sampleDyn feeRateD
+                pure $ if isNothing mFeeRate then Just [EnterFeeRateFirst] else Nothing
+          pubStorageD <- getPubStorageD
+          let setAmountSatE = poke sendAllE $ \feeRate -> do
+                pubStorage <- sampleDyn pubStorageD
+                pure $ calcMaxAvailableAmount pubStorage feeRate
+              setAmountE = poke setAmountSatE $ \amount -> do
+                units <- sampleDyn unitD
+                pure $ showMoneyUnit (Money BTC amount) units
           (txtValD, sendAllBtnE) <- validatedTextFieldWithSetValTextBtnNoLabel "mb-0" SendAll setAmountE txtInit invalidClassD
-          pure txtValD
+          pure (txtValD, sendAllNoFeeRateE)
         when isAndroid (availableBalanceWidget BTC unitD)
-        pure textInputValueD'
+        pure (textInputValueD, sendAllNoFeeRateE')
       unitD <- divClass "column column-33" $ do
           units <- getSettingsUnitBtc
           let unitInit = maybe units fst minit
           unitsDropdown unitInit allUnitsBTC
-      pure $ zipDynWith (\u v -> fmap (u,) $ toEither $ validateAmount 0 u v) unitD textInputValueD
+      pure (zipDynWith (\u v -> fmap (u,) $ toEither $ validateAmount 0 u v) unitD textInputValueD', sendAllNoFeeRateE'')
   void $ divClass "form-field-errors" $ simpleList errsD displayError
-  amountErrsD <- holdDyn Nothing $ ffor (current amountValD `tag` submitE) eitherToMaybe'
+  let amountErrE = ffor (current amountValD `tag` submitE) eitherToMaybe'
+  amountErrsD <- holdDyn Nothing $ leftmost [amountErrE, sendAllNoFeeRateE''']
   pure $ eitherToMaybe <$> amountValD
 
-calcMaxAvailableBalance = undefined
+-- | Returns maximum available balance to send in satoshis.
+calcMaxAvailableAmount :: PubStorage -> Word64 -> Word64
+calcMaxAvailableAmount pubStorage feeRate =
+  let utxos = filter (not . isSendingUtxo . btcUtxo'status) $ M.elems $ getBtcUtxos pubStorage
+      maxSpendableAmount = sum $ btcUtxo'amount <$> utxos
+      inTypes = btcScriptOutputToAddressType . btcUtxo'script <$> utxos
+      outTypes = [BtcP2WPKH]
+      fee = guessTxFee feeRate outTypes inTypes
+  in if maxSpendableAmount > fee then maxSpendableAmount - fee else 0
+
+isSendingUtxo :: EgvUtxoStatus -> Bool
+isSendingUtxo (EUtxoSending _) = True
+isSendingUtxo _ = False
 
 -- | Input field with units. Converts everything to satoshis and returns the unit.
-sendAmountWidgetErg :: (MonadFront t m) => Maybe (UnitERGO, Word64) -> Event t () -> m (Dynamic t (Maybe (UnitERGO, Word64)))
+sendAmountWidgetErg :: MonadFront t m => Maybe (UnitERGO, Word64) -> Event t () -> m (Dynamic t (Maybe (UnitERGO, Word64)))
 sendAmountWidgetErg minit submitE = divClass "amount-input" $ mdo
   let errsD = fromMaybe [] <$> amountErrsD
       isInvalidD = fmap (maybe "" (const "is-invalid")) amountErrsD
