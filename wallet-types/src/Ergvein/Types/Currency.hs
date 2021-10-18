@@ -127,7 +127,7 @@ btcSymbolUnit u = case u of
 
 -- | Amount of digits after point for currency
 currencyResolution :: Currency -> Int
-currencyResolution BTC = btcResolution defUnitBTC
+currencyResolution BTC = btcResolution BtcWhole
 {-# INLINE currencyResolution #-}
 
 currencyName :: Currency -> Text
