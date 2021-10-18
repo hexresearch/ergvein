@@ -37,13 +37,9 @@ btcBalance = do
     helper balance BtcUtxoMeta{btcUtxo'status = EUtxoSending _} = balance
     helper balance BtcUtxoMeta{..} = balance + btcUtxo'amount
 
-ergoBalance :: MonadFront t m => m (Dynamic t Money)
-ergoBalance = pure $ pure $ Money ERGO 0
-
 balanceWidget :: MonadFront t m => Currency -> m (Dynamic t Money)
 balanceWidget cur = case cur of
   BTC  -> btcBalance
-  ERGO -> ergoBalance
 
 -- Returns text with fiat balance
 -- Left values indicate an error in obtaining the exchange rate
@@ -51,7 +47,6 @@ balanceWidget cur = case cur of
 fiatBalanceWidget :: MonadFront t m => Currency -> m (Dynamic t (Either ExchangeRatesError (Maybe Text)))
 fiatBalanceWidget cur = case cur of
   BTC  -> btcFiatBalanceWidget
-  ERGO -> ergFiatBalanceWidget
 
 btcFiatBalanceWidget :: MonadFront t m => m (Dynamic t (Either ExchangeRatesError (Maybe Text)))
 btcFiatBalanceWidget = do
@@ -68,16 +63,12 @@ showFiatBalance :: Fiat -> Money -> Maybe Centi -> Either ExchangeRatesError (Ma
 showFiatBalance _ _ Nothing = Left ExchangeRatesUnavailable
 showFiatBalance fiat balance (Just rate) = Right $ Just $ showMoneyRated balance rate <> " " <> showt fiat
 
-ergFiatBalanceWidget :: MonadFront t m => m (Dynamic t (Either ExchangeRatesError (Maybe Text)))
-ergFiatBalanceWidget = pure $ pure $ Left ExchangeRatesUnavailable
-
 -- Returns text with fiat rate
 -- Left values indicate an error in obtaining the exchange rate
 -- Nothing values indicate that the exchange rate display is disabled in the settings
 fiatRateWidget :: MonadFront t m => Currency -> m (Dynamic t (Either ExchangeRatesError (Maybe Text)))
 fiatRateWidget cur = case cur of
   BTC  -> btcFiatRateWidget
-  ERGO -> ergFiatRateWidget
 
 btcFiatRateWidget :: MonadFront t m => m (Dynamic t (Either ExchangeRatesError (Maybe Text)))
 btcFiatRateWidget = do
@@ -91,20 +82,15 @@ btcFiatRateWidget = do
 
 showFiatRate :: Currency -> Fiat -> Maybe Centi -> Either ExchangeRatesError (Maybe Text)
 showFiatRate _ _ Nothing = Left ExchangeRatesUnavailable
-showFiatRate ERGO _ _ = Left ExchangeRatesUnavailable
 showFiatRate BTC fiat (Just rate) =
   let resolution = fromIntegral ((10 ^ currencyResolution BTC) :: Integer)
       rateToSat = (resolution / realToFrac rate) :: Double
       rateText = T.pack $ printf "%.2f" rateToSat
   in Right $ Just $ "1 " <> showt fiat <> " ≈ " <> rateText <> " " <> display smallestUnitBTC <> ""
 
-ergFiatRateWidget :: MonadFront t m => m (Dynamic t (Either ExchangeRatesError (Maybe Text)))
-ergFiatRateWidget = pure $ pure $ Left ExchangeRatesUnavailable
-
 balanceTitleWidget :: MonadFront t m => Currency -> m (Dynamic t Text)
 balanceTitleWidget cur = case cur of
   BTC  -> btcBalanceTitleWidget
-  ERGO -> ergBalanceTitleWidget
 
 -- Creates balance string in units specified in settings.
 -- Example: "12.2 BTC".
@@ -112,15 +98,6 @@ btcBalanceTitleWidget :: MonadFront t m => m (Dynamic t Text)
 btcBalanceTitleWidget = do
   bal <- balanceWidget BTC
   units <- getSettingsUnitBtc
-  let titleVal = ffor bal (`showMoneyUnit` units)
-      curSymbol = display units
-      title = (\x -> x <> " " <> curSymbol) <$> titleVal
-  pure title
-
-ergBalanceTitleWidget :: MonadFront t m => m (Dynamic t Text)
-ergBalanceTitleWidget = do
-  bal <- balanceWidget ERGO
-  units <- getSettingsUnitErg
   let titleVal = ffor bal (`showMoneyUnit` units)
       curSymbol = display units
       title = (\x -> x <> " " <> curSymbol) <$> titleVal

@@ -177,4 +177,4 @@ dbgTxsPage = wrapper False "Transactions" (Just $ pure dbgTxsPage) $ divClass "c
         el "div" $ text $ "  "
         el "div" $ text $ bs2Hex $ encode tx
         el "div" $ text "------------------------------------------------------"
-      _ -> pure ()
+

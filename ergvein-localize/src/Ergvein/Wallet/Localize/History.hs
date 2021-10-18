@@ -132,7 +132,6 @@ data BumpFeeWidgetStrings =
   | BumpFeeCurrentFee
   | BumpFeeCurrentFeeRate
   | BumpFeeDecodeOutsError
-  | BumpFeeErgoError
   | BumpFeeFeeAmount !Money !UnitBTC
   | BumpFeeFeeRateAmount !Rational
   | BumpFeeFeeRateUnknown
@@ -162,7 +161,6 @@ instance LocalizedPrint BumpFeeWidgetStrings where
       BumpFeeCurrentFee                  -> "Current fee"
       BumpFeeCurrentFeeRate              -> "Current fee rate"
       BumpFeeDecodeOutsError             -> "Couldn't decode outputs"
-      BumpFeeErgoError                   -> "Ergo is not supported yet"
       BumpFeeFeeAmount amount units      -> showMoneyUnit amount units <> " " <> display units
       BumpFeeFeeRateAmount amount        -> (showf 3 $ (realToFrac amount :: Double)) <> " " <> display smallestUnitBTC <> "/vbyte"
       BumpFeeFeeRateUnknown              -> "unknown"
@@ -190,7 +188,6 @@ instance LocalizedPrint BumpFeeWidgetStrings where
       BumpFeeCurrentFee                  -> "Текущая комиссия"
       BumpFeeCurrentFeeRate              -> "Текущая комиссия за байт"
       BumpFeeDecodeOutsError             -> "Не удалось декодировать выходы"
-      BumpFeeErgoError                   -> "Ergo пока не поддерживается"
       BumpFeeFeeAmount amount units      -> showMoneyUnit amount units <> " " <> display units
       BumpFeeFeeRateAmount amount        -> (showf 3 $ (realToFrac amount :: Double)) <> " " <> display smallestUnitBTC <> "/vbyte"
       BumpFeeFeeRateUnknown              -> "неизвестно"

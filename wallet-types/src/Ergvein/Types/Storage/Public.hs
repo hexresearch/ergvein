@@ -12,7 +12,6 @@ module Ergvein.Types.Storage.Public
   , pubStorage'seedBackupRequired
   , pubStorage'pathPrefix
   , btcPubStorage
-  , ergoPubStorage
   ) where
 
 import Control.Lens
@@ -43,29 +42,7 @@ instance SafeCopy PubStorage where
     put _pubStorage'seedBackupRequired
     put _pubStorage'pathPrefix
   getCopy = contain $ PubStorage <$> get <*> safeGet <*> safeGet <*> get <*> get <*> get
-  kind = extension
-
-data PubStorage_V1 = PubStorage_V1 {
-    _pubStorageV1'rootPubKey          :: !EgvRootXPubKey
-  , _pubStorageV1'currencyPubStorages :: !CurrencyPubStorages
-  , _pubStorageV1'activeCurrencies    :: [Currency]
-  , _pubStorageV1'restoring           :: !Bool -- ^ Flag to track unfinished process of restoration
-  , _pubStorageV1'pathPrefix          :: !(Maybe DerivPrefix)
-  } deriving (Eq, Show, Read)
-
-instance SafeCopy PubStorage_V1 where
-  version = 1
-  putCopy PubStorage_V1{..} = contain $ do
-    put _pubStorageV1'rootPubKey
-    safePut _pubStorageV1'currencyPubStorages
-    safePut _pubStorageV1'activeCurrencies
-    put _pubStorageV1'restoring
-    put _pubStorageV1'pathPrefix
-  getCopy = contain $ PubStorage_V1 <$> get <*> safeGet <*> safeGet <*> get <*> get
-
-instance Migrate PubStorage where
-  type MigrateFrom PubStorage = PubStorage_V1
-  migrate (PubStorage_V1 a b c d e) = PubStorage a b c d False e
+  -- kind = extension -- Put extension when 3 version is added
 
 -- This instances is required only for the current version
 makeLenses ''PubStorage
@@ -74,6 +51,3 @@ makeLenses ''PubStorage
 btcPubStorage :: Lens' PubStorage CurrencyPubStorage
 btcPubStorage = pubStorage'currencyPubStorages . at BTC . non (error "btcPubStorage: not exsisting store!")
 
--- | Extract public storage for ERGO
-ergoPubStorage :: Lens' PubStorage CurrencyPubStorage
-ergoPubStorage = pubStorage'currencyPubStorages . at ERGO . non (error "ergoPubStorage: not exsisting store!")

@@ -153,7 +153,6 @@ makeTxWidget ((unit, amount), fee, addr, rbfEnabled) = mdo
       (Right _, Right _)  -> Nothing
 
 -- | Simply displays the relevant information about a transaction
--- TODO: modify to accomodate Ergo
 confirmationInfoWidget :: MonadFront t m => (UnitBTC, Word64) -> Word64 -> RbfEnabled -> BtcAddress -> Maybe HT.Tx -> m ()
 confirmationInfoWidget (unit, amount) estFee rbfEnabled addr mTx = divClass "send-confirm-info ta-l mb-1" $ do
   elClass "h4" "ta-c mb-1" $ localizedText $

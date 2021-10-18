@@ -168,7 +168,6 @@ getCurrentHeight c = do
   psD <- getPubStorageD
   startHeightD :: Dynamic t BlockHeight <- case c of
     BTC -> fmap (maybe 0 fromIntegral) <$> getNodeHeightBtc
-    _ -> pure 0
   pure $ do
     ps <- psD
     h0 <- startHeightD

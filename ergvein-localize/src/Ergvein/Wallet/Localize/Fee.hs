@@ -21,7 +21,6 @@ instance LocalizedPrint FeeStrings where
     English -> case v of
       FSRate cur -> case cur of
         BTC -> "Fee rate, sat/vbyte"
-        ERGO -> "Fee rate, nERG/byte"
       FSRateDesc lvl -> "Estimated confirmation time ~" <> showt (feeTargetBlocks BTC lvl) <> " blocks"
       FSFee -> "Estimated confirmation time is unknown"
       FSNoFees -> "Fees not found in the cache. Please enter the fee manually."
@@ -30,7 +29,6 @@ instance LocalizedPrint FeeStrings where
     Russian -> case v of
       FSRate cur -> case cur of
         BTC -> "Уровень комиссии, sat/vbyte"
-        ERGO -> "Уровень комиссии, nERG/byte"
       FSRateDesc lvl -> "Ожидаемое время подтверждения ~" <> showt (feeTargetBlocks BTC lvl) <> " блоков"
       FSFee -> "Ожидаемое время подтверждения неизвестно"
       FSNoFees -> "Уровень комиссий не найден в кэше. Пожалуйста, введите комиссию вручную."

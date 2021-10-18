@@ -54,7 +54,6 @@ import Ergvein.Types.Derive
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
 import Ergvein.Types.Storage.Currency.Public.Btc (BtcPubStorage(..), btcPubStorage'utxos, btcPubStorage'transactions)
-import Ergvein.Types.Storage.Currency.Public.Ergo (ErgoPubStorage(..))
 import Ergvein.Types.Transaction as ETT
 import Ergvein.Types.Utxo.Btc
 import Ergvein.Types.Utxo.Status
@@ -129,13 +128,6 @@ createCurrencyPubStorage mpath rootPrvKey startingHeight c = CurrencyPubStorage 
       , _btcPubStorage'headerSeq           = btcCheckpoints
       , _btcPubStorage'replacedTxs         = M.empty
       , _btcPubStorage'possiblyReplacedTxs = M.empty
-      }
-    ERGO -> PubStorageErgo ErgoPubStorage {
-        _ergoPubStorage'transactions  = M.empty
-      , _ergoPubStorage'utxos         = M.empty
-      , _ergoPubStorage'headers       = M.empty
-      , _ergoPubStorage'outgoing      = S.empty
-      , _ergoPubStorage'headerSeq     = ergoCheckpoints
       }
   }
   where

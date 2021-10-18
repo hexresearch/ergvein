@@ -48,7 +48,6 @@ arbitraryBSS32 = do
 instance Arbitrary TxHash where
   arbitrary = oneof [
       BtcTxHash <$> arbitrary
-    -- , ErgTxHash . ErgTxId <$> arbitraryBSS32 -- We do not support ERGO at the moment
     ]
 instance Arbitrary ScannedHeightRec where
   arbitrary = ScannedHeightRec <$> arbitrary

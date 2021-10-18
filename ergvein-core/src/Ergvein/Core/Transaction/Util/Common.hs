@@ -10,7 +10,6 @@ import Data.Word
 
 import Ergvein.Core.Store.Monad
 import Ergvein.Core.Transaction.Btc
-import Ergvein.Core.Transaction.Erg
 import Ergvein.Types.Address
 import Ergvein.Types.Transaction
 import Sepulcas.Native
@@ -25,8 +24,6 @@ checkAddr addrs tx = do
 -- | Checks given tx if there are some inputs or outputs containing given address.
 checkAddrTx :: (HasTxStorage m, PlatformNatives) => EgvTx -> EgvAddress -> m Bool
 checkAddrTx (TxBtc (BtcTx tx _)) (BtcAddress addr) = checkAddrTxBtc tx addr
-checkAddrTx (TxErg (ErgTx tx _)) (ErgAddress addr) = checkAddrTxErg tx addr
-checkAddrTx _ _ = pure False
 
 countConfirmations :: BlockHeight -> Maybe BlockHeight -> Word64
 countConfirmations _ Nothing = 0

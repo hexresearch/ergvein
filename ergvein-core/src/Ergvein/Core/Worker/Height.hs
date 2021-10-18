@@ -2,7 +2,6 @@ module Ergvein.Core.Worker.Height
   (
     heightWorker
   , updateWalletHeightBtc
-  , updateWalletHeightErgo
   ) where
 
 import Control.Lens
@@ -22,7 +21,3 @@ updateWalletHeightBtc = do
   void $ modifyPubStorage "heightWorkerBtc" $ ffor (updated mheightD) $ \case
     Nothing -> const Nothing
     Just h -> \ps -> Just $ ps & pubStorage'currencyPubStorages . ix BTC . currencyPubStorage'chainHeight .~ fromIntegral h
-
--- TODO: Implement this
-updateWalletHeightErgo :: (MonadWallet t m, MonadStorage t m, MonadNode t m) => m ()
-updateWalletHeightErgo = pure ()

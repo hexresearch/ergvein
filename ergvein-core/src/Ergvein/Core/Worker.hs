@@ -47,7 +47,6 @@ spawnWorkers :: (MonadStorage t m
 spawnWorkers = do
   cursD <- getActiveCursD
   btcD <- holdUniqDyn $ S.member BTC <$> cursD
-  ergoD <- holdUniqDyn $ S.member ERGO <$> cursD
 
   -- Common workers
   setActiveCurrencies
@@ -62,9 +61,6 @@ spawnWorkers = do
     scanner
     btcNodeController
     updateWalletHeightBtc
-
-  -- Ergo only workers
-  _ <- networkHoldDyn $ ffor ergoD $ \e -> when e $ do
     pure ()
   pure ()
 

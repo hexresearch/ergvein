@@ -7,7 +7,6 @@ module Ergvein.Core.Node.Monad(
   , getNodeConnectionsD
   , getNodesByCurrencyD
   , getBtcNodesD
-  , getErgoNodesD
   , requestFromNode
   , postNodeMessage
   , broadcastNodeMessage
@@ -80,12 +79,6 @@ getBtcNodesD :: MonadNode t m => m (Dynamic t (Map SockAddr (NodeBtc t)))
 getBtcNodesD =
   (fmap . fmap) (fromMaybe (M.empty) . DM.lookup BtcTag) getNodeConnectionsD
 {-# INLINE getBtcNodesD #-}
-
--- | Get ERGO nodes
-getErgoNodesD :: MonadNode t m => m (Dynamic t (Map SockAddr (NodeErgo t)))
-getErgoNodesD =
-  (fmap . fmap) (fromMaybe (M.empty) . DM.lookup ErgoTag) getNodeConnectionsD
-{-# INLINE getErgoNodesD #-}
 
 -- | Send a request to a specific URL
 -- It's up to the caller to ensure that the URL actually points to a correct currency node

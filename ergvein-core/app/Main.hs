@@ -7,27 +7,43 @@ import Control.Monad
 import Control.Monad.IO.Unlift
 import Control.Monad.Ref
 import Data.Dependent.Sum (DSum (..))
-import Data.Ergo.Modifier
-import Data.Ergo.Protocol
 import Data.Functor.Identity
 import Data.IORef
 import Data.Maybe
+import Data.String 
 import Data.Text
-import Ergvein.Core.Node.Ergo
-import Ergvein.Core.Node.Types
+import Ergvein.Core.Node
+import Ergvein.Core.Settings
 import Ergvein.Node.Resolve
 import Network.DNS.Resolver
+import Network.Haskoin.Block
+import Network.Haskoin.Constants
+import Network.Haskoin.Network
 import Network.Socket
 import Options.Generic
 import Reflex
 import Reflex.Host.Class
 import Reflex.Spider.Internal
+import Reflex.Localize.Language
+import Sepulcas.Native
+import Sepulcas.Desktop.Native
+import Ergvein.Aeson
+import GHC.Generics (Generic)
+import Reflex.Localize
+import Reflex.Localize.Language
 
 import qualified Control.Monad.Fail  as F
 import qualified Data.Vector         as V
 import qualified Reflex.Profiled     as RP
 
 type EventChannel = Chan [DSum (EventTriggerRef Spider) TriggerInvocation]
+
+-- | Languages that are supported by wallet
+data instance Language
+  = English
+  deriving (Eq, Ord, Enum, Bounded, Show, Read, Generic)
+
+$(deriveJSON aesonOptions 'English)
 
 data Options = Options {
   nodeAddress  :: Maybe String <?> "Address of node"
@@ -44,15 +60,19 @@ getNodePort Options{..} = fromIntegral $ fromMaybe 9030 $ unHelpful nodePort
 
 main :: IO ()
 main = do
-  opts@Options{..} <- getRecord "Ergo protocol client example"
+  opts@Options{..} <- getRecord "Ergvein protocol client example"
+  let settings = defaultSettings English "."
   rs <- makeResolvSeed defaultResolvConf
   Just addr <- resolveAddr rs (getNodePort opts) (pack $ getNodeAddress opts) 
-   
+  
   (runSpiderHost :: SpiderHost Global a -> IO a) $ do
     events <- liftIO newChan
     ((result, postBuildTriggerRef), fc@(FireCommand fire)) <- hostPerformEventT $ do
       (postBuild, postBuildTriggerRef) <- newEventWithTriggerRef
-      result <- runPostBuildT (runTriggerEventT (test $ namedAddrSock addr) events) postBuild
+      let testRunner = do 
+            senv <- newSettingsEnv settings
+            runSettings senv $ test $ namedAddrSock addr
+      result <- runPostBuildT (runTriggerEventT testRunner events) postBuild
       pure (result, postBuildTriggerRef)
     mPostBuildTrigger <- readRef postBuildTriggerRef
     forM_ mPostBuildTrigger $ \postBuildTrigger -> fire [postBuildTrigger :=> Identity ()] $ pure ()
@@ -60,28 +80,32 @@ main = do
       processAsyncEvents events fc
       forever $ threadDelay maxBound
   where 
+    test :: MonadSettings t m => SockAddr -> m (NodeBtc t)
     test addr = do
       (msgE, msgFire) <- newTriggerEvent
-      ergoNode <- ergoNode addr msgE never
+      btcNode <- initBtcNode True addr msgE
 
       --handshake
-      let handshakeE = fforMaybe (nodeconRespE ergoNode) $ \case
-            MsgHandshake _-> Just ()
-            _-> Nothing
+      handshakeE <- delay 0.5 . ffilter id . updated . nodeconIsUp $ btcNode
       
       --blockHeader request test
-      let requiredBlock = "81a93bb7eb27bfb84b7afc6b64c75ee54023bb21224125214af218ddc41d60ec"
+      let requiredBlock :: BlockHash = fromString "000000000000000000053331707fcbaa576b72ce41cf3f82cb22010886e9fd9c"
 
-      performEvent_ $ ffor handshakeE $ const $ liftIO $
-        msgFire $ NodeMsgReq $ NodeReqErgo $ MsgOther $ MsgRequestModifier $ RequestModifierMsg ModifierBlockHeader [requiredBlock]
+      performEvent_ $ ffor handshakeE $ const $ liftIO $ do
+        liftIO $ putStrLn $ "Sent request for block " ++ show requiredBlock
+        msgFire $ NodeMsgReq $ NodeReqBtc $ MGetData $ GetData $ [InvVector InvBlock (getBlockHash requiredBlock)]
       
-      let respE = fforMaybe (nodeconRespE ergoNode) $ \case
-            MsgOther (MsgModifier (ModifierMsg ModifierBlockHeader ids)) | isJust $ V.find ((== requiredBlock) . modifierId) ids -> Just ()
-            _-> Nothing
-    
+      let respE = fforMaybe (nodeconRespE btcNode) $ \case
+            MBlock blk -> let
+              bh = headerHash $ blockHeader blk
+              in if bh == requiredBlock
+                    then Just ()
+                    else Nothing
+            _ -> Nothing
+
       performEvent $ ffor respE $ const $ liftIO $ print "Test successful"
 
-      pure ergoNode
+      pure btcNode
 
 processAsyncEvents :: EventChannel -> FireCommand Spider (SpiderHost Global) -> IO ()
 processAsyncEvents events (FireCommand fire) = void $ forkIO $ forever $ do

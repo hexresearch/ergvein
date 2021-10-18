@@ -140,12 +140,6 @@ instance LocalizedPrint UnitBTC where
     BtcMilli    -> "mBTC"
     BtcSat      -> "sat"
 
-instance LocalizedPrint UnitERGO where
-  localizedShow _ v = case v of
-    ErgWhole -> "ERG"
-    ErgMilli -> "mERG"
-    ErgNano  -> "nERG"
-
 data NetSetupStrings
   = NSSTitle
   | NSSLatency NominalDiffTime

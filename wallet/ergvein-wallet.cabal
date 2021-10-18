@@ -47,7 +47,6 @@ library
         Ergvein.Wallet.Page.History
         Ergvein.Wallet.Page.History.Btc
         Ergvein.Wallet.Page.History.Common
-        Ergvein.Wallet.Page.History.Erg
         Ergvein.Wallet.Page.Initial
         Ergvein.Wallet.Page.Network
         Ergvein.Wallet.Page.Password
@@ -57,14 +56,12 @@ library
         Ergvein.Wallet.Page.Restore
         Ergvein.Wallet.Page.Seed
         Ergvein.Wallet.Page.Send.Btc
-        Ergvein.Wallet.Page.Send.Erg
         Ergvein.Wallet.Page.Settings
         Ergvein.Wallet.Page.Settings.MnemonicExport
         Ergvein.Wallet.Page.Settings.Network
         Ergvein.Wallet.Page.Settings.Unauth
         Ergvein.Wallet.Page.TxInfo.Btc
         Ergvein.Wallet.Page.TxInfo.Common
-        Ergvein.Wallet.Page.TxInfo.Erg
         Ergvein.Wallet.Password
         Ergvein.Wallet.Settings
         Ergvein.Wallet.Status.Widget
@@ -122,8 +119,6 @@ library
         , dependent-sum           >= 0.6
         , directory
         , dns                     >= 4.0        && < 5.0
-        , ergo-protocol
-        , ergo-protocol-client
         , ergvein-common          >= 1.0        && < 1.1
         , ergvein-core
         , ergvein-crypto          >= 0.1        && < 0.2

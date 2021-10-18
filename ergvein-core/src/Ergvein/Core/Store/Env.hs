@@ -51,7 +51,6 @@ instance {-# OVERLAPPABLE #-} (HasStoreEnv t m, MonadStorageConstr t m, HasStore
       Nothing -> fail "NOT IMPLEMENTED" -- TODO: generate new address here
       Just (EgvPubKeyBox key _ _) ->
         let k = case key of
-              ErgXPubKey k' _ -> k'
               BtcXPubKey k' _ -> k'
         in pure $ xPubExport (getCurrencyNetwork cur) k
   {-# INLINE getAddressByCurIx #-}

@@ -66,9 +66,6 @@ in (self: super: let
     # Internal
     cbitstream = ingnoreGarbage super.cbitstream;
     data-merkle-tree = ingnoreGarbage super.data-merkle-tree;
-    ergo-api = lib.dontCheck (ingnoreGarbage super.ergo-api);
-    ergo-protocol = lib.dontCheck (addRust self.ghc.stdenv (ingnoreGarbage super.ergo-protocol));
-    ergo-protocol-client = lib.dontCheck (ingnoreGarbage super.ergo-protocol-client);
     ergvein-checkpoint-generator = ingnoreGarbage super.ergvein-checkpoint-generator;
     ergvein-common = ingnoreGarbage super.ergvein-common;
     ergvein-core = ingnoreGarbage (super.callCabal2nixWithOptions "ergvein-core" ./ergvein-core walletOpts {});
@@ -79,7 +76,6 @@ in (self: super: let
     ergvein-index-protocol = ingnoreGarbage super.ergvein-index-protocol;
     ergvein-index-protocol-client = ingnoreGarbage super.ergvein-index-protocol-client;
     ergvein-index-server = ingnoreGarbage super.ergvein-index-server;
-    ergvein-interface-ergo = ingnoreGarbage super.ergvein-interface-ergo;
     ergvein-localize = ingnoreGarbage super.ergvein-localize;
     ergvein-node-discovery = ingnoreGarbage super.ergvein-node-discovery;
     ergvein-types = ingnoreGarbage super.ergvein-types;

@@ -11,10 +11,8 @@ module Ergvein.Types.Storage
   , modifyCurrStorage
   , modifyCurrStorageMay
   , modifyCurrStorageBtc
-  , modifyCurrStorageErgo
   , pubStorageTxs
   , pubStorageBtcTxs
-  , pubStorageErgTxs
   -- * Reexport latest general version
   -- along with specific other versions
   , module Reexport
@@ -31,7 +29,6 @@ import Ergvein.Types.Orphanage ()
 import Ergvein.Types.Storage.Currency.Private as Reexport
 import Ergvein.Types.Storage.Currency.Public as Reexport
 import Ergvein.Types.Storage.Currency.Public.Btc (BtcPubStorage)
-import Ergvein.Types.Storage.Currency.Public.Ergo (ErgoPubStorage)
 import Ergvein.Types.Storage.Private as Reexport
 import Ergvein.Types.Storage.Public as Reexport
 import Ergvein.Types.Storage.Wallet as Reexport
@@ -86,9 +83,6 @@ modifyCurrStorageMay c f ps = do
 modifyCurrStorageBtc :: (BtcPubStorage -> BtcPubStorage) -> PubStorage -> PubStorage
 modifyCurrStorageBtc f = modifyCurrStorage BTC $ over (currencyPubStorage'meta . _PubStorageBtc) f
 
-modifyCurrStorageErgo :: (ErgoPubStorage -> ErgoPubStorage) -> PubStorage -> PubStorage
-modifyCurrStorageErgo f = modifyCurrStorage ERGO $ over (currencyPubStorage'meta . _PubStorageErgo) f
-
 pubStorageTxs :: Currency -> PubStorage -> Maybe (M.Map TxId EgvTx)
 pubStorageTxs c = fmap _currencyPubStorage'transactions . M.lookup c . _pubStorage'currencyPubStorages
 
@@ -97,11 +91,4 @@ pubStorageBtcTxs = M.foldMapWithKey foldHelper . fromMaybe M.empty . pubStorageT
   where
     foldHelper :: TxId -> EgvTx -> M.Map BtcTxId BtcTx
     foldHelper (BtcTxHash h) (TxBtc tx) = M.singleton h tx
-    foldHelper _ _ = M.empty
-
-pubStorageErgTxs :: PubStorage -> M.Map ErgTxId ErgTx
-pubStorageErgTxs = M.foldMapWithKey foldHelper . fromMaybe M.empty . pubStorageTxs ERGO
-  where
-    foldHelper :: TxId -> EgvTx -> M.Map ErgTxId ErgTx
-    foldHelper (ErgTxHash h) (TxErg tx) = M.singleton h tx
-    foldHelper _ _ = M.empty
+    -- foldHelper _ _ = M.empty
