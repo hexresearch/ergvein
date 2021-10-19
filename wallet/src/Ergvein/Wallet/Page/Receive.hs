@@ -96,7 +96,7 @@ receivePageWidget cur i EgvPubKeyBox{..} = do
       pure ()
   where
     keyTxt = egvAddrToText $ egvXPubKeyToEgvAddress pubKeyBox'key
-    keyView = T.pack $ L.intercalate " " $ mkChunks 4 $ T.unpack keyTxt
+    keyView = T.pack $ unwords $ mkChunks 4 $ T.unpack keyTxt
 #endif
 
 newAddrBtn :: MonadFront t m => m (Event t ())
