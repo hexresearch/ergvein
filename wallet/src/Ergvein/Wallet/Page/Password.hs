@@ -27,6 +27,7 @@ import Sepulcas.Elements
 import Sepulcas.Elements.Dropdown
 import Sepulcas.Validate
 
+import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 
 data GoPage = GoPinCode | GoTextPassword | GoEmptyPassword
@@ -51,7 +52,7 @@ setupBtcStartingHeight = do
   divClass "password-setup-descr" $ h5 $ localizedText SHSDescr
   divClass "setup-password" $ form $ fieldset $ mdo
     let defHeight = filterStartingHeight BTC
-    hD <- textField SHSLabel $ showt defHeight
+    hD <- labeledTextField SHSLabel (showt defHeight) M.empty never never
     let parseE = ffor (updated hD) $ \v -> case readMaybe (T.unpack v) of
           Nothing -> Left SHSParseError
           Just h -> if h < 0 then Left SHSNonNegError else Right h
@@ -79,7 +80,7 @@ setupPasswordPage wt seedBackupRequired mpath mnemonic curs mlogin = wrapperSimp
         check PWSNoMatch $ p1 == p2
         pure (l,p1)
       (loginD, pathD, heightD) <- dropdownContainer PWSMoreOptions PWSLessOptions (constDyn True) $ do
-        loginD_ <- textFieldAttr PWSLogin ("placeholder" =: "my wallet name") $ fromMaybe (nameProposal existingWalletNames) mlogin
+        loginD_ <- labeledTextField PWSLogin (fromMaybe (nameProposal existingWalletNames) mlogin) ("placeholder" =: "my wallet name") never never
         pathD_ <- setupDerivPrefix curs mpath
         heightD_ <- case wt of
           WalletGenerated -> pure 0

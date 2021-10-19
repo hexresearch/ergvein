@@ -122,7 +122,7 @@ sendAmountWidgetErg minit submitE = divClass "amount-input" $ mdo
             units <- getSettingsUnitErg
             let unitInit = maybe units fst minit
             pure $ maybe "" (\(_, amount) -> showMoneyUnit (Money ERGO amount) unitInit) minit
-          divClassDyn isInvalidD $ textFieldAttrNoLabel (M.singleton "class" "mb-0") never never txtInit
+          divClassDyn isInvalidD $ textField txtInit ("class" =: "mb-0") never never
         when isAndroid (availableBalanceWidget ERGO unitD)
         pure textInputValueD'
       unitD <- divClass "column column-33" $ do
