@@ -6,7 +6,7 @@ module Ergvein.Wallet.Widget.Input.Amount(
   ) where
 
 import Control.Monad.Except
-import Data.Maybe
+import Data.Either (fromLeft)
 import Data.Word
 
 import Ergvein.Either
@@ -45,53 +45,44 @@ unitsDropdown initialUnit allUnits = do
 -- | Input field with units. Converts everything to satoshis and returns the unit.
 sendAmountWidgetBtc :: MonadFront t m => Maybe (UnitBTC, Word64) -> Event t () -> Dynamic t (Maybe BtcAddress) -> Dynamic t (Maybe (FeeMode, Word64)) -> m (Dynamic t (Maybe (UnitBTC, Word64)))
 sendAmountWidgetBtc minit submitE recipientD feeRateD = divClass "amount-input" $ mdo
-  let errsD = fromMaybe [] <$> amountErrsD
-      invalidClassD = fmap (maybe "" (const "is-invalid")) amountErrsD
-  (amountValD, sendAllErrE''') <- do
-    el "label" $ localizedText AmountString
-    divClass "row" $ mdo
-      (textInputValueD', sendAllErrE'') <- divClass "column column-67" $ do
-        (textInputValueD, sendAllErrE') <- mdo
-          txtInit <- do
-            units <- getSettingsUnitBtc
-            let unitInit = maybe units fst minit
-            pure $ maybe "" (\(_, amount) -> showMoneyUnit (Money BTC amount) unitInit) minit
-          -- If both the fee rate and the recipient are specified and valid, we can calculate the maximum amount.
-          let sendAllE = flip push sendAllBtnE $ const $ do
-                mFeeRate <- sampleDyn feeRateD
-                mRecipient <- sampleDyn recipientD
-                case (mFeeRate, mRecipient) of
-                  (Just (_, feeRate), Just recipient) -> pure $ Just (feeRate, recipient)
-                  _ -> pure Nothing
-          -- If the recipient or the fee rate is not specified, then we show an error msg.
-              sendAllErrE = poke sendAllBtnE $ const $ do
-                mFeeRate <- sampleDyn feeRateD
-                mRecipient <- sampleDyn recipientD
-                case (mFeeRate, mRecipient) of
-                  (Just _, Just _) -> pure Nothing
-                  (Nothing, Just _) -> pure $ Just [EnterFeeRateFirst]
-                  (Just _, Nothing) -> pure $ Just [EnterRecipientFirst]
-                  (Nothing, Nothing) -> pure $ Just [EnterFeeRateFirst, EnterRecipientFirst]
-          pubStorageD <- getPubStorageD
-          let setAmountSatE = poke sendAllE $ \(feeRate, recipient) -> do
-                pubStorage <- sampleDyn pubStorageD
-                pure $ calcMaxAvailableAmount pubStorage feeRate recipient
-              setAmountE = poke setAmountSatE $ \amount -> do
-                units <- sampleDyn unitD
-                pure $ showMoneyUnit (Money BTC amount) units
-          (txtValD, sendAllBtnE) <- validatedTextFieldWithSetValTextBtnNoLabel "mb-0" SendAll setAmountE txtInit invalidClassD
-          pure (txtValD, sendAllErrE)
-        when isAndroid (availableBalanceWidget BTC unitD)
-        pure (textInputValueD, sendAllErrE')
-      unitD <- divClass "column column-33" $ do
-          units <- getSettingsUnitBtc
-          let unitInit = maybe units fst minit
-          unitsDropdown unitInit allUnitsBTC
-      pure (zipDynWith (\u v -> fmap (u,) $ toEither $ validateAmount 0 u v) unitD textInputValueD', sendAllErrE'')
-  void $ divClass "form-field-errors" $ simpleList errsD displayError
-  let amountErrE = ffor (current amountValD `tag` submitE) eitherToMaybe'
-  amountErrsD <- holdDyn Nothing $ leftmost [amountErrE, sendAllErrE''']
-  pure $ eitherToMaybe <$> amountValD
+  pubStorageD <- getPubStorageD
+  units <- getSettingsUnitBtc
+  let unitInit = maybe units fst minit
+      sendAllBtnE = head btnEvents
+      -- If both the fee rate and the recipient are specified and valid, we can calculate the maximum amount.
+      sendAllE = flip push sendAllBtnE $ const $ do
+        mFeeRate <- sampleDyn feeRateD
+        mRecipient <- sampleDyn recipientD
+        case (mFeeRate, mRecipient) of
+          (Just (_, feeRate), Just recipient) -> pure $ Just (feeRate, recipient)
+          _ -> pure Nothing
+
+      setAmountSatE = poke sendAllE $ \(feeRate, recipient) -> do
+        pubStorage <- sampleDyn pubStorageD
+        pure $ calcMaxAvailableAmount pubStorage feeRate recipient
+      setAmountE = poke setAmountSatE $ \amount -> do
+        u <- sampleDyn unitD
+        pure $ showMoneyUnit (Money BTC amount) u
+      amountD = zipDynWith (\u v -> fmap (u,) $ toEither $ validateAmount 0 u v) unitD txtValD
+  initAmountTxt <- do
+    pure $ maybe "" (\(_, amount) -> showMoneyUnit (Money BTC amount) unitInit) minit
+  
+  let
+    validate :: (MonadReflex t m, LocalizedPrint l, MonadLocalized t m) => Dynamic t (Maybe BtcAddress) -> Dynamic t UnitBTC -> Dynamic t (Maybe (FeeMode, Word64)) -> Text -> PushM t (Either [l] Word64)
+    validate recipientD unitD feeRateD inputValue = do
+      mFeeRate <- sampleDyn feeRateD
+      mRecipient <- sampleDyn recipientD
+      -- If the fee rate or the recipient is not specified, then we show an error msg.
+      case (mFeeRate, mRecipient) of
+        (Just _, Just _) -> do
+          unit <- sampleDyn unitD
+          pure $ toEither $ validateAmount 0 unit inputValue
+        (Nothing, Just _) -> pure $ Left [EnterFeeRateFirst]
+        (Just _, Nothing) -> pure $ Left [EnterRecipientFirst]
+        (Nothing, Nothing) -> pure $ Left [EnterFeeRateFirst, EnterRecipientFirst]
+  (txtValD, btnEvents, unitD) <- labeledTextFieldWithBtnsAndSelector AmountString initAmountTxt M.empty [localizedText SendAll] (unitsDropdown unitInit allUnitsBTC) setAmountE never (validate recipientD unitD feeRateD)
+  when isAndroid (availableBalanceWidget BTC unitD)
+  pure $ eitherToMaybe <$> amountD
 
 -- | Returns maximum available balance to send in satoshis.
 calcMaxAvailableAmount :: PubStorage -> Word64 -> BtcAddress-> Word64
@@ -111,8 +102,7 @@ isSendingUtxo _ = False
 -- | Input field with units. Converts everything to satoshis and returns the unit.
 sendAmountWidgetErg :: MonadFront t m => Maybe (UnitERGO, Word64) -> Event t () -> m (Dynamic t (Maybe (UnitERGO, Word64)))
 sendAmountWidgetErg minit submitE = divClass "amount-input" $ mdo
-  let errsD = fromMaybe [] <$> amountErrsD
-      isInvalidD = fmap (maybe "" (const "is-invalid")) amountErrsD
+  let isInvalidD = fmap (\errs -> if null errs then "" else "is-invalid") amountErrsD
   amountValD <- do
     el "label" $ localizedText AmountString
     divClass "row" $ mdo
@@ -122,7 +112,7 @@ sendAmountWidgetErg minit submitE = divClass "amount-input" $ mdo
             units <- getSettingsUnitErg
             let unitInit = maybe units fst minit
             pure $ maybe "" (\(_, amount) -> showMoneyUnit (Money ERGO amount) unitInit) minit
-          divClassDyn isInvalidD $ textField txtInit ("class" =: "mb-0") never never
+          divClassDyn isInvalidD $ textFieldTemplate txtInit ("class" =: "mb-0") never never
         when isAndroid (availableBalanceWidget ERGO unitD)
         pure textInputValueD'
       unitD <- divClass "column column-33" $ do
@@ -130,6 +120,6 @@ sendAmountWidgetErg minit submitE = divClass "amount-input" $ mdo
           let unitInit = maybe units fst minit
           unitsDropdown unitInit allUnitsERGO
       pure $ zipDynWith (\u v -> fmap (u,) $ toEither $ validateAmount 0 u v) unitD textInputValueD
-  void $ divClass "form-field-errors" $ simpleList errsD displayError
-  amountErrsD <- holdDyn Nothing $ ffor (current amountValD `tag` submitE) eitherToMaybe'
+  void $ divClass "form-field-errors" $ simpleList amountErrsD displayErrorDyn
+  amountErrsD <- holdDyn [] $ ffor (current amountValD `tag` submitE) (fromLeft [])
   pure $ eitherToMaybe <$> amountValD

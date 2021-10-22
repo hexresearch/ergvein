@@ -62,9 +62,9 @@ sendWidget mInit title navbar thisWidget = wrapperNavbar False title thisWidget 
       rbfFromSettings = btcSettings'sendRbfByDefault $ getBtcSettings settings
       rbfInit' = fromMaybe rbfFromSettings rbfInit
   retInfoD <- formClass "mb-0" $ mdo
-    recipientD <- divClass "mb-1" $ recipientWidget BTC recipientInit submitE
-    amountD <- divClass "mb-1" $ sendAmountWidgetBtc amountInit submitE recipientD feeD
-    feeD <- divClass "mb-1" $ feeSelectionWidgetBtc (FSRate BTC) feeInit Nothing submitE
+    recipientD <- recipientWidget BTC recipientInit submitE
+    amountD <- sendAmountWidgetBtc amountInit submitE recipientD feeD
+    feeD <- feeSelectionWidgetBtc (FSRate BTC) feeInit Nothing submitE
     rbfEnabledD <- divClass "mb-2" $ do
       label "" $ localizedText SSRbf
       toggler $ pure rbfInit'

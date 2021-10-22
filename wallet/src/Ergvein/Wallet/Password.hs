@@ -70,8 +70,8 @@ checkPasswordsMatch e d1 d2 = flip push e $ const $ do
 
 setupPassword :: MonadFrontBase t m => Event t () -> m (Event t Password)
 setupPassword e = divClass "setup-password" $ form $ fieldset $ mdo
-  p1D <- passFieldWithEye PWSPassword noMatchE
-  p2D <- passFieldWithEye PWSRepeat noMatchE
+  p1D <- passField PWSPassword noMatchE
+  p2D <- passField PWSRepeat noMatchE
   let noMatchE = checkPasswordsMatch e p1D p2D
   validateEvent $ poke e $ const $ runExceptT $ do
     p1 <- sampleDyn p1D
@@ -82,9 +82,9 @@ setupPassword e = divClass "setup-password" $ form $ fieldset $ mdo
 setupLoginPassword :: MonadFrontBase t m => Maybe Text -> Event t () -> m (Event t (Text, Password))
 setupLoginPassword mlogin e = divClass "setup-password" $ form $ fieldset $ mdo
   existingWalletNames <- listStorages
-  loginD <- labeledTextField PWSLogin (fromMaybe (nameProposal existingWalletNames) mlogin) ("placeholder" =: "my wallet name") never never
-  p1D <- passFieldWithEye PWSPassword noMatchE
-  p2D <- passFieldWithEye PWSRepeat noMatchE
+  loginD <- labeledTextFieldTemplate PWSLogin (fromMaybe (nameProposal existingWalletNames) mlogin) ("placeholder" =: "my wallet name") never never
+  p1D <- passField PWSPassword noMatchE
+  p2D <- passField PWSRepeat noMatchE
   let noMatchE = checkPasswordsMatch e p1D p2D
   validateEvent $ poke e $ const $ runExceptT $ do
     p1 <- sampleDyn p1D
@@ -105,7 +105,7 @@ nameProposal s = let
 setupLogin :: MonadFrontBase t m => Event t () -> m (Event t Text)
 setupLogin e = divClass "setup-password" $ form $ fieldset $ mdo
   existingWalletNames <- listStorages
-  loginD <- labeledTextField PWSLogin (nameProposal existingWalletNames) M.empty never never
+  loginD <- labeledTextFieldTemplate PWSLogin (nameProposal existingWalletNames) M.empty never never
   validateEvent $ poke e $ const $ runExceptT $ do
     l <- sampleDyn loginD
     check PWSEmptyLogin $ not $ T.null l
@@ -119,7 +119,7 @@ setupDerivPrefix ac mpath = do
     localizedText PWSDerivDescr2
   divClass "setup-password" $ form $ fieldset $ mdo
     let dval = fromMaybe defValue mpath
-    pathTD <- labeledTextField PWSDeriv (showDerivPath dval) M.empty never never
+    pathTD <- labeledTextFieldTemplate PWSDeriv (showDerivPath dval) M.empty never never
     pathE <- validateEvent $ ffor (updated pathTD) $ maybe (Left PWSInvalidPath) Right . parseDerivePath
     holdDyn dval pathE
   where
@@ -137,7 +137,7 @@ askTextPasswordWidget :: (MonadFrontBase t m, LocalizedPrint l1, LocalizedPrint 
 askTextPasswordWidget title description clearInputE = divClass "my-a" $ do
   h4 $ localizedText title
   divClass "" $ do
-    pD <- passFieldWithEye description clearInputE
+    pD <- passField description clearInputE
     e <- submitClass "button button-outline" PWSGo
     pure $ tag (current pD) e
 
@@ -156,7 +156,7 @@ askPasswordImpl name writeMeta clearInputE = do
   when writeMeta $ storeValue fpath True True
   divClass "ask-password my-a" $ form $ fieldset $ do
     h4 $ localizedText PPSUnlock
-    pD <- passFieldWithEye (PWSPassNamed name) clearInputE
+    pD <- passField (PWSPassNamed name) clearInputE
     divClass "fit-content ml-a mr-a" $ do
       e <- divClass "" $ submitClass "button button-outline w-100" PWSGo
       pure $ tag (current pD) e

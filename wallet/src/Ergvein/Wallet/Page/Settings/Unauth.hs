@@ -7,6 +7,7 @@ module Ergvein.Wallet.Page.Settings.Unauth
   ) where
 
 import Control.Monad
+import Data.Bifunctor (bimap)
 import Data.Maybe
 import Data.Text
 import Network.Socket
@@ -37,20 +38,19 @@ data SubPageSettings
 settingsPageUnauth :: MonadFrontBase t m => m ()
 settingsPageUnauth = wrapperSimple True $ do
   divClass "initial-options grid1" $ do
-    goLangE            <- fmap (GoLanguage   <$) $ outlineButton STPSButLanguage
-    goNetE             <- fmap (GoNetwork    <$) $ outlineButton STPSButNetwork
-    goDnsE             <- fmap (GoDns        <$) $ outlineButton STPSButDns
-    goTorE             <- fmap (GoTor        <$) $ outlineButton STPSButTor
+    goLangE <- (GoLanguage <$) <$> outlineButton STPSButLanguage
+    goNetE  <- (GoNetwork <$)  <$> outlineButton STPSButNetwork
+    goDnsE  <- (GoDns <$)      <$> outlineButton STPSButDns
+    goTorE  <- (GoTor <$)      <$> outlineButton STPSButTor
     let goE = leftmost [goLangE, goNetE, goDnsE, goTorE]
     void $ nextWidget $ ffor goE $ \spg -> Retractable {
         retractableNext = case spg of
-          GoLanguage  -> languagePageUnauth
-          GoNetwork   -> networkSettingsPageUnauth
-          GoDns       -> dnsPageUnauth
-          GoTor       -> torPageUnauth
+          GoLanguage -> languagePageUnauth
+          GoNetwork  -> networkSettingsPageUnauth
+          GoDns      -> dnsPageUnauth
+          GoTor      -> torPageUnauth
       , retractablePrev = Just $ pure settingsPageUnauth
       }
-
 
 dnsPageUnauth :: MonadFrontBase t m => m ()
 dnsPageUnauth = wrapperSimple False dnsPageWidget
@@ -82,7 +82,7 @@ dnsPageWidget = do
       elClass "hr" "network-hr-sep-lb m-0 mt-1 mb-1" $ pure ()
       tglD <- toggle False tglE
       valD <- networkHoldDyn $ ffor tglD $ \case
-        False -> fmap (, never) $ buttonClass "button button-outline ml-a mr-a w-100" NSSAddDns
+        False -> (, never) <$> buttonClass "button button-outline ml-a mr-a w-100" NSSAddDns
         True -> do
           textD <- fmap _inputElement_value $ inputElement $ def
             & inputElementConfig_elementConfig . elementConfig_initialAttributes .~ ("type" =: "text")
@@ -91,7 +91,7 @@ dnsPageWidget = do
             closeE <- outlineButton NSSCancel
             setE <- validateDNSIp $ current textD `tag` goE
             pure (closeE, DNSAdd <$> setE)
-      let (tglE', actE) = (\(a,b) -> (switchDyn a, switchDyn b)) $ splitDynPure valD
+      let (tglE', actE) = bimap switchDyn switchDyn $ splitDynPure valD
       let tglE = leftmost [() <$ actE, tglE']
       pure actE
 
@@ -123,7 +123,7 @@ languagePageUnauth = wrapperSimple True languagePageWidget
 -- | The same for both auth and unauth contexts
 languagePageWidget :: MonadFrontBase t m => m ()
 languagePageWidget = do
-  h3 $ localizedText $ STPSSelectLanguage
+  h3 $ localizedText STPSSelectLanguage
   divClass "initial-options grid1" $ do
     langD <- getLanguage
     initKey <- sample . current $ langD
@@ -134,7 +134,7 @@ languagePageWidget = do
             }
     dp <- dropdown initKey listLangsD ddnCfg
     let selD = _dropdown_value dp
-    selE <- fmap updated $ holdUniqDyn selD
+    selE <- updated <$> holdUniqDyn selD
     void $ networkHold (pure ()) $ setLanguage <$> selE
     settings <- getSettings
     updE <- updateSettings $ ffor selE (\lng -> settings {settingsLang = lng})

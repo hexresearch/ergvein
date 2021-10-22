@@ -13,7 +13,7 @@ module Ergvein.Wallet.Page.Seed(
 
 import Control.Monad.Random.Strict
 import Data.Bifunctor
-import Data.Either (isLeft)
+import Data.Either (isLeft, fromLeft)
 import Data.Maybe
 import Data.Text.Encoding (decodeUtf8With)
 import Data.Text.Encoding.Error (lenientDecode)
@@ -39,9 +39,10 @@ import Sepulcas.Clipboard
 import Sepulcas.Elements
 import Sepulcas.Resize
 
-import qualified Data.List      as L
-import qualified Data.Serialize as S
-import qualified Data.Text      as T
+import qualified Data.List       as L
+import qualified Data.Map.Strict as M
+import qualified Data.Serialize  as S
+import qualified Data.Text       as T
 
 data GoPage = GoBackupNow | GoBackupLater
 
@@ -385,16 +386,18 @@ plainRestorePage mnemLength = wrapperSimple True $ mdo
 base58RestorePage :: MonadFrontBase t m => m ()
 base58RestorePage = wrapperSimple True $ mdo
   h4 $ localizedText SPSBase58Title
-  encodedEncryptedMnemonicErrsD <- holdDyn Nothing $ ffor validationE eitherToMaybe'
-  encodedEncryptedMnemonicD <- validatedTextFieldSetValNoLabel "" encodedEncryptedMnemonicErrsD inputE
+  let
+    validate :: Text -> Either [SeedPageStrings] EncryptedByteString
+    validate base58Msg = maybe (Left [SPSMnemonicDecodeError]) Right $
+      (eitherToMaybe . S.decode <=< decodeBase58CheckBtc) base58Msg
+  encodedEncryptedMnemonicD <- textField "" M.empty inputE never validate
   inputE <- pasteBtnsWidget
   submitE <- networkHoldDynE $ ffor encodedEncryptedMnemonicD $ \v -> if v == ""
     then pure never
     else outlineButton CSForward
   let validationE = poke submitE $ \_ -> do
         encodedEncryptedMnemonic <- sampleDyn encodedEncryptedMnemonicD
-        pure $ maybe (Left [SPSMnemonicDecodeError]) Right $
-          (eitherToMaybe . S.decode <=< decodeBase58CheckBtc) encodedEncryptedMnemonic
+        pure $ validate encodedEncryptedMnemonic
       goE = fmapMaybe eitherToMaybe validationE
   void $ nextWidget $ ffor goE $ \encryptedMnemonic -> Retractable {
       retractableNext = askSeedPasswordPage encryptedMnemonic

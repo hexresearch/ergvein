@@ -4,6 +4,7 @@ module Ergvein.Wallet.Widget.Input.Recipient(
     recipientWidget
   ) where
 
+import Data.Either (fromLeft)
 import Data.Maybe
 
 import Ergvein.Wallet.Localize
@@ -15,6 +16,7 @@ import Sepulcas.Elements
 import Sepulcas.Text
 import Sepulcas.Validate
 
+import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 
 recipientWidget :: (MonadFront t m, Display a, Validate a)
@@ -24,10 +26,12 @@ recipientWidget :: (MonadFront t m, Display a, Validate a)
   -> m (Dynamic t (Maybe a))
 recipientWidget cur mInitRecipient submitE = divClass "recipient-input" $ mdo
   let initRecipient = maybe "" display mInitRecipient
-  recipientErrsD <- holdDyn Nothing $ ffor (current validatedRecipientD `tag` submitE) eitherToMaybe'
+  -- Be careful with recipientErrsD, it must be declared before labeledTextFieldWithBtns.
+  -- Otherwise you can get deadlock.
+  recipientErrsD <- holdDyn [] $ ffor (current validatedRecipientD `tag` submitE) (fromLeft [])
   recipientD <- if isAndroid
     then mdo
-      (recipD, events) <- validatedTextFieldWithSetValBtns RecipientString initRecipient recipientErrsD ["fas fa-paste", "fas fa-qrcode"] (leftmost [pasteE, resQRcodeE])
+      (recipD, events) <- labeledTextFieldWithBtns RecipientString initRecipient M.empty [mkIconBtn "fas fa-paste", mkIconBtn "fas fa-qrcode"] (pasteE <> resQRcodeE) never recipientErrsD
       let pasteBtnE = head events
           qrBtnE = events !! 1
           getAddrFromUri t = T.takeWhile (/= '?') $ fromMaybe t $ T.stripPrefix (curprefix cur) t
@@ -36,9 +40,10 @@ recipientWidget cur mInitRecipient submitE = divClass "recipient-input" $ mdo
       pasteE <- clipboardPaste pasteBtnE
       pure recipD
     else mdo
-      (recipD, events) <- validatedTextFieldWithSetValBtns RecipientString initRecipient recipientErrsD ["fas fa-paste"] pasteE
+      (recipD, events) <- labeledTextFieldWithBtns RecipientString initRecipient M.empty [mkIconBtn "fas fa-paste"] pasteE never recipientErrsD
       let pasteBtnE = head events
       pasteE <- clipboardPaste pasteBtnE
       pure recipD
   let validatedRecipientD = toEither . validate <$> recipientD
   pure $ eitherToMaybe <$> validatedRecipientD
+  where mkIconBtn iconClass = elClass "i" iconClass blank
