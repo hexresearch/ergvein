@@ -210,7 +210,7 @@ labeledTextFieldWithBtns lbl value attributes buttons setValueE modifyAttributes
   void $ networkHoldDyn $ ffor errsD displayErrors
   pure result
 
-labeledTextFieldWithBtnsAndSelector ::
+labeledTextFieldWithBtnsAndSelector :: forall t m l0 l1 a .
   ( MonadReflex t m,
     MonadLocalized t m,
     LocalizedPrint l0,
@@ -227,7 +227,7 @@ labeledTextFieldWithBtnsAndSelector ::
   -> m (Dynamic t Text, [Event t ()], Dynamic t a)
 labeledTextFieldWithBtnsAndSelector lbl value attributes buttons selector setValueE modifyAttributesE validate = mdo
   let
-    errsD = fromLeft [] . pure . validate <$> sel1 result
+    errsD :: Dynamic t [l0] = fromLeft [] . pure . validate <$> sel1 result
     inputClasses = "text-input-with-btns" <> if isAndroid then "-android" else "-desktop"
     validityAttrE = (\errs -> if null errs
       then "class" =: Just inputClasses
