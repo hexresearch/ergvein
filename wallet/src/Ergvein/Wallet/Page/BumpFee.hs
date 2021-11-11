@@ -16,6 +16,7 @@ import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Balances
 import Ergvein.Wallet.Settings
+import Ergvein.Wallet.Validate
 import Ergvein.Wallet.Widget.Input.Fee
 import Ergvein.Wallet.Wrapper
 import Sepulcas.Alert
@@ -29,7 +30,7 @@ import qualified Network.Haskoin.Address as HA
 import qualified Network.Haskoin.Script as HS
 import qualified Network.Haskoin.Transaction as HT
 
-bumpFeePage :: MonadFront t m => Currency -> TxView -> Maybe (FeeMode, Word64) -> m ()
+bumpFeePage :: MonadFront t m => Currency -> TxView -> Maybe (Word64, FeeMode) -> m ()
 bumpFeePage cur  tr@TxView{..} mInit = do
   title <- localized BumpFeeTitle
   let thisWidget = Just $ pure $ bumpFeePage cur tr mInit
@@ -40,23 +41,32 @@ bumpFeePage cur  tr@TxView{..} mInit = do
     txE <- makeRbfTx txDataE
     void $ nextWidget $ ffor txE $ \(txData, tx) -> Retractable {
         retractableNext = signSendWidget txData tx
-      , retractablePrev = Just $ pure $ bumpFeePage cur tr $ Just (rbfTxData'feeMode txData, rbfTxData'feeRate txData)
+      , retractablePrev = Just $ pure $ bumpFeePage cur tr $ Just (rbfTxData'feeRate txData, rbfTxData'feeMode txData)
       }
 
-feeRateWidget :: MonadFront t m => Currency -> TxView -> Maybe (FeeMode, Word64) -> m (Event t (FeeMode, Word64))
+feeRateWidget :: MonadFront t m => Currency -> TxView -> Maybe (Word64, FeeMode) -> m (Event t (Word64, FeeMode))
 feeRateWidget _ TxView{..} mInit = mdo
-  let feeRate = calcFeeRate (txDetailedView'fee txView'detailedView) (txDetailedView'tx txView'detailedView)
+  let mFeeRate = calcFeeRate (txDetailedView'fee txView'detailedView) (txDetailedView'tx txView'detailedView)
   moneyUnits <- getSettingsUnitBtc
   makeBlock BumpFeeCurrentFee $ maybe BumpFeeFeeUnknown (`BumpFeeFeeAmount` moneyUnits) $ txDetailedView'fee txView'detailedView
-  makeBlock BumpFeeCurrentFeeRate $ maybe BumpFeeFeeRateUnknown BumpFeeFeeRateAmount feeRate
-  feeD <- feeSelectionWidgetBtc BumpFeeNewFeeRateUnits mInit feeRate submitE
+  makeBlock BumpFeeCurrentFeeRate $ maybe BumpFeeFeeRateUnknown BumpFeeFeeRateAmount mFeeRate
+  autoFeeModeE <- delay 0.05 $ void $ ffilter (/= FeeModeManual) $ updated feeModeD
+  feeRateErrsD <- mkErrsDyn (leftmost [autoFeeModeE, submitE]) feeRateD (pure . toEither . validateFeeRate BTC (floor <$> mFeeRate))
+  (feeRateD, feeModeD) <- feeSelectionWidgetBtc BumpFeeNewFeeRateUnits mInit feeRateErrsD
   submitE <- outlineButton CSSubmit
-  let goE = attachWithMaybe const (current feeD) submitE
+  let
+    goE = flip push submitE $ const $ do
+      feeRateText <- sampleDyn feeRateD
+      feeMode <- sampleDyn feeModeD
+      let eFeeRate = toEither $ validateFeeRate BTC (floor <$> mFeeRate) feeRateText
+      case eFeeRate of
+        Right feeRate -> pure $ Just (feeRate, feeMode)
+        _ -> pure Nothing
   pure goE
 
 data RbfTxData = RbfTxData {
     rbfTxData'feeRate    :: !Word64                         -- ^ Fee rate in sat/vbyte
-  , rbfTxData'feeMode    :: !FeeMode                     -- ^ Fee mode
+  , rbfTxData'feeMode    :: !FeeMode                        -- ^ Fee mode
   , rbfTxData'change     :: !(Word64, EgvPubKeyBox)         -- ^ Change amount and keybox to send the change to
   , rbfTxData'coins      :: ![UtxoPoint]                    -- ^ List of utxo points used as inputs
   , rbfTxData'outsToKeep :: ![(Text, Word64)]               -- ^ Fixed tx outputs in tx
@@ -65,10 +75,10 @@ data RbfTxData = RbfTxData {
 
 -- | Keep all inputs, keep all outputs that are not our change,
 -- allow adding new inputs.
-prepareTxData :: MonadFront t m => Event t (BtcTx, (FeeMode, Word64)) -> m (Event t RbfTxData)
+prepareTxData :: MonadFront t m => Event t (BtcTx, (Word64, FeeMode)) -> m (Event t RbfTxData)
 prepareTxData e = do
   pubStorage <- getPubStorage
-  eDataE <- performEvent $ ffor e $ \(txToReplace, (newFeeMode, newFeeRate)) -> do
+  eDataE <- performEvent $ ffor e $ \(txToReplace, (newFeeRate, newFeeMode)) -> do
     let btcTx = getBtcTx txToReplace
         inputs = HT.txIn btcTx
         outputs = HT.txOut btcTx

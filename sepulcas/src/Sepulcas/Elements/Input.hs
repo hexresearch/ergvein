@@ -1,107 +1,100 @@
+{-# OPTIONS_GHC -Wall #-}
+
 module Sepulcas.Elements.Input(
-    textInput -- +
-  , labeledTextInput -- +
-  , textFieldTemplate -- +
-  , labeledTextFieldTemplate -- +
-  , textField -- +
-  , labeledTextField -- +
-  , displayErrors -- +
-  , textFieldWithBtns -- +
-  , labeledTextFieldWithBtns -- +
-  , labeledTextFieldWithBtnsAndSelector -- +
+    textInput
+  , labeledTextInput
+  , textField
+  , labeledTextField
+  , displayErrors
+  , textFieldWithBtns
+  , labeledTextFieldWithBtns
+  , labeledTextFieldWithBtnsAndSelector
   , passField
-  , Inputable(..)
-  , valueField
   , submitClass
   , textInputTypeDyn
+  , mkErrsDyn
   , displayErrorDyn
   ) where
 
 import Control.Lens
-import Control.Monad.IO.Class
 import Data.Either (fromLeft)
 import Data.Foldable (traverse_)
-import Data.Functor (void)
-import Data.Maybe (fromMaybe)
-import Data.Proxy
+import Data.Map.Strict (Map)
 import Data.Text (Text)
-import Data.Tuple.Select (sel1)
 import Reflex.Dom hiding (textInput)
 import Reflex.Flunky
 import Reflex.Localize
 import Reflex.Localize.Dom
-import Sepulcas.Either
 import Sepulcas.Elements.Button
 import Sepulcas.Elements.Form
-import Sepulcas.Elements.Input.Class
 import Sepulcas.Elements.Markup
 import Sepulcas.Elements.Table
 import Sepulcas.Id
 import Sepulcas.Monad
 import Sepulcas.Native
-import Sepulcas.Text
 
 import qualified Data.Map.Strict as M
-import qualified Data.Text as T
-import Sepulcas.Validate (ValidationError)
-
-padTextLeft :: Text -> Text
-padTextLeft t = if T.null t then t else " " <> t
 
 -- | If the ID is specified in the config, returns it, otherwise generates a new one.
-getElementId :: MonadReflex t m => InputElementConfig EventResult t (DomBuilderSpace m) -> m Text
-getElementId cfg =
-  let attributes = cfg ^. inputElementConfig_elementConfig . elementConfig_initialAttributes
-  in maybe genId pure (M.lookup "id" attributes)
+getElementID :: MonadReflex t m => InputElementConfig EventResult t (DomBuilderSpace m) -> m Text
+getElementID cfg =
+  let attrs = cfg ^. inputElementConfig_elementConfig . elementConfig_initialAttributes
+  in maybe genId pure (M.lookup "id" attrs)
 
-textInput :: MonadReflex t m
+textInputElement :: MonadReflex t m
   => InputElementConfig EventResult t (DomBuilderSpace m) -- ^ Element config
   -> m (InputElement EventResult (DomBuilderSpace m) t)
-textInput cfg = do
+textInputElement cfg = do
   inputElement $ cfg
     & inputElementConfig_elementConfig . elementConfig_initialAttributes
-      %~ \attributes -> if "type" `M.member` attributes
-        then attributes
-        else "type" =: "text" <> attributes
+      %~ \attrs -> if "type" `M.member` attrs
+        then attrs
+        else "type" =: "text" <> attrs
 
-labeledTextInput :: (MonadReflex t m, MonadLocalized t m, LocalizedPrint l)
+labeledTextInputElement :: (MonadReflex t m, MonadLocalized t m, LocalizedPrint l)
   => l -- ^ Label
   -> InputElementConfig EventResult t (DomBuilderSpace m) -- ^ Element config
   -> m (InputElement EventResult (DomBuilderSpace m) t)
-labeledTextInput lbl cfg = do
-  inputId <- getElementId cfg
-  label inputId $ localizedText lbl
+labeledTextInputElement lbl cfg = do
+  inputID <- getElementID cfg
+  label inputID $ localizedText lbl
   inputElement $ cfg
     & inputElementConfig_elementConfig . elementConfig_initialAttributes
-      %~ \attributes -> if "type" `M.member` attributes
-        then "id" =: inputId <> attributes
-        else "id" =: inputId <> "type" =: "text" <> attributes
+      %~ \attrs -> if "type" `M.member` attrs
+        then "id" =: inputID <> attrs
+        else "id" =: inputID <> "type" =: "text" <> attrs
 
-textFieldTemplate :: MonadReflex t m
-  => Text -- ^ Initial value
-  -> M.Map AttributeName Text -- ^ Initial attributes
+createInputFromElement :: MonadReflex t m =>
+  (InputElementConfig EventResult t (DomBuilderSpace m) -> m (InputElement EventResult (DomBuilderSpace m) t)) -- ^ Element config to element function
+  -> Text -- ^ Initial value
+  -> Map AttributeName Text -- ^ Initial attributes
   -> Event t Text -- ^ Event that updates input value
-  -> Event t (M.Map AttributeName (Maybe Text)) -- ^ Event that modifies attributes
+  -> Event t (Map AttributeName (Maybe Text)) -- ^ Event that modifies attributes
   -> m (Dynamic t Text)
-textFieldTemplate value attributes setValueE modifyAttributesE = fmap _inputElement_value $ textInput $ def
-  & inputElementConfig_initialValue .~ value
+createInputFromElement mkElement val attrs setValueE modifyAttributesE = fmap _inputElement_value $ mkElement $ def
+  & inputElementConfig_initialValue .~ val
   & inputElementConfig_setValue .~ setValueE
   & inputElementConfig_elementConfig . elementConfig_initialAttributes
-    %~ (<> attributes)
+    %~ (<> attrs)
   & inputElementConfig_elementConfig . elementConfig_modifyAttributes
     .~ modifyAttributesE
 
-labeledTextFieldTemplate :: (MonadReflex t m, LocalizedPrint l, MonadLocalized t m)
+textInput :: MonadReflex t m
+  => Text -- ^ Initial value
+  -> Map AttributeName Text -- ^ Initial attributes
+  -> Event t Text -- ^ Event that updates input value
+  -> Event t (Map AttributeName (Maybe Text)) -- ^ Event that modifies attributes
+  -> m (Dynamic t Text)
+textInput = createInputFromElement textInputElement
+
+labeledTextInput :: (MonadReflex t m, LocalizedPrint l, MonadLocalized t m)
   => l -- ^ Label
   -> Text -- ^ Initial value
-  -> M.Map AttributeName Text -- ^ Initial attributes
+  -> Map AttributeName Text -- ^ Initial attributes
   -> Event t Text -- ^ Event that updates input value
-  -> Event t (M.Map AttributeName (Maybe Text)) -- ^ Event that modifies attributes
+  -> Event t (Map AttributeName (Maybe Text)) -- ^ Event that modifies attributes
   -> m (Dynamic t Text)
-labeledTextFieldTemplate lbl value attributes setValueE modifyAttributesE = fmap _inputElement_value $ labeledTextInput lbl $ def
-    & inputElementConfig_initialValue .~ value
-    & inputElementConfig_elementConfig . elementConfig_modifyAttributes .~ modifyAttributesE
-    & inputElementConfig_setValue .~ setValueE
+labeledTextInput lbl = createInputFromElement (labeledTextInputElement lbl)
 
 displayErrorDyn :: (MonadReflex t m, LocalizedPrint l, MonadLocalized t m) => Dynamic t l -> m ()
 displayErrorDyn errD = do
@@ -113,41 +106,45 @@ displayErrorDyn errD = do
 displayErrors :: (MonadReflex t m, LocalizedPrint l, MonadLocalized t m) => [l] -> m ()
 displayErrors errs = case errs of
   [] -> pure ()
-  errors -> divClass "form-field-errors" $ do
+  _ -> divClass "form-field-errors" $ do
     traverse_ (\err -> localizedText err >> br) (init errs)
     localizedText $ last errs
 
+errorsWidget :: (MonadReflex t m, LocalizedPrint l, MonadLocalized t m) => Dynamic t [l] -> m ()
+errorsWidget errsD = dyn_ $ ffor errsD displayErrors
+
+mkInvalidClassE :: Reflex t => Text -> Dynamic t [a] -> Event t (Map AttributeName (Maybe Text))
+mkInvalidClassE inputClass errsD = (\errs -> if null errs
+  then "class" =: Just inputClass
+  else "class" =: Just (inputClass <> " is-invalid")) <$> updated errsD
+
 textField :: (MonadReflex t m, LocalizedPrint l, MonadLocalized t m)
   => Text -- ^ Initial value
-  -> M.Map AttributeName Text -- ^ Initial attributes
+  -> Map AttributeName Text -- ^ Initial attributes. Note: don't specify CSS classes here because they will be overwritten
   -> Event t Text -- ^ Event that updates input value
-  -> Event t (M.Map AttributeName (Maybe Text)) -- ^ Event that modifies attributes
-  -> (Text -> Either [l] a) -- ^ Validator
+  -> Event t (Map AttributeName (Maybe Text)) -- ^ Event that modifies attributes. Note: don't specify CSS classes here because they will be overwritten
+  -> Dynamic t [l] -- ^ Dynamic with errors
   -> m (Dynamic t Text)
-textField value attributes setValueE modifyAttributesE validate = mdo
-  let
-    errsD = fromLeft [] . validate <$> inputValueD
-    validityAttrE = (\errs -> if null errs then "class" =: Nothing else "class" =: Just "is-invalid") <$> updated errsD
-    inputField = textFieldTemplate value attributes setValueE (modifyAttributesE <> validityAttrE)
-  inputValueD <- inputField
-  void $ networkHoldDyn $ ffor errsD displayErrors
+textField val attrs setValueE modifyAttributesE errsD = mdo
+  let inputClass = "text-input"
+      classAttrE = mkInvalidClassE inputClass errsD
+  inputValueD <- textInput val ("class" =: inputClass <> attrs) setValueE (classAttrE <> modifyAttributesE)
+  errorsWidget errsD
   pure inputValueD
 
 labeledTextField :: (MonadReflex t m, LocalizedPrint l0, LocalizedPrint l1, MonadLocalized t m)
   => l0 -- ^ Label
   -> Text -- ^ Initial value
-  -> M.Map AttributeName Text -- ^ Initial attributes
+  -> Map AttributeName Text -- ^ Initial attributes. Note: don't specify CSS classes here because they will be overwritten
   -> Event t Text -- ^ Event that updates input value
-  -> Event t (M.Map AttributeName (Maybe Text)) -- ^ Event that modifies attributes
-  -> (Text -> Either [l1] a) -- ^ Validator
+  -> Event t (Map AttributeName (Maybe Text)) -- ^ Event that modifies attributes. Note: don't specify CSS classes here because they will be overwritten
+  -> Dynamic t [l1] -- ^ Dynamic with errors
   -> m (Dynamic t Text)
-labeledTextField lbl value attributes setValueE modifyAttributesE validate = mdo
-  let
-    errsD = fromLeft [] . validate <$> inputValueD
-    validityAttrE = (\errs -> if null errs then "class" =: Nothing else "class" =: Just "is-invalid") <$> updated errsD
-    inputField = labeledTextFieldTemplate lbl value attributes setValueE (modifyAttributesE <> validityAttrE)
-  inputValueD <- inputField
-  void $ networkHoldDyn $ ffor errsD displayErrors
+labeledTextField lbl val attrs setValueE modifyAttributesE errsD = mdo
+  let inputClass = "text-input"
+      classAttrE = mkInvalidClassE inputClass errsD
+  inputValueD <- labeledTextInput lbl val ("class" =: inputClass <> attrs) setValueE (classAttrE <> modifyAttributesE)
+  errorsWidget errsD
   pure inputValueD
 
 textFieldWithBtns ::
@@ -156,26 +153,20 @@ textFieldWithBtns ::
     LocalizedPrint l
   )
   => Text -- ^ Initial value
-  -> M.Map AttributeName Text -- ^ Initial attributes
+  -> Map AttributeName Text -- ^ Initial attributes. Note: don't specify CSS classes here because they will be overwritten
   -> [m ()] -- ^ Buttons on the right side of the input field
   -> Event t Text -- ^ Event that updates input value
-  -> Event t (M.Map AttributeName (Maybe Text)) -- ^ Event that modifies attributes
-  -> (Text -> Either [l] a) -- ^ Validator
+  -> Event t (Map AttributeName (Maybe Text)) -- ^ Event that modifies attributes. Note: don't specify CSS classes here because they will be overwritten
+  -> Dynamic t [l] -- ^ Dynamic with errors
   -> m (Dynamic t Text, [Event t ()])
-textFieldWithBtns value attributes buttons setValueE modifyAttributesE validate = mdo
-  let
-    errsD = fromLeft [] . validate <$> fst result
-    inputClasses = "text-input-with-btns" <> if isAndroid then "-android" else "-desktop"
-    validityAttrE = (\errs -> if null errs
-      then "class" =: Just inputClasses
-      else "class" =: Just ("is-invalid" <> padTextLeft inputClasses))
-        <$> updated errsD
-    inputField = divClassDyn "text-input-with-btns-wrapper" $ do
-      inputValueD <- textFieldTemplate value ("class" =: inputClasses <> attributes) setValueE (modifyAttributesE <> validityAttrE)
-      buttonEvents <- divClass "text-input-btns" $ traverse (divButton "text-input-btn") buttons
-      pure (inputValueD, buttonEvents)
-  result <- inputField
-  void $ networkHoldDyn $ ffor errsD displayErrors
+textFieldWithBtns val attrs buttons setValueE modifyAttributesE errsD = mdo
+  let inputClass = "text-input-with-btns" <> if isAndroid then "-android" else "-desktop"
+      classAttrE = mkInvalidClassE inputClass errsD
+  result <- divClassDyn "text-input-with-btns-wrapper" $ do
+    inputD <- textInput val ("class" =: inputClass <> attrs) setValueE (classAttrE <> modifyAttributesE)
+    btnEvents <- divClass "text-input-btns" $ traverse (divButton "text-input-btn") buttons
+    pure (inputD, btnEvents)
+  errorsWidget errsD
   pure result
 
 labeledTextFieldWithBtns ::
@@ -186,31 +177,25 @@ labeledTextFieldWithBtns ::
   )
   => l0 -- ^ Label
   -> Text -- ^ Initial value
-  -> M.Map AttributeName Text -- ^ Initial attributes
+  -> Map AttributeName Text -- ^ Initial attributes. Note: don't specify CSS classes here because they will be overwritten
   -> [m ()] -- ^ Buttons on the right side of the input field
   -> Event t Text -- ^ Event that updates input value
-  -> Event t (M.Map AttributeName (Maybe Text)) -- ^ Event that modifies attributes
-  -> (Text -> Either [l1] a) -- ^ Validator
+  -> Event t (Map AttributeName (Maybe Text)) -- ^ Event that modifies attributes. Note: don't specify CSS classes here because they will be overwritten
+  -> Dynamic t [l1] -- ^ Dynamic with errors
   -> m (Dynamic t Text, [Event t ()])
-labeledTextFieldWithBtns lbl value attributes buttons setValueE modifyAttributesE validate = mdo
-  let
-    errsD = fromLeft [] . validate <$> fst result
-    inputClasses = "text-input-with-btns" <> if isAndroid then "-android" else "-desktop"
-    validityAttrE = (\errs -> if null errs
-      then "class" =: Just inputClasses
-      else "class" =: Just ("is-invalid" <> padTextLeft inputClasses))
-      <$> updated errsD
-    inputField id = divClassDyn "text-input-with-btns-wrapper" $ do
-      inputValueD <- textFieldTemplate value ("id" =: id <> "class" =: inputClasses <> attributes) setValueE (modifyAttributesE <> validityAttrE)
-      buttonEvents <- divClass "text-input-btns" $ traverse (divButton "text-input-btn") buttons
-      pure (inputValueD, buttonEvents)
-  inputId <- maybe genId pure (M.lookup "id" attributes)
-  label inputId $ localizedText lbl
-  result <- inputField inputId
-  void $ networkHoldDyn $ ffor errsD displayErrors
+labeledTextFieldWithBtns lbl val attrs buttons setValueE modifyAttributesE errsD = mdo
+  let inputClass = "text-input-with-btns" <> if isAndroid then "-android" else "-desktop"
+      classAttrE = mkInvalidClassE inputClass errsD
+  inputID <- maybe genId pure (M.lookup "id" attrs)
+  label inputID $ localizedText lbl
+  result <- divClassDyn "text-input-with-btns-wrapper" $ do
+    inputD <- textInput val ("id" =: inputID <> "class" =: inputClass <> attrs) setValueE (classAttrE <> modifyAttributesE)
+    btnEvents <- divClass "text-input-btns" $ traverse (divButton "text-input-btn") buttons
+    pure (inputD, btnEvents)
+  errorsWidget errsD
   pure result
 
-labeledTextFieldWithBtnsAndSelector :: forall t m l0 l1 a .
+labeledTextFieldWithBtnsAndSelector ::
   ( MonadReflex t m,
     MonadLocalized t m,
     LocalizedPrint l0,
@@ -218,32 +203,26 @@ labeledTextFieldWithBtnsAndSelector :: forall t m l0 l1 a .
   )
   => l0 -- ^ Label
   -> Text -- ^ Initial value
-  -> M.Map AttributeName Text -- ^ Initial attributes
+  -> Map AttributeName Text -- ^ Initial attributes. Note: don't specify CSS classes here because they will be overwritten
   -> [m ()] -- ^ Buttons on the right side of the input field
   -> m (Dynamic t a) -- ^ Selector
   -> Event t Text -- ^ Event that updates input value
-  -> Event t (M.Map AttributeName (Maybe Text)) -- ^ Event that modifies attributes
-  -> (Text -> PushM t (Either [l1] a)) -- ^ Validator
+  -> Event t (Map AttributeName (Maybe Text)) -- ^ Event that modifies attributes. Note: don't specify CSS classes here because they will be overwritten
+  -> Dynamic t [l1] -- ^ Dynamic with errors
   -> m (Dynamic t Text, [Event t ()], Dynamic t a)
-labeledTextFieldWithBtnsAndSelector lbl value attributes buttons selector setValueE modifyAttributesE validate = mdo
-  let
-    errsD :: Dynamic t [l0] = fromLeft [] . pure . validate <$> sel1 result
-    inputClasses = "text-input-with-btns" <> if isAndroid then "-android" else "-desktop"
-    validityAttrE = (\errs -> if null errs
-      then "class" =: Just inputClasses
-      else "class" =: Just ("is-invalid" <> padTextLeft inputClasses))
-      <$> updated errsD
-    inputField id = divClassDyn "text-input-with-btns-wrapper" $ do
-      inputValueD <- textFieldTemplate value ("id" =: id <> "class" =: inputClasses <> attributes) setValueE (modifyAttributesE <> validityAttrE)
-      buttonEvents <- divClass "text-input-btns" $ traverse (divButton "text-input-btn") buttons
-      pure (inputValueD, buttonEvents)
-  inputId <- maybe genId pure (M.lookup "id" attributes)
-  label inputId $ localizedText lbl
+labeledTextFieldWithBtnsAndSelector lbl val attrs buttons selector setValueE modifyAttributesE errsD = mdo
+  let inputClass = "text-input-with-btns" <> if isAndroid then "-android" else "-desktop"
+      classAttrE = mkInvalidClassE inputClass errsD
+  inputID <- maybe genId pure (M.lookup "id" attrs)
+  label inputID $ localizedText lbl
   result <- row $ do
-    (inputD, btnEvents) <- column67 $ inputField inputId
-    selectorD <- column33 selector
-    pure (inputD, btnEvents, selectorD)
-  void $ networkHoldDyn $ ffor errsD displayErrors
+    (inputD, btnEvents) <- column67 $ divClassDyn "text-input-with-btns-wrapper" $ do
+      inputD <- textInput val ("id" =: inputID <> "class" =: inputClass <> attrs) setValueE (classAttrE <> modifyAttributesE)
+      btnEvents <- divClass "text-input-btns" $ traverse (divButton "text-input-btn") buttons
+      pure (inputD, btnEvents)
+    selD <- column33 selector
+    pure (inputD, btnEvents, selD)
+  errorsWidget errsD
   pure result
 
 -- | Password field with toggleable input visibility
@@ -271,30 +250,6 @@ passField lbl clearInputE = mdo
     pure (valD', eyeE')
   pure valD
 
--- | Labeled text input that parses text into given type
-valueField :: forall a t m l .(MonadReflex t m, Inputable l a, MonadLocalized t m, Eq a, Show l, Show a)
-  => l -- ^ Label
-  -> Dynamic t a -- ^ Initial value and updates
-  -> m (Dynamic t a)
-valueField lbl av0D = mdo
-  av0 <- sample . current $ av0D
-  avD :: Dynamic t a <- holdUniqDyn =<< mergeDyn av0D valE
-  errorD <- holdDyn Nothing $ leftmost [Just <$> errorE, Nothing <$ valE]
-  let isInvalidD = fmap (maybe "" (const "is-invalid")) errorD
-  tInput <- divClassDyn isInvalidD $ let
-      disp = displayInput (Proxy :: Proxy l)
-      in labeledTextInput lbl def {
-        _inputElementConfig_setValue = Just $ disp <$> updated avD
-      , _inputElementConfig_initialValue = disp av0
-      }
-  void $ networkHoldDyn $ ffor errorD $ \case
-    Nothing -> pure ()
-    Just e -> divClass "form-field-errors" $ displayErrorDyn $ pure e
-  let resD = parseInput <$> _inputElement_value tInput
-      (errorE :: Event t l, valE) = splitEither $ updated resD
-  performEvent_ $ ffor (updated resD) $ liftIO . print
-  holdUniqDyn =<< holdDyn av0 valE
-
 eyeButtonIconClass :: Bool -> Text
 eyeButtonIconClass True = "far fa-eye-slash fa-fw"
 eyeButtonIconClass _ = "far fa-eye fa-fw"
@@ -312,6 +267,16 @@ submitClass classD lbl = do
             <> "onclick" =: "return false;"
   (e, _) <- elDynAttr' "input" classesD blank
   return $ domEvent Click e
+
+-- | Applies the validator to the dynamic by the submit event, returns the dynamic with a list of validation errors.
+mkErrsDyn :: MonadReflex t m
+  => Event t () -- ^ Event that triggers validation
+  -> Dynamic t Text -- ^ Dynamic with input text
+  -> (Text -> PushM t (Either [a] b)) -- ^ Validator
+  -> m (Dynamic t [a])
+mkErrsDyn submitE inputD validator = holdDyn [] errsE where
+  inputE = poke submitE $ const $ sampleDyn inputD
+  errsE = fromLeft [] <$> poke inputE validator
 
 -- | Wrapper around text field that allows to switch its type dynamically with
 -- saving of previous value.

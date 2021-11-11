@@ -6,6 +6,7 @@ module Sepulcas.Validate (
   , validateNonEmptyText
   , validateRational
   , validateWord64
+  , validateInt
   , validateGreaterThan
   , NonEmptyText(..)
   , LargeEnoughValue(..)
@@ -41,10 +42,11 @@ data ValidationError
   = MustNotBeEmpty
   | MustBeRational
   | MustBeNatural
+  | MustBeInteger
   | MustBeGreaterThan Text
   | InvalidAddress
-  | EnterFeeRateFirst
-  | EnterRecipientFirst
+  | InvalidIP
+  | SendAllErr
   deriving (Show)
 
 validateNonEmptyText :: Text -> Validation [ValidationError] NonEmptyText
@@ -61,6 +63,11 @@ validateWord64 :: Text -> Validation [ValidationError] Word64
 validateWord64 x = case readMaybe (T.unpack x) :: Maybe Natural of
   Nothing -> _Failure # [MustBeNatural]
   Just res -> _Success # fromIntegral res
+
+validateInt :: Text -> Validation [ValidationError] Int
+validateInt x = case readMaybe (T.unpack x) :: Maybe Int of
+  Nothing -> _Failure # [MustBeInteger]
+  Just res -> _Success # res
 
 validateGreaterThan :: Ord a => a -> a -> (a -> Text) -> Validation [ValidationError] (LargeEnoughValue a)
 validateGreaterThan x y printer = if x > y

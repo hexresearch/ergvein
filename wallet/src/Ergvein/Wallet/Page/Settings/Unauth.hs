@@ -14,17 +14,19 @@ import Network.Socket
 import Reflex.Dom
 import Reflex.Dom.Retractable
 
-import Sepulcas.Alert
-import Sepulcas.Elements
-import Sepulcas.Elements.Toggle
 import Ergvein.Wallet.IP
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
+import Ergvein.Wallet.Orphanage ()
 import Ergvein.Wallet.Page.Settings.Network
 import Ergvein.Wallet.Wrapper
+import Sepulcas.Alert
+import Sepulcas.Elements
+import Sepulcas.Elements.Toggle
+import Sepulcas.Validate
 
-import qualified Data.Map.Strict as Map
+import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import qualified Data.Text as T
 
@@ -75,7 +77,6 @@ dnsPageWidget = do
       in s {settingsDns = us'}
     DNSAdd u -> s {settingsDns = S.insert u $ settingsDns s}
     DnsRestore -> s {settingsDns = defaultDns}
-  pure ()
   where
     addDnsWidget :: MonadFrontBase t m => m (Event t DnsAction)
     addDnsWidget = divClass "mt-3" $ mdo
@@ -127,7 +128,7 @@ languagePageWidget = do
   divClass "initial-options grid1" $ do
     langD <- getLanguage
     initKey <- sample . current $ langD
-    let listLangsD = ffor langD $ \l -> Map.fromList $ fmap (\v -> (v, localizedShow l v)) allLanguages
+    let listLangsD = ffor langD $ \l -> M.fromList $ fmap (\v -> (v, localizedShow l v)) allLanguages
         ddnCfg = DropdownConfig {
               _dropdownConfig_setValue   = updated langD
             , _dropdownConfig_attributes = constDyn ("class" =: "select-lang")
@@ -144,16 +145,17 @@ languagePageWidget = do
 torPageUnauth :: MonadFrontBase t m => m ()
 torPageUnauth = wrapperSimple True torPageWidget
 
--- | The same for both auth and unauth contexts
 torPageWidget :: MonadFrontBase t m => m ()
-torPageWidget = do
+torPageWidget = mdo
   h3 $ localizedText STPSSetsTor
   divClass "initial-options grid1" torToggleButton
   h3 $ localizedText STPSSetsProxy
-  divClass "initial-options grid1" socksSettings
+  divClass "initial-options grid1" (socksSettings submitE)
+  submitE <- submitClass "button button-outline" PWSSet
+  pure ()
   where
     torToggleButton = void $ do
-      torUsedD <- fmap (maybe False (torSocks ==)) <$> getProxyConf
+      torUsedD <- fmap (Just torSocks ==) <$> getProxyConf
       label "" $ localizedText STPSUseTor
       torD <- toggler torUsedD
       let updateE = flip push (updated torD) $ \useTor -> do
@@ -162,13 +164,24 @@ torPageWidget = do
       modifySettings $ ffor updateE $ \useTor setts -> setts {
           settingsSocksProxy = if useTor then Just torSocks else Nothing
         }
-    socksSettings = void $ do
+    socksSettings submitE = void $ mdo
       msocksD <- getProxyConf
-      maddrD <- valueField STPSProxyIpField $ fmap socksConfAddr <$> msocksD
-      mportD <- valueField STPSProxyPortField $ fmap socksConfPort <$> msocksD
-      let newSocksE = ffor (updated $ (,) <$> maddrD <*> mportD) $ \(maddr, mport) -> case maddr of
-            Nothing -> Nothing
-            Just addr -> Just $ SocksConf addr (fromMaybe 9050 mport)
-      modifySettings $ ffor newSocksE $ \socks setts -> setts {
-          settingsSocksProxy = socks
+      initAddr <- sampleDyn $ maybe "" (showt . socksConfAddr) <$> msocksD
+      initPort <- sampleDyn $ maybe "" (showt . socksConfPort) <$> msocksD
+      addrErrsD <- mkErrsDyn submitE addrD (pure . toEither . (validate :: Text -> Validation [ValidationError] IP))
+      portErrsD <- mkErrsDyn submitE portD (pure . toEither . validateInt)
+      addrD <- labeledTextField STPSProxyIpField initAddr M.empty never never addrErrsD
+      portD <- labeledTextField STPSProxyPortField initPort M.empty never never portErrsD
+      let
+        goE = flip push submitE $ const $ do
+          addrText <- sampleDyn addrD
+          portText <- sampleDyn portD
+          let mAddr = eitherToMaybe $ toEither $ validate addrText
+              mPort = eitherToMaybe $ toEither $ validateInt portText
+          case (mAddr, mPort) of
+            (Just addr, Just port) -> do
+              pure $ Just (addr, port)
+            _ -> pure Nothing
+      modifySettings $ ffor goE $ \(addr, port) setts -> setts {
+          settingsSocksProxy = Just $ SocksConf addr port
         }

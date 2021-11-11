@@ -619,6 +619,8 @@ sendPageCss = do
     marginBottom $ rem 0
   ".amount-input" ? do
     marginBottom $ rem 1
+  ".text-input" ? do
+    marginBottom $ rem 0
   ".text-input-with-btns-wrapper" ? do
     display flex
     alignItems center

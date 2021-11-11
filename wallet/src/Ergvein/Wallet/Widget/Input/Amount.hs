@@ -10,10 +10,10 @@ import Data.Either (fromLeft)
 import Data.Word
 
 import Ergvein.Either
-import Ergvein.Types.Utxo.Btc
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
+import Ergvein.Wallet.Orphanage ()
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Validate
 import Ergvein.Wallet.Widget.Balance
@@ -42,62 +42,28 @@ unitsDropdown initialUnit allUnits = do
   let selD = _dropdown_value dp
   holdUniqDyn selD
 
--- | Input field with units. Converts everything to satoshis and returns the unit.
-sendAmountWidgetBtc :: MonadFront t m => Maybe (UnitBTC, Word64) -> Event t () -> Dynamic t (Maybe BtcAddress) -> Dynamic t (Maybe (FeeMode, Word64)) -> m (Dynamic t (Maybe (UnitBTC, Word64)))
-sendAmountWidgetBtc minit submitE recipientD feeRateD = divClass "amount-input" $ mdo
-  pubStorageD <- getPubStorageD
+-- | Amount input field with units.
+sendAmountWidgetBtc :: (MonadFront t m, LocalizedPrint l)
+  => Maybe (Word64, UnitBTC)    -- ^ Inital unit and value
+  -> Event t Text               -- ^ Event that updates input value
+  -> Dynamic t [l] -- ^ Dynamic with errors
+  -> m (Dynamic t Text, Dynamic t UnitBTC, Event t ())
+sendAmountWidgetBtc minit setValE errsD = divClass "amount-input" $ do
   units <- getSettingsUnitBtc
-  let unitInit = maybe units fst minit
-      sendAllBtnE = head btnEvents
-      -- If both the fee rate and the recipient are specified and valid, we can calculate the maximum amount.
-      sendAllE = flip push sendAllBtnE $ const $ do
-        mFeeRate <- sampleDyn feeRateD
-        mRecipient <- sampleDyn recipientD
-        case (mFeeRate, mRecipient) of
-          (Just (_, feeRate), Just recipient) -> pure $ Just (feeRate, recipient)
-          _ -> pure Nothing
-
-      setAmountSatE = poke sendAllE $ \(feeRate, recipient) -> do
-        pubStorage <- sampleDyn pubStorageD
-        pure $ calcMaxAvailableAmount pubStorage feeRate recipient
-      setAmountE = poke setAmountSatE $ \amount -> do
-        u <- sampleDyn unitD
-        pure $ showMoneyUnit (Money BTC amount) u
-      amountD = zipDynWith (\u v -> fmap (u,) $ toEither $ validateAmount 0 u v) unitD txtValD
-  initAmountTxt <- do
-    pure $ maybe "" (\(_, amount) -> showMoneyUnit (Money BTC amount) unitInit) minit
-  
-  let
-    validate :: (MonadReflex t m, LocalizedPrint l, MonadLocalized t m) => Dynamic t (Maybe BtcAddress) -> Dynamic t UnitBTC -> Dynamic t (Maybe (FeeMode, Word64)) -> Text -> PushM t (Either [l] Word64)
-    validate recipientD unitD feeRateD inputValue = do
-      mFeeRate <- sampleDyn feeRateD
-      mRecipient <- sampleDyn recipientD
-      -- If the fee rate or the recipient is not specified, then we show an error msg.
-      case (mFeeRate, mRecipient) of
-        (Just _, Just _) -> do
-          unit <- sampleDyn unitD
-          pure $ toEither $ validateAmount 0 unit inputValue
-        (Nothing, Just _) -> pure $ Left [EnterFeeRateFirst]
-        (Just _, Nothing) -> pure $ Left [EnterRecipientFirst]
-        (Nothing, Nothing) -> pure $ Left [EnterFeeRateFirst, EnterRecipientFirst]
-  (txtValD, btnEvents, unitD) <- labeledTextFieldWithBtnsAndSelector AmountString initAmountTxt M.empty [localizedText SendAll] (unitsDropdown unitInit allUnitsBTC) setAmountE never (validate recipientD unitD feeRateD)
+  let unitInit = maybe units snd minit
+      initAmountTxt = maybe "" (\(amount, _) -> showMoneyUnit (Money BTC amount) unitInit) minit
+  (amountD, btnEvents, unitD) <- labeledTextFieldWithBtnsAndSelector
+    AmountString
+    initAmountTxt
+    M.empty
+    [localizedText SendAll]
+    (unitsDropdown unitInit allUnitsBTC)
+    setValE
+    never
+    errsD
+  let sendAllBtnE = head btnEvents
   when isAndroid (availableBalanceWidget BTC unitD)
-  pure $ eitherToMaybe <$> amountD
-
--- | Returns maximum available balance to send in satoshis.
-calcMaxAvailableAmount :: PubStorage -> Word64 -> BtcAddress-> Word64
-calcMaxAvailableAmount pubStorage feeRate recipient =
-  let utxos = filter (not . isSendingUtxo . btcUtxo'status) $ M.elems $ getBtcUtxos pubStorage
-      maxSpendableAmount = sum $ btcUtxo'amount <$> utxos
-      inTypes = btcScriptOutputToAddressType . btcUtxo'script <$> utxos
-      -- Since all the money is being sent, no change is needed.
-      outTypes = [btcAddrToBtcOutType recipient]
-      fee = guessTxFee feeRate outTypes inTypes
-  in if maxSpendableAmount > fee then maxSpendableAmount - fee else 0
-
-isSendingUtxo :: EgvUtxoStatus -> Bool
-isSendingUtxo (EUtxoSending _) = True
-isSendingUtxo _ = False
+  pure (amountD, unitD, sendAllBtnE)
 
 -- | Input field with units. Converts everything to satoshis and returns the unit.
 sendAmountWidgetErg :: MonadFront t m => Maybe (UnitERGO, Word64) -> Event t () -> m (Dynamic t (Maybe (UnitERGO, Word64)))
@@ -112,7 +78,7 @@ sendAmountWidgetErg minit submitE = divClass "amount-input" $ mdo
             units <- getSettingsUnitErg
             let unitInit = maybe units fst minit
             pure $ maybe "" (\(_, amount) -> showMoneyUnit (Money ERGO amount) unitInit) minit
-          divClassDyn isInvalidD $ textFieldTemplate txtInit ("class" =: "mb-0") never never
+          divClassDyn isInvalidD $ textInput txtInit ("class" =: "mb-0") never never
         when isAndroid (availableBalanceWidget ERGO unitD)
         pure textInputValueD'
       unitD <- divClass "column column-33" $ do

@@ -41,6 +41,7 @@ instance LocalizedPrint SendStrings where
       SSPosted -> "Transaction posted"
       SSTxId -> "Transaction ID"
       SSRbf -> "Replace by fee"
+
     Russian -> case v of
       SendTitle c -> "Отправить " <> currencyName c
       SendAvailableBalance -> "Доступно"

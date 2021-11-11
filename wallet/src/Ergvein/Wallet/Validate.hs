@@ -8,6 +8,7 @@ module Ergvein.Wallet.Validate (
   , validateErgAddr
   , validateBtcRecipient
   , validateErgRecipient
+  , validateIP
   , ValidationError(..)
   , Validation(..)
   ) where
@@ -17,6 +18,7 @@ import Data.Ratio ((%))
 import Data.Text (Text)
 import Data.Word
 
+import Ergvein.Core.IP
 import Ergvein.Types.Address
 import Ergvein.Types.Currency
 import Sepulcas.Text
@@ -83,3 +85,8 @@ validateErgRecipient addrText = case validateNonEmptyText addrText of
   Success (NonEmptyText nonEmptyAddrText) -> case validateErgAddr nonEmptyAddrText of
     Failure errs' -> _Failure # errs'
     Success addr -> _Success # addr
+
+validateIP :: Text -> Validation [ValidationError] IP
+validateIP ipText = case parseIP ipText of
+  Nothing -> _Failure # [InvalidIP]
+  Just ip -> _Success # ip

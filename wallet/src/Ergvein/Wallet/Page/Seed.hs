@@ -13,6 +13,7 @@ module Ergvein.Wallet.Page.Seed(
 
 import Control.Monad.Random.Strict
 import Data.Bifunctor
+import Data.ByteString (ByteString)
 import Data.Either (isLeft, fromLeft)
 import Data.Maybe
 import Data.Text.Encoding (decodeUtf8With)
@@ -383,22 +384,24 @@ plainRestorePage mnemLength = wrapperSimple True $ mdo
         divClass "" . localizedText . SPSMisspelledWord
       pure never
 
+validateEncryptedMnemonic :: Text -> Either [SeedPageStrings] EncryptedByteString
+validateEncryptedMnemonic encryptedMnemonic = maybe (Left [SPSMnemonicDecodeError]) Right $
+  (eitherToMaybe . S.decode <=< decodeBase58CheckBtc) encryptedMnemonic
+
 base58RestorePage :: MonadFrontBase t m => m ()
 base58RestorePage = wrapperSimple True $ mdo
   h4 $ localizedText SPSBase58Title
-  let
-    validate :: Text -> Either [SeedPageStrings] EncryptedByteString
-    validate base58Msg = maybe (Left [SPSMnemonicDecodeError]) Right $
-      (eitherToMaybe . S.decode <=< decodeBase58CheckBtc) base58Msg
-  encodedEncryptedMnemonicD <- textField "" M.empty inputE never validate
+  encryptedMnemonicD <- divClass "mb-1" $ textField "" M.empty inputE never errsD
   inputE <- pasteBtnsWidget
-  submitE <- networkHoldDynE $ ffor encodedEncryptedMnemonicD $ \v -> if v == ""
-    then pure never
-    else outlineButton CSForward
-  let validationE = poke submitE $ \_ -> do
-        encodedEncryptedMnemonic <- sampleDyn encodedEncryptedMnemonicD
-        pure $ validate encodedEncryptedMnemonic
-      goE = fmapMaybe eitherToMaybe validationE
+  submitE <- outlineButton CSForward
+  errsD <- mkErrsDyn submitE encryptedMnemonicD (pure . validateEncryptedMnemonic)
+  let
+    goE = flip push submitE $ const $ do
+      encryptedMnemonic <- sampleDyn encryptedMnemonicD
+      let eEncryptedMnemonic = validateEncryptedMnemonic encryptedMnemonic
+      case eEncryptedMnemonic of
+        Right encryptedMnemonic -> pure $ Just encryptedMnemonic
+        _ -> pure Nothing
   void $ nextWidget $ ffor goE $ \encryptedMnemonic -> Retractable {
       retractableNext = askSeedPasswordPage encryptedMnemonic
     , retractablePrev = Just $ pure base58RestorePage
