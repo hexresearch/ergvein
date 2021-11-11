@@ -4,7 +4,6 @@
 
 module Ergvein.Wallet.Widget.Input.Fee(
       feeSelectionWidgetBtc
-    , feeSelectionWidgetErg
   ) where
 
 import Data.Bifunctor (first)
@@ -82,11 +81,3 @@ feeSelectionWidgetBtc lbl minit errsD = divClass "fee-input" $ mdo
   (feeRateD, _, feeModeD) <- labeledTextFieldWithBtnsAndSelector lbl initFeeRateText M.empty [] (feeModeDropdown initFeeMode) setValE modifyAttrsE errsD
   dyn_ $ ffor infoD (parClass "fee-rate-msg" . localizedText)
   pure (feeRateD, feeModeD)
-
--- | Ergo fee selector
-feeSelectionWidgetErg :: forall t m l . (MonadFront t m, LocalizedPrint l)
-  => l                             -- ^ Label
-  -> Maybe (FeeMode, Word64)       -- ^ Inital mode and value
-  -> Event t ()                    -- ^ Send event. Triggers fileds validation
-  -> m (Dynamic t (Maybe (FeeMode, Word64)))
-feeSelectionWidgetErg = undefined

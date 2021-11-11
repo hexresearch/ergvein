@@ -2,7 +2,6 @@ module Ergvein.Types.Currency (
     Currency(..)
   , allCurrencies
   , btcResolution
-  , ergoResolution
   , currencyResolution
   , currencyName
   , currencyGenesisTime
@@ -23,10 +22,6 @@ module Ergvein.Types.Currency (
   , defUnitBTC
   , allUnitsBTC
   , smallestUnitBTC
-  , UnitERGO(..)
-  , defUnitERGO
-  , allUnitsERGO
-  , smallestUnitERGO
   , Fiat(..)
   , allFiats
   , curprefix
@@ -50,7 +45,7 @@ import Sepulcas.Text
 import qualified Data.Text as T
 
 -- | Supported currencies
-data Currency = BTC | ERGO
+data Currency = BTC
   deriving (Eq, Ord, Show, Read, Enum, Bounded, Generic, Flat, Serialize)
 $(deriveJSON aesonOptions ''Currency)
 
@@ -130,69 +125,20 @@ btcSymbolUnit u = case u of
   BtcSat      -> "sat"
 {-# INLINE btcSymbolUnit #-}
 
--- | Display units for ERGO
-data UnitERGO
-  = ErgWhole
-  | ErgMilli
-  | ErgNano
-  deriving (Eq, Ord, Enum, Bounded, Show, Read, Generic)
-
-$(deriveJSON aesonOptions ''UnitERGO)
-instance ToJSONKey UnitERGO where
-instance FromJSONKey UnitERGO where
-
-instance Display UnitERGO where
-  display = ergoSymbolUnit
-
-instance IsMoneyUnit UnitERGO where
-  unitResolution = ergoResolution
-  unitCurrency _ = ERGO
-  unitIsSmallest = isSmallestUnitERGO
-
-defUnitERGO :: UnitERGO
-defUnitERGO = ErgWhole
-
-smallestUnitERGO :: UnitERGO
-smallestUnitERGO = ErgNano
-
-isSmallestUnitERGO :: UnitERGO -> Bool
-isSmallestUnitERGO ErgNano = True
-isSmallestUnitERGO _ = False
-
-allUnitsERGO :: [UnitERGO]
-allUnitsERGO = [minBound .. maxBound]
-
-ergoResolution :: UnitERGO -> Int
-ergoResolution u = case u of
-  ErgWhole -> 9
-  ErgMilli -> 6
-  ErgNano  -> 0
-{-# INLINE ergoResolution #-}
-
-ergoSymbolUnit :: UnitERGO -> Text
-ergoSymbolUnit u = case u of
-  ErgWhole    -> "ERG"
-  ErgMilli    -> "mERG"
-  ErgNano     -> "nERG"
-{-# INLINE ergoSymbolUnit #-}
-
 -- | Amount of digits after point for currency
 currencyResolution :: Currency -> Int
 currencyResolution BTC = btcResolution BtcWhole
-currencyResolution ERGO = ergoResolution ErgWhole
 {-# INLINE currencyResolution #-}
 
 currencyName :: Currency -> Text
 currencyName c = case c of
   BTC -> "Bitcoin"
-  ERGO -> "Ergo"
 {-# INLINE currencyName #-}
 
 -- | Get time of genesis block of currency
 currencyGenesisTime :: Currency -> UTCTime
 currencyGenesisTime c = case c of
   BTC -> fromEpoch (1231006505 :: Int)
-  ERGO -> fromEpoch (1561998777 :: Int)
   where
     fromEpoch = posixSecondsToUTCTime . fromIntegral
 
@@ -200,7 +146,6 @@ currencyGenesisTime c = case c of
 currencyBlockDuration :: Currency -> NominalDiffTime
 currencyBlockDuration c = case c of
   BTC  -> 600
-  ERGO -> 120
 
 -- | Approx time of block
 currencyBlockTime :: Currency -> Int -> UTCTime
@@ -260,4 +205,3 @@ showMoneyRated money r = T.pack $ printf "%.2f" $ (realToFrac r :: Double) * rea
 curprefix :: Currency -> Text
 curprefix cur = case cur of
   BTC ->  "bitcoin:"
-  ERGO -> "ergo://"

@@ -237,8 +237,6 @@ txHashParser BTC = do
   case S.runGet S.get val of
     Left err -> fail err
     Right result -> pure $ BtcTxHash result
-txHashParser ERGO = fmap (ErgTxHash . ErgTxId . BSS.toShort) $ Parse.take $ getTxHashLength ERGO
 
 txHashBuilder :: TxHash -> Builder
 txHashBuilder (BtcTxHash th) = byteString $ S.runPut $ S.put th
-txHashBuilder (ErgTxHash th) = shortByteString . unErgTxId $ th

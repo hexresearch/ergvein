@@ -37,7 +37,7 @@ import qualified Data.Vector.Unboxed        as VU
 
 requiredCurrencies :: [CurrencyCode]
 requiredCurrencies = if isTestnet
-  then [TBTC] -- TODO: add ERGO here
+  then [TBTC]
   else [BTC]
 
 hasRequiredCurrs :: Version -> Bool

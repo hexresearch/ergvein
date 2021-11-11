@@ -20,9 +20,6 @@ feeTargetBlocks cur lev = case (cur, lev) of
   (BTC, FeeFast)      -> 2
   (BTC, FeeModerate)  -> 10
   (BTC, FeeCheap)     -> 25
-  (ERGO, FeeFast)     -> 2
-  (ERGO, FeeModerate) -> 10
-  (ERGO, FeeCheap)    -> 25
 
 -- Tuples for smartFee: Conservative and Economical
 data FeeBundle = FeeBundle {

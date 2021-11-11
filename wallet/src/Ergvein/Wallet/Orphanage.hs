@@ -10,9 +10,6 @@ import Sepulcas.Validate
 instance Validate BtcAddress where
   validate = validateBtcRecipient
 
-instance Validate ErgAddress where
-  validate = validateErgRecipient
-
 instance Validate Int where
   validate = validateInt
 

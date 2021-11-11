@@ -11,7 +11,6 @@ module Ergvein.Types.Keys (
   , unEgvXPrvKey
   , egvXPubKeyToEgvAddress
   , xPubToBtcAddr
-  , xPubToErgAddr
   , extractAddrs
   , extractExternalAddrs
   , extractChangeAddrs
@@ -43,8 +42,6 @@ import Ergvein.Types.Keys.Store.Public (PubKeystore(..))
 
 import qualified Data.Set as S
 import qualified Data.Vector as V
-import qualified Data.ByteString.Short as BSS
-import qualified Data.Serialize        as SE
 
 data ScanKeyBox = ScanKeyBox {
   scanBox'key     :: !EgvXPubKey
@@ -59,11 +56,9 @@ data ScanKeyBox = ScanKeyBox {
 unEgvXPrvKey :: EgvXPrvKey -> XPrvKey
 unEgvXPrvKey key = case key of
   BtcXPrvKey k -> k
-  ErgXPrvKey k -> k
 
 egvXPubCurrency :: EgvXPubKey -> Currency
 egvXPubCurrency val = case val of
-  ErgXPubKey{} -> ERGO
   BtcXPubKey{} -> BTC
 
 getLastUnusedKey :: KeyPurpose -> PubKeystore -> Maybe (Int, EgvPubKeyBox)
@@ -99,26 +94,18 @@ getExternalPubKeyIndex = V.length . pubKeystore'external
 
 extractXPubKeyFromEgv :: EgvXPubKey -> XPubKey
 extractXPubKeyFromEgv key = case key of
-  ErgXPubKey k _ -> k
   BtcXPubKey k _ -> k
 
 getLabelFromEgvPubKey :: EgvXPubKey -> Text
 getLabelFromEgvPubKey key = case key of
-  ErgXPubKey _ l -> l
   BtcXPubKey _ l -> l
 
 xPubToBtcAddr :: XPubKey -> BtcAddress
 xPubToBtcAddr key = pubKeyWitnessAddr $ wrapPubKey True (xPubKey key)
 
-xPubToErgAddr :: XPubKey -> ErgAddress
-xPubToErgAddr key = pubKeyErgAddr $ wrapPubKey True (xPubKey key)
-
-pubKeyErgAddr :: PubKeyI -> ErgAddress
-pubKeyErgAddr = ErgPubKeyAddress . VLAddr . BSS.toShort . SE.encode
 
 egvXPubKeyToEgvAddress :: EgvXPubKey -> EgvAddress
 egvXPubKeyToEgvAddress key = case key of
-  ErgXPubKey k _ -> ErgAddress $ xPubToErgAddr k
   BtcXPubKey k _ -> BtcAddress $ xPubToBtcAddr k
 
 -- | Extract addresses from keystore

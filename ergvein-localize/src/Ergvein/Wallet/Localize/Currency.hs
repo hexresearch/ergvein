@@ -8,7 +8,6 @@ import Ergvein.Wallet.Language
 instance LocalizedPrint Currency where
   localizedShow _ v = case v of
     BTC   -> "BTC"
-    ERGO  -> "ERGO"
 
 instance LocalizedPrint Fiat where
   localizedShow _ v = case v of

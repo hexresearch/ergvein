@@ -1,0 +1,1 @@
+{"rustc":5643853378210182226,"features":"[]","target":996486235647333486,"profile":2285152228202085614,"path":10872709659218687626,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"release/.fingerprint/ergo_protocol_ffi-e01ee06e77adab86/dep-lib-ergo_protocol_ffi"}}],"rustflags":["--print","native-static-libs"],"metadata":7797948686568424061,"config":0,"compile_kind":0}

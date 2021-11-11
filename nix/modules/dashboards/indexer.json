@@ -209,12 +209,6 @@
           "interval": "",
           "legendFormat": "BTC Blocks",
           "refId": "A"
-        },
-        {
-          "expr": "ergo_scanned_height",
-          "interval": "",
-          "legendFormat": "ERGO Blocks",
-          "refId": "B"
         }
       ],
       "thresholds": [],
@@ -526,12 +520,6 @@
           "interval": "",
           "legendFormat": "BTC",
           "refId": "A"
-        },
-        {
-          "expr": "ergo_current_height",
-          "interval": "",
-          "legendFormat": "ERGO",
-          "refId": "B"
         }
       ],
       "thresholds": [],
@@ -876,12 +864,6 @@
           "interval": "",
           "legendFormat": "BTC scan rate per min",
           "refId": "A"
-        },
-        {
-          "expr": "rate(ergo_scanned_height[1m])",
-          "interval": "",
-          "legendFormat": "ERGO scan rate per min",
-          "refId": "B"
         }
       ],
       "thresholds": [],

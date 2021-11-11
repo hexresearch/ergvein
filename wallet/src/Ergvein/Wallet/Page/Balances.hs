@@ -55,11 +55,6 @@ currenciesList _ = divClass "currency-content" $ do
             let balanceText = dynText $ (`showMoneyUnit` moneyUnits) <$> bal
                 unitsText = text $ display moneyUnits
             pure (balanceText, unitsText)
-          ERGO -> do
-            moneyUnits <- getSettingsUnitErg
-            let balanceText = dynText $ (`showMoneyUnit` moneyUnits) <$> bal
-                unitsText = text $ display moneyUnits
-            pure (balanceText, unitsText)
         divClass "currency-details" $ do
           divClass "currency-name" $ text $ currencyName cur
           divClass "currency-balance" $ do

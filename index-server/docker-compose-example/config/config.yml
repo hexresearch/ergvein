@@ -9,8 +9,6 @@ BTCNodeTCPHost           : btc
 BTCNodeTCPPort           : 8333 # use 18332 for testnet
 BTCNodeUser              : bitcoinrpcuser
 BTCNodePassword          : bitcoinrpcpassword
-ERGONodeHost             : ergo
-ERGONodePort             : 9053 # use 9052 for testnet
 
 # temporary flag. should be autodetection in future releases
 BTCNodeIsTestnet         : false # use true for testnet

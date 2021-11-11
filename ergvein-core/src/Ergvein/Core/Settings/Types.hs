@@ -4,10 +4,8 @@
 module Ergvein.Core.Settings.Types(
     Settings(..)
   , BtcSettings(..)
-  , ErgoSettings(..)
   , CurrencySettings(..)
   , getBtcSettings
-  , getErgoSettings
   , loadSettings
   , storeSettings
   , defaultSettings
@@ -75,9 +73,6 @@ instance FromJSON ExplorerUrls where
 btcDefaultExplorerUrls :: ExplorerUrls
 btcDefaultExplorerUrls = ExplorerUrls "https://www.blockchain.com/btc-testnet" "https://www.blockchain.com/btc"
 
-ergDefaultExplorerUrls :: ExplorerUrls
-ergDefaultExplorerUrls = ExplorerUrls "https://testnet.ergoplatform.com" "https://explorer.ergoplatform.com"
-
 data SocksConf = SocksConf {
   socksConfAddr :: !IP
 , socksConfPort :: !Int
@@ -130,30 +125,7 @@ defaultBtcSettings = BtcSettings {
   , btcSettings'units = defUnitBTC
 }
 
-data ErgoSettings = ErgoSettings {
-    ergSettings'explorerUrls :: !ExplorerUrls
-  , ergSettings'units        :: !UnitERGO
-} deriving (Eq, Show, Read)
-
-instance ToJSON ErgoSettings where
-  toJSON ErgoSettings{..} = object [
-      "explorerUrls" .= toJSON ergSettings'explorerUrls
-    , "units" .= toJSON ergSettings'units
-    ]
-
-instance FromJSON ErgoSettings where
-  parseJSON = withObject "ErgoSettings" $ \o -> do
-    ergSettings'explorerUrls <- o .: "explorerUrls"
-    ergSettings'units <- o .: "units"
-    pure ErgoSettings{..}
-
-defaultErgSettings :: ErgoSettings
-defaultErgSettings = ErgoSettings {
-    ergSettings'explorerUrls = ergDefaultExplorerUrls
-  , ergSettings'units = defUnitERGO
-}
-
-data CurrencySettings = SettingsBtc !BtcSettings | SettingsErgo !ErgoSettings
+data CurrencySettings = SettingsBtc !BtcSettings
   deriving (Eq, Show, Read)
 
 $(deriveJSON defaultOptions ''CurrencySettings)
@@ -161,20 +133,14 @@ $(deriveJSON defaultOptions ''CurrencySettings)
 type CurrencySpecificSettings = M.Map Currency CurrencySettings
 
 defaultCurrencySpecificSettings :: CurrencySpecificSettings
-defaultCurrencySpecificSettings = M.fromList $ btcDefaultSettings <> ergoDefaultSettings
+defaultCurrencySpecificSettings = M.fromList $ btcDefaultSettings
   where
     btcDefaultSettings  = [(BTC, SettingsBtc defaultBtcSettings)]
-    ergoDefaultSettings = [(ERGO, SettingsErgo defaultErgSettings)]
 
 getBtcSettings :: Settings -> BtcSettings
 getBtcSettings settings = case M.lookup BTC (settingsCurrencySpecific settings) of
   Just (SettingsBtc btcSettings) -> btcSettings
   _ -> defaultBtcSettings
-
-getErgoSettings :: Settings -> ErgoSettings
-getErgoSettings settings = case M.lookup ERGO (settingsCurrencySpecific settings) of
-  Just (SettingsErgo ergoSettings) -> ergoSettings
-  _ -> defaultErgSettings
 
 data Settings = Settings {
   settingsLang              :: Language

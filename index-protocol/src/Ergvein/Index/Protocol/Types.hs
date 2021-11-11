@@ -124,14 +124,11 @@ codeToCurrency :: CurrencyCode -> Maybe E.Currency
 codeToCurrency = \case
   BTC    -> Just E.BTC
   TBTC   -> Just E.BTC
-  ERGO   -> Just E.ERGO
-  TERGO  -> Just E.ERGO
   _ -> Nothing
 
 currencyToCode :: Bool -> E.Currency -> CurrencyCode
 currencyToCode test = \case
   E.BTC -> if test then TBTC else BTC
-  E.ERGO -> if test then TERGO else ERGO
 
 currencyCodeTestnet :: CurrencyCode -> Bool
 currencyCodeTestnet = \case

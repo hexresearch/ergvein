@@ -63,8 +63,8 @@ restore renderRestorePage = do
             join $
               ffor conmapD $ \cm -> sequence $
                 ffor (M.elems cm) $ \case
-                  NodeConnBtc con -> nodeconIsUp con
-                  _ -> pure False
+                  NodeConnBtc con -> nodeconIsUp con 
+                  
       let nextE = ffilter id $ updated upsD
       pure (False, heightAskingStage <$ nextE)
 

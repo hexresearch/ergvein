@@ -76,6 +76,3 @@ instance Serialize Text where
 
 instance Display BtcAddress where
   display = btcAddrToText
-
-instance Display ErgAddress where
-  display = ergAddrToText

@@ -6,9 +6,7 @@ module Ergvein.Core.Platform(
   , isAndroid
   , isTestnet
   , btcNetwork
-  , ergoNetwork
   , btcCheckpoints
-  , ergoCheckpoints
   , filterStartingHeight
   , avgTimePerBlock
   ) where
@@ -17,7 +15,6 @@ import Ergvein.Types.Currency
 import Sepulcas.Native
 
 import Network.Haskoin.Block               as HB
-import qualified Data.Ergo.Protocol.Types  as Erg
 import qualified Data.Vector               as V
 import qualified Ergvein.Types.Transaction as ETT
 import qualified Network.Haskoin.Constants as HK
@@ -36,22 +33,15 @@ btcNetwork :: HK.Network
 btcNetwork = if isTestnet then HK.btcTest else HK.btc
 {-# INLINE btcNetwork #-}
 
--- | Network parameters for ERGO blockchain. Depends on `isTestnet` flag.
-ergoNetwork :: Erg.Network
-ergoNetwork = if isTestnet then Erg.Testnet else Erg.Mainnet
-{-# INLINE ergoNetwork #-}
-
 -- | The starting height for filters downloader. Start from SegWit adoption
 filterStartingHeight :: Currency -> ETT.BlockHeight
 filterStartingHeight cur = case cur of
-  ERGO -> 0
   BTC -> if isTestnet then 1722763 else 481824
 {-# INLINE filterStartingHeight #-}
 
 -- | Average time it takes to mine a block. In minutes
 avgTimePerBlock :: Currency -> Double
 avgTimePerBlock cur = case cur of
-  ERGO -> 2
   BTC -> 10
 {-# INLINE avgTimePerBlock #-}
 
@@ -78,7 +68,3 @@ btcCheckpoints = if isTestnet
     , (0,      "00000000839a8e6886ab5951d76f411475428afc90947ee320161bbf18eb6048")
     ]
 {-# INLINE btcCheckpoints #-}
-
-ergoCheckpoints :: (Timestamp, V.Vector (HB.BlockHeight, HB.BlockHash))
-ergoCheckpoints = (0, V.empty)
-{-# INLINE ergoCheckpoints #-}

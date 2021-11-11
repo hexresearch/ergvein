@@ -30,7 +30,6 @@ import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import qualified Data.Text as T
 
--- TODO: uncomment commented lines when ERGO is ready
 data SubPageSettings
   = GoLanguage
   | GoNetwork

@@ -26,7 +26,6 @@ import Ergvein.Types.Transaction
 
 import qualified Data.Text as T
 import qualified Ergvein.Index.Server.BlockchainScanning.Bitcoin as BTCScanning
-import qualified Ergvein.Index.Server.BlockchainScanning.Ergo    as ERGOScanning
 
 scanningInfo :: ServerM [ScanProgressInfo]
 scanningInfo = catMaybes <$> mapM nfo allCurrencies
@@ -40,7 +39,6 @@ scanningInfo = catMaybes <$> mapM nfo allCurrencies
 actualHeight :: Currency -> ServerM BlockHeight
 actualHeight currency = case currency of
   BTC  -> BTCScanning.actualHeight
-  ERGO -> ERGOScanning.actualHeight
 
 scannerThread :: Currency -> (BlockHeight -> ServerM BlockInfo) -> ServerM Thread
 scannerThread currency scanInfo = create $ logOnException threadName . scanIteration

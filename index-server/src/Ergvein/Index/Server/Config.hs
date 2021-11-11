@@ -45,8 +45,6 @@ data Config = Config
   , cfgBTCNodePassword          :: !Text
   , cfgBTCNodeTCPHost           :: !String
   , cfgBTCNodeTCPPort           :: !Int
-  , cfgERGONodeHost             :: !String
-  , cfgERGONodePort             :: !Int
   , cfgOwnPeerAddress           :: !(Maybe CfgPeer)
   , cfgKnownPeers               :: ![CfgPeer]
   , cfgPeerActualizationDelay   :: !Int
@@ -81,8 +79,6 @@ instance FromJSON Config where
     cfgBTCNodePassword          <- o .:  "BTCNodePassword"
     cfgBTCNodeTCPHost           <- o .:? "BTCNodeTCPHost"   .!= "localhost"
     cfgBTCNodeTCPPort           <- o .:? "BTCNodeTCPPort"   .!= (if cfgBTCNodeIsTestnet then 18333 else 8333)
-    cfgERGONodeHost             <- o .:? "ERGONodeHost"     .!= "localhost"
-    cfgERGONodePort             <- o .:  "ERGONodePort"
     cfgOwnPeerAddress           <- o .:? "ownPeerAddress"
     cfgKnownPeers               <- o .:? "knownPeers"               .!= (filterOwnAddressFromDefault cfgOwnPeerAddress)
     cfgBlockchainScanDelay      <- o .:? "blockchainScanDelay"      .!= 1000000

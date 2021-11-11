@@ -2,20 +2,16 @@
 
 module Ergvein.Wallet.Widget.Input.Amount(
       sendAmountWidgetBtc
-    , sendAmountWidgetErg
   ) where
 
 import Control.Monad.Except
-import Data.Either (fromLeft)
 import Data.Word
 
-import Ergvein.Either
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Orphanage ()
 import Ergvein.Wallet.Settings
-import Ergvein.Wallet.Validate
 import Ergvein.Wallet.Widget.Balance
 import Sepulcas.Elements
 import Sepulcas.Text (Display(..))
@@ -64,28 +60,3 @@ sendAmountWidgetBtc minit setValE errsD = divClass "amount-input" $ do
   let sendAllBtnE = head btnEvents
   when isAndroid (availableBalanceWidget BTC unitD)
   pure (amountD, unitD, sendAllBtnE)
-
--- | Input field with units. Converts everything to satoshis and returns the unit.
-sendAmountWidgetErg :: MonadFront t m => Maybe (UnitERGO, Word64) -> Event t () -> m (Dynamic t (Maybe (UnitERGO, Word64)))
-sendAmountWidgetErg minit submitE = divClass "amount-input" $ mdo
-  let isInvalidD = fmap (\errs -> if null errs then "" else "is-invalid") amountErrsD
-  amountValD <- do
-    el "label" $ localizedText AmountString
-    divClass "row" $ mdo
-      textInputValueD <- divClass "column column-67" $ do
-        textInputValueD' <- do
-          txtInit <- do
-            units <- getSettingsUnitErg
-            let unitInit = maybe units fst minit
-            pure $ maybe "" (\(_, amount) -> showMoneyUnit (Money ERGO amount) unitInit) minit
-          divClassDyn isInvalidD $ textInput txtInit ("class" =: "mb-0") never never
-        when isAndroid (availableBalanceWidget ERGO unitD)
-        pure textInputValueD'
-      unitD <- divClass "column column-33" $ do
-          units <- getSettingsUnitErg
-          let unitInit = maybe units fst minit
-          unitsDropdown unitInit allUnitsERGO
-      pure $ zipDynWith (\u v -> fmap (u,) $ toEither $ validateAmount 0 u v) unitD textInputValueD
-  void $ divClass "form-field-errors" $ simpleList amountErrsD displayErrorDyn
-  amountErrsD <- holdDyn [] $ ffor (current amountValD `tag` submitE) (fromLeft [])
-  pure $ eitherToMaybe <$> amountValD

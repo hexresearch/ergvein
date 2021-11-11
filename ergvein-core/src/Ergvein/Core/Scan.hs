@@ -51,7 +51,6 @@ scanner = do
   cursD <- getActiveCursD
   void $ networkHoldDyn $ ffor cursD $ traverse_ $ \case
     BTC -> scannerBtc
-    _ -> pure ()
 
 scannerBtc :: forall t m . (MonadWallet t m, MonadStatus t m, MonadNode t m) => m ()
 scannerBtc = void $ workflow checkScannedHeight

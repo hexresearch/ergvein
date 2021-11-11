@@ -10,9 +10,7 @@ module Ergvein.Core.Node.Types
   , CurrencyRep(..)
   , CurrencyTag(..)
   , BtcType(..)
-  , ErgoType(..)
   , NodeBtc
-  , NodeErgo
   , HasNode(..)
   , NodeStatus(..)
   , NodeReqG(..)
@@ -72,10 +70,7 @@ data NodeStatus = NodeStatus {
 data BtcType = BtcType
 type NodeBtc t = NodeConnection t BtcType
 
-data ErgoType = ErgoType
-type NodeErgo t = NodeConnection t ErgoType
-
-data NodeConn t = NodeConnBtc !(NodeBtc t) | NodeConnErgo !(NodeErgo t)
+data NodeConn t = NodeConnBtc !(NodeBtc t)
 
 -- | Type alias for a combination of hostname and port.
 type HostPort = (Host, Port)
@@ -92,10 +87,8 @@ nodeString cur url = "[" <> showt cur <> "]<" <> showt url <> ">: "
 
 data NodeReqG
   = NodeReqBtc  (NodeReq BtcType)
-  | NodeReqErgo (NodeReq ErgoType)
 data NodeRespG
   = NodeRespBtc  (NodeResp BtcType)
-  | NodeRespErgo (NodeResp ErgoType)
 
 data NodeMessage
   = NodeMsgRestart
@@ -105,26 +98,18 @@ data NodeMessage
 getNodeReqCurrency :: NodeReqG -> Currency
 getNodeReqCurrency req = case req of
   NodeReqBtc  {} -> BTC
-  NodeReqErgo {} -> ERGO
 
 data CurrencyTag t a where
   BtcTag :: CurrencyTag t (NodeBtc t)
-  ErgoTag :: CurrencyTag t (NodeErgo t)
 
 instance GEq (CurrencyTag t) where
   geq BtcTag  BtcTag  = Just Refl
-  geq ErgoTag ErgoTag = Just Refl
-  geq _       _       = Nothing
 
 instance GCompare (CurrencyTag t) where
   gcompare BtcTag   BtcTag  = GEQ
-  gcompare ErgoTag  ErgoTag = GEQ
-  gcompare BtcTag   ErgoTag = GGT
-  gcompare ErgoTag  BtcTag  = GLT
 
 type ConnMap t = DMap (CurrencyTag t) (Map SockAddr)
 
 getAllConnByCurrency :: Currency -> ConnMap t -> Maybe (Map SockAddr (NodeConn t))
 getAllConnByCurrency cur cm = case cur of
   BTC  -> (fmap . fmap) NodeConnBtc $ DM.lookup BtcTag cm
-  ERGO -> (fmap . fmap) NodeConnErgo $ DM.lookup ErgoTag cm

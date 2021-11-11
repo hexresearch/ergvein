@@ -39,4 +39,3 @@ ratesThread = do
 currencyToCurrencyCode :: Bool -> Currency -> IPT.CurrencyCode
 currencyToCurrencyCode isTestnet c = case c of
   BTC -> if isTestnet then IPT.TBTC else IPT.BTC
-  ERGO -> if isTestnet then IPT.TERGO else IPT.ERGO

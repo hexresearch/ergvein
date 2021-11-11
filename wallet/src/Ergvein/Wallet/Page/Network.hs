@@ -45,7 +45,6 @@ networkPageWidget cur refrE = do
   -- lineOption $ lineOptionNoEdit NPSSyncStatus servCurInfoD NPSSyncDescr
   void $ lineOption $ networkHoldDyn $ ffor conmapD $ \cm -> case cur of
     BTC  -> btcNetworkWidget $ maybe [] M.elems $ DM.lookup BtcTag cm
-    ERGO -> ergNetworkWidget $ maybe [] M.elems $ DM.lookup ErgoTag cm
   void $ nextWidget $ ffor listE $ \с -> Retractable {
       retractableNext = serversInfoPage с
     , retractablePrev = Just (pure $ networkPage (Just с))
@@ -54,13 +53,6 @@ networkPageWidget cur refrE = do
 
 btcNetworkWidget :: MonadFront t m => [NodeBtc t] -> m ()
 btcNetworkWidget nodes = do
-  let activeND = fmap (length . filter id) $ sequence $ nodeconIsUp <$> nodes
-  valueOptionDyn $ NPSActiveNum <$> activeND
-  descrOption $ NPSNodesNum $ length nodes
-  labelHorSep
-
-ergNetworkWidget :: MonadFront t m => [NodeErgo t] -> m ()
-ergNetworkWidget nodes = do
   let activeND = fmap (length . filter id) $ sequence $ nodeconIsUp <$> nodes
   valueOptionDyn $ NPSActiveNum <$> activeND
   descrOption $ NPSNodesNum $ length nodes

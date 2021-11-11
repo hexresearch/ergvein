@@ -183,7 +183,6 @@ mkTxMessages invs txids txmap = foo invs [] $ \acc iv -> case invType iv of
     metx    = if b then M.lookup txid txmap else Nothing
     mbtctx  = join $ ffor metx $ \case
       TxBtc (BtcTx tx _) -> Just $ NodeReqBtc $ MTx tx
-      _ -> Nothing
     in maybe acc (: acc) mbtctx
   _ -> acc
   where
