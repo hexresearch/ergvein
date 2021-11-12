@@ -144,7 +144,7 @@ languagePageWidget = do
 torPageUnauth :: MonadFrontBase t m => m ()
 torPageUnauth = wrapperSimple True torPageWidget
 
-data ConnectAction = Connect | Disconnect deriving (Eq, Show)
+data ConnectAction = Enable | Disable deriving (Eq, Show)
 
 torPageWidget :: MonadFrontBase t m => m ()
 torPageWidget = mdo
@@ -153,19 +153,19 @@ torPageWidget = mdo
     h4 $ localizedText STPSTorStatus
     void $ networkHoldDyn $ ffor mConf $ \case
       Just (SocksConf addr port) -> do
-        localizedText STPSTorConnected
+        localizedText STPSTorEnabled
         text $ " " <> showt addr <> ":" <> showt port
-      Nothing -> localizedText STPSTorDisconnected
+      Nothing -> localizedText STPSTorDisabled
   h4 $ localizedText STPSSetsProxy
   divClass "mb-2" $ divClass "initial-options grid1" $ socksSettings connE
   connE <- networkHoldDynE $ ffor mConf $ \case
-    Just _ -> (Disconnect <$) <$> submitClass "button button-outline" STPSTorDisconnect
-    Nothing -> (Connect <$) <$> submitClass "button button-outline" STPSTorConnect
+    Just _ -> (Disable <$) <$> submitClass "button button-outline" STPSTorDisable
+    Nothing -> (Enable <$) <$> submitClass "button button-outline" STPSTorEnable
   pure ()
   where
     socksSettings connectionE = void $ mdo
-      let connectE = fmapMaybe (\action -> if action == Connect then Just () else Nothing) connectionE
-          disconnectE = fmapMaybe (\action -> if action == Disconnect then Just () else Nothing) connectionE
+      let connectE = fmapMaybe (\action -> if action == Enable then Just () else Nothing) connectionE
+          disconnectE = fmapMaybe (\action -> if action == Disable then Just () else Nothing) connectionE
       msocksD <- getProxyConf
       initAddr <- sampleDyn $ maybe (showt $ socksConfAddr torSocks) (showt . socksConfAddr) <$> msocksD
       initPort <- sampleDyn $ maybe (showt $ socksConfPort torSocks) (showt . socksConfPort) <$> msocksD

@@ -32,10 +32,10 @@ data SettingsPageStrings =
   | STPSEnableRbfByDefault
   | STPSSelectLanguage
   | STPSTorStatus
-  | STPSTorConnect
-  | STPSTorDisconnect
-  | STPSTorConnected
-  | STPSTorDisconnected
+  | STPSTorEnable
+  | STPSTorDisable
+  | STPSTorEnabled
+  | STPSTorDisabled
   | STPSUseTor
   | STPSSetsProxy
   | STPSProxyIpField
@@ -81,11 +81,11 @@ instance LocalizedPrint SettingsPageStrings where
       STPSButRbf              -> "Replace by fee"
       STPSEnableRbfByDefault  -> "Send RBF enabled transactions by default:"
       STPSSelectLanguage      -> "Select language:"
-      STPSTorStatus           -> "Connection status"
-      STPSTorConnect          -> "Connect"
-      STPSTorDisconnect       -> "Disconnect"
-      STPSTorConnected        -> "Connected:"
-      STPSTorDisconnected     -> "Disconnected"
+      STPSTorStatus           -> "Current status"
+      STPSTorEnable           -> "Enable"
+      STPSTorDisable          -> "Disable"
+      STPSTorEnabled          -> "Enabled:"
+      STPSTorDisabled         -> "Disabled"
       STPSUseTor              -> "Use Tor"
       STPSSetsProxy           -> "SOCKS proxy configuration"
       STPSProxyIpField        -> "Proxy IP address"
@@ -122,10 +122,10 @@ instance LocalizedPrint SettingsPageStrings where
       STPSEnableRbfByDefault  -> "Отправлять RBF транзакции по умолчанию:"
       STPSSelectLanguage      -> "Выберите язык:"
       STPSTorStatus           -> "Статус подключения"
-      STPSTorConnect          -> "Подключить"
-      STPSTorDisconnect       -> "Отключить"
-      STPSTorConnected        -> "Подключено:"
-      STPSTorDisconnected     -> "Отключено"
+      STPSTorEnable          -> "Подключить"
+      STPSTorDisable       -> "Отключить"
+      STPSTorEnabled        -> "Подключено:"
+      STPSTorDisabled     -> "Отключено"
       STPSUseTor              -> "Проксировать через Tor"
       STPSSetsProxy           -> "Настройки прокси SOCKS"
       STPSProxyIpField        -> "Адрес прокси"
