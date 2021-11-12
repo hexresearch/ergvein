@@ -31,7 +31,11 @@ data SettingsPageStrings =
   | STPSButRbf
   | STPSEnableRbfByDefault
   | STPSSelectLanguage
-  | STPSSetsTor
+  | STPSTorStatus
+  | STPSTorConnect
+  | STPSTorDisconnect
+  | STPSTorConnected
+  | STPSTorDisconnected
   | STPSUseTor
   | STPSSetsProxy
   | STPSProxyIpField
@@ -77,7 +81,11 @@ instance LocalizedPrint SettingsPageStrings where
       STPSButRbf              -> "Replace by fee"
       STPSEnableRbfByDefault  -> "Send RBF enabled transactions by default:"
       STPSSelectLanguage      -> "Select language:"
-      STPSSetsTor             -> "Tor configuration"
+      STPSTorStatus           -> "Connection status"
+      STPSTorConnect          -> "Connect"
+      STPSTorDisconnect       -> "Disconnect"
+      STPSTorConnected        -> "Connected:"
+      STPSTorDisconnected     -> "Disconnected"
       STPSUseTor              -> "Use Tor"
       STPSSetsProxy           -> "SOCKS proxy configuration"
       STPSProxyIpField        -> "Proxy IP address"
@@ -113,7 +121,11 @@ instance LocalizedPrint SettingsPageStrings where
       STPSButRbf              -> "Replace by fee"
       STPSEnableRbfByDefault  -> "Отправлять RBF транзакции по умолчанию:"
       STPSSelectLanguage      -> "Выберите язык:"
-      STPSSetsTor             -> "Настройки Tor"
+      STPSTorStatus           -> "Статус подключения"
+      STPSTorConnect          -> "Подключить"
+      STPSTorDisconnect       -> "Отключить"
+      STPSTorConnected        -> "Подключено:"
+      STPSTorDisconnected     -> "Отключено"
       STPSUseTor              -> "Проксировать через Tor"
       STPSSetsProxy           -> "Настройки прокси SOCKS"
       STPSProxyIpField        -> "Адрес прокси"

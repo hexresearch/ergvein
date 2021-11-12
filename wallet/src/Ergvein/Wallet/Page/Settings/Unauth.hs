@@ -144,35 +144,37 @@ languagePageWidget = do
 torPageUnauth :: MonadFrontBase t m => m ()
 torPageUnauth = wrapperSimple True torPageWidget
 
+data ConnectAction = Connect | Disconnect deriving (Eq, Show)
+
 torPageWidget :: MonadFrontBase t m => m ()
 torPageWidget = mdo
-  h3 $ localizedText STPSSetsTor
-  divClass "initial-options grid1" torToggleButton
-  h3 $ localizedText STPSSetsProxy
-  divClass "initial-options grid1" (socksSettings submitE)
-  submitE <- submitClass "button button-outline" PWSSet
+  mConf <- getProxyConf
+  divClass "mb-2" $ do
+    h4 $ localizedText STPSTorStatus
+    void $ networkHoldDyn $ ffor mConf $ \case
+      Just (SocksConf addr port) -> do
+        localizedText STPSTorConnected
+        text $ " " <> showt addr <> ":" <> showt port
+      Nothing -> localizedText STPSTorDisconnected
+  h4 $ localizedText STPSSetsProxy
+  divClass "mb-2" $ divClass "initial-options grid1" $ socksSettings connE
+  connE <- networkHoldDynE $ ffor mConf $ \case
+    Just _ -> (Disconnect <$) <$> submitClass "button button-outline" STPSTorDisconnect
+    Nothing -> (Connect <$) <$> submitClass "button button-outline" STPSTorConnect
   pure ()
   where
-    torToggleButton = void $ do
-      torUsedD <- fmap (Just torSocks ==) <$> getProxyConf
-      label "" $ localizedText STPSUseTor
-      torD <- toggler torUsedD
-      let updateE = flip push (updated torD) $ \useTor -> do
-            torUsed <- sample . current $ torUsedD
-            pure $ if useTor == torUsed then Nothing else Just useTor
-      modifySettings $ ffor updateE $ \useTor setts -> setts {
-          settingsSocksProxy = if useTor then Just torSocks else Nothing
-        }
-    socksSettings submitE = void $ mdo
+    socksSettings connectionE = void $ mdo
+      let connectE = fmapMaybe (\action -> if action == Connect then Just () else Nothing) connectionE
+          disconnectE = fmapMaybe (\action -> if action == Disconnect then Just () else Nothing) connectionE
       msocksD <- getProxyConf
-      initAddr <- sampleDyn $ maybe "" (showt . socksConfAddr) <$> msocksD
-      initPort <- sampleDyn $ maybe "" (showt . socksConfPort) <$> msocksD
-      addrErrsD <- mkErrsDyn submitE addrD (pure . toEither . (validate :: Text -> Validation [ValidationError] IP))
-      portErrsD <- mkErrsDyn submitE portD (pure . toEither . validateInt)
-      addrD <- labeledTextField STPSProxyIpField initAddr M.empty never never addrErrsD
+      initAddr <- sampleDyn $ maybe (showt $ socksConfAddr torSocks) (showt . socksConfAddr) <$> msocksD
+      initPort <- sampleDyn $ maybe (showt $ socksConfPort torSocks) (showt . socksConfPort) <$> msocksD
+      addrErrsD <- mkErrsDyn connectE addrD (pure . toEither . (validate :: Text -> Validation [ValidationError] IP))
+      portErrsD <- mkErrsDyn connectE portD (pure . toEither . validateInt)
+      addrD <- divClass "mb-1" $ labeledTextField STPSProxyIpField initAddr M.empty never never addrErrsD
       portD <- labeledTextField STPSProxyPortField initPort M.empty never never portErrsD
       let
-        goE = flip push submitE $ const $ do
+        activateE = flip push connectE $ const $ do
           addrText <- sampleDyn addrD
           portText <- sampleDyn portD
           let mAddr = eitherToMaybe $ toEither $ validate addrText
@@ -181,6 +183,9 @@ torPageWidget = mdo
             (Just addr, Just port) -> do
               pure $ Just (addr, port)
             _ -> pure Nothing
-      modifySettings $ ffor goE $ \(addr, port) setts -> setts {
+      modifySettings $ ffor activateE $ \(addr, port) setts -> setts {
           settingsSocksProxy = Just $ SocksConf addr port
+        }
+      modifySettings $ ffor disconnectE $ \_ setts -> setts {
+          settingsSocksProxy = Nothing
         }
