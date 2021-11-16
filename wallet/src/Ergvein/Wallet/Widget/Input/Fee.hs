@@ -68,6 +68,10 @@ feeSelectionWidgetBtc lbl minit errsD = divClass "fee-input" $ mdo
       (\fees feeMode -> fromMaybe "" $ feeModeToRateText BTC fees feeMode)
       feesD
       feeModeE
+    inputConfig = def
+      & textInputConfig_initialValue .~ initFeeRateText
+      & textInputConfig_setValue .~ setValE
+      & textInputConfig_modifyAttributes .~ modifyAttrsE
     infoD =
       ffor
         (zipDynWith (,) feesD feeModeD)
@@ -78,6 +82,6 @@ feeSelectionWidgetBtc lbl minit errsD = divClass "fee-input" $ mdo
             (_, FeeModeManual) -> FSFee
             _ -> FSNoFees
         )
-  (feeRateD, _, feeModeD) <- labeledTextFieldWithBtnsAndSelector lbl initFeeRateText M.empty [] (feeModeDropdown initFeeMode) setValE modifyAttrsE errsD
+  (feeRateD, _, feeModeD) <- labeledTextFieldWithBtnsAndSelector lbl inputConfig [] (feeModeDropdown initFeeMode) errsD
   dyn_ $ ffor infoD (parClass "fee-rate-msg" . localizedText)
   pure (feeRateD, feeModeD)

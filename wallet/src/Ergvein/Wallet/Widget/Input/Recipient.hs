@@ -14,7 +14,6 @@ import Sepulcas.Elements
 import Sepulcas.Text
 import Sepulcas.Validate
 
-import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 
 recipientWidget :: (MonadFront t m, LocalizedPrint l, Display a, Validate a)
@@ -26,19 +25,27 @@ recipientWidget cur mInitRecipient errsD = divClass "recipient-input" $ mdo
   let initRecipient = maybe "" display mInitRecipient
   if isAndroid
     then mdo
-      (recipientD, events) <- labeledTextFieldWithBtns RecipientString initRecipient M.empty [mkIconBtn "fas fa-paste", mkIconBtn "fas fa-qrcode"] setValE never errsD
-      let pasteBtnE = head events
-          qrBtnE = events !! 1
-          getAddrFromUri t = T.takeWhile (/= '?') $ fromMaybe t $ T.stripPrefix (curprefix cur) t
-          setValE = leftmost [pasteE, resQRcodeE]
+      let
+        inputConfig = def
+          & textInputConfig_initialValue .~ initRecipient
+          & textInputConfig_setValue .~ setValE
+        pasteBtnE = head events
+        qrBtnE = events !! 1
+        getAddrFromUri t = T.takeWhile (/= '?') $ fromMaybe t $ T.stripPrefix (curprefix cur) t
+        setValE = leftmost [pasteE, resQRcodeE]
+      (recipientD, events) <- labeledTextFieldWithBtns RecipientString inputConfig [mkIconBtn "fas fa-paste", mkIconBtn "fas fa-qrcode"] errsD
       openE <- delay 1.0 =<< openCamara qrBtnE
       resQRcodeE <- fmap getAddrFromUri <$> waiterResultCamera openE
       pasteE <- clipboardPaste pasteBtnE
       pure (recipientD, void setValE)
     else mdo
-      (recipientD, events) <- labeledTextFieldWithBtns RecipientString initRecipient M.empty [mkIconBtn "fas fa-paste"] pasteE never errsD
-      let pasteBtnE = head events
-          setValE = pasteE
+      let
+        pasteBtnE = head events
+        setValE = pasteE
+        inputConfig = def
+            & textInputConfig_initialValue .~ initRecipient
+            & textInputConfig_setValue .~ setValE
+      (recipientD, events) <- labeledTextFieldWithBtns RecipientString inputConfig [mkIconBtn "fas fa-paste"] errsD
       pasteE <- clipboardPaste pasteBtnE
       pure (recipientD, void setValE)
   where mkIconBtn iconClass = elClass "i" iconClass blank

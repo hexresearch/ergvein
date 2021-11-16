@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wall #-}
+
 module Ergvein.Wallet.Page.Settings.Unauth
   (
     settingsPageUnauth
@@ -8,11 +10,8 @@ module Ergvein.Wallet.Page.Settings.Unauth
 
 import Control.Monad
 import Data.Bifunctor (bimap)
-import Data.Maybe
 import Data.Text
 import Network.Socket
-import Reflex.Dom
-import Reflex.Dom.Retractable
 
 import Ergvein.Wallet.IP
 import Ergvein.Wallet.Language
@@ -23,7 +22,6 @@ import Ergvein.Wallet.Page.Settings.Network
 import Ergvein.Wallet.Wrapper
 import Sepulcas.Alert
 import Sepulcas.Elements
-import Sepulcas.Elements.Toggle
 import Sepulcas.Validate
 
 import qualified Data.Map.Strict as M
@@ -171,8 +169,8 @@ torPageWidget = mdo
       initPort <- sampleDyn $ maybe (showt $ socksConfPort torSocks) (showt . socksConfPort) <$> msocksD
       addrErrsD <- mkErrsDyn connectE addrD (pure . toEither . (validate :: Text -> Validation [ValidationError] IP))
       portErrsD <- mkErrsDyn connectE portD (pure . toEither . validateInt)
-      addrD <- divClass "mb-1" $ labeledTextField STPSProxyIpField initAddr M.empty never never addrErrsD
-      portD <- labeledTextField STPSProxyPortField initPort M.empty never never portErrsD
+      addrD <- divClass "mb-1" $ labeledTextField STPSProxyIpField (def & textInputConfig_initialValue .~ initAddr) addrErrsD 
+      portD <- labeledTextField STPSProxyPortField (def & textInputConfig_initialValue .~ initPort) portErrsD
       let
         activateE = flip push connectE $ const $ do
           addrText <- sampleDyn addrD
@@ -183,9 +181,9 @@ torPageWidget = mdo
             (Just addr, Just port) -> do
               pure $ Just (addr, port)
             _ -> pure Nothing
-      modifySettings $ ffor activateE $ \(addr, port) setts -> setts {
+      void $ modifySettings $ ffor activateE $ \(addr, port) setts -> setts {
           settingsSocksProxy = Just $ SocksConf addr port
         }
-      modifySettings $ ffor disconnectE $ \_ setts -> setts {
+      void $ modifySettings $ ffor disconnectE $ \_ setts -> setts {
           settingsSocksProxy = Nothing
         }

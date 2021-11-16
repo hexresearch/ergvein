@@ -391,7 +391,7 @@ validateEncryptedMnemonic encryptedMnemonic = maybe (Left [SPSMnemonicDecodeErro
 base58RestorePage :: MonadFrontBase t m => m ()
 base58RestorePage = wrapperSimple True $ mdo
   h4 $ localizedText SPSBase58Title
-  encryptedMnemonicD <- divClass "mb-1" $ textField "" M.empty inputE never errsD
+  encryptedMnemonicD <- divClass "mb-1" $ textField (def & textInputConfig_setValue .~ inputE) errsD
   inputE <- pasteBtnsWidget
   submitE <- outlineButton CSForward
   errsD <- mkErrsDyn submitE encryptedMnemonicD (pure . validateEncryptedMnemonic)

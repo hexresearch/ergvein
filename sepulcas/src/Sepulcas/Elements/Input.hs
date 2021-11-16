@@ -1,7 +1,13 @@
 {-# OPTIONS_GHC -Wall #-}
 
 module Sepulcas.Elements.Input(
-    textInput
+    TextInputConfig(..)
+  -- * Export lenses
+  , textInputConfig_initialValue
+  , textInputConfig_initialAttributes
+  , textInputConfig_setValue
+  , textInputConfig_modifyAttributes
+  , textInput
   , labeledTextInput
   , textField
   , labeledTextField
@@ -17,11 +23,19 @@ module Sepulcas.Elements.Input(
   ) where
 
 import Control.Lens
+import Data.Default
 import Data.Either (fromLeft)
 import Data.Foldable (traverse_)
 import Data.Map.Strict (Map)
 import Data.Text (Text)
-import Reflex.Dom hiding (textInput)
+import Reflex.Dom hiding
+  ( TextInputConfig,
+    textInput,
+    textInputConfig_attributes,
+    textInputConfig_initialValue,
+    textInputConfig_inputType,
+    textInputConfig_setValue,
+  )
 import Reflex.Flunky
 import Reflex.Localize
 import Reflex.Localize.Dom
@@ -66,33 +80,43 @@ labeledTextInputElement lbl cfg = do
 
 createInputFromElement :: MonadReflex t m =>
   (InputElementConfig EventResult t (DomBuilderSpace m) -> m (InputElement EventResult (DomBuilderSpace m) t)) -- ^ Element config to element function
-  -> Text -- ^ Initial value
-  -> Map AttributeName Text -- ^ Initial attributes
-  -> Event t Text -- ^ Event that updates input value
-  -> Event t (Map AttributeName (Maybe Text)) -- ^ Event that modifies attributes
+  -> TextInputConfig t
   -> m (Dynamic t Text)
-createInputFromElement mkElement val attrs setValueE modifyAttributesE = fmap _inputElement_value $ mkElement $ def
-  & inputElementConfig_initialValue .~ val
-  & inputElementConfig_setValue .~ setValueE
+createInputFromElement mkElement TextInputConfig{..} = fmap _inputElement_value $ mkElement $ def
+  & inputElementConfig_initialValue .~ _textInputConfig_initialValue
+  & inputElementConfig_setValue .~ _textInputConfig_setValue
   & inputElementConfig_elementConfig . elementConfig_initialAttributes
-    %~ (<> attrs)
+    %~ (<> _textInputConfig_initialAttributes)
   & inputElementConfig_elementConfig . elementConfig_modifyAttributes
-    .~ modifyAttributesE
+    .~ _textInputConfig_modifyAttributes
+
+data TextInputConfig t
+  = TextInputConfig {
+    _textInputConfig_initialValue :: Text -- ^ Initial value
+  , _textInputConfig_initialAttributes :: Map AttributeName Text -- ^ Initial attributes
+  , _textInputConfig_setValue :: Event t Text -- ^ Event that updates input value
+  , _textInputConfig_modifyAttributes :: Event t (Map AttributeName (Maybe Text)) -- ^ Event that modifies attributes
+  }
+
+instance (Reflex t) => Default (TextInputConfig t) where
+  {-# INLINABLE def #-}
+  def = TextInputConfig
+    { _textInputConfig_initialValue = ""
+    , _textInputConfig_initialAttributes = M.empty
+    , _textInputConfig_setValue = never
+    , _textInputConfig_modifyAttributes = never
+    }
+
+makeLenses ''TextInputConfig
 
 textInput :: MonadReflex t m
-  => Text -- ^ Initial value
-  -> Map AttributeName Text -- ^ Initial attributes
-  -> Event t Text -- ^ Event that updates input value
-  -> Event t (Map AttributeName (Maybe Text)) -- ^ Event that modifies attributes
+  => TextInputConfig t
   -> m (Dynamic t Text)
 textInput = createInputFromElement textInputElement
 
 labeledTextInput :: (MonadReflex t m, LocalizedPrint l, MonadLocalized t m)
   => l -- ^ Label
-  -> Text -- ^ Initial value
-  -> Map AttributeName Text -- ^ Initial attributes
-  -> Event t Text -- ^ Event that updates input value
-  -> Event t (Map AttributeName (Maybe Text)) -- ^ Event that modifies attributes
+  -> TextInputConfig t
   -> m (Dynamic t Text)
 labeledTextInput lbl = createInputFromElement (labeledTextInputElement lbl)
 
@@ -119,31 +143,29 @@ mkInvalidClassE inputClass errsD = (\errs -> if null errs
   else "class" =: Just (inputClass <> " is-invalid")) <$> updated errsD
 
 textField :: (MonadReflex t m, LocalizedPrint l, MonadLocalized t m)
-  => Text -- ^ Initial value
-  -> Map AttributeName Text -- ^ Initial attributes. Note: don't specify CSS classes here because they will be overwritten
-  -> Event t Text -- ^ Event that updates input value
-  -> Event t (Map AttributeName (Maybe Text)) -- ^ Event that modifies attributes. Note: don't specify CSS classes here because they will be overwritten
+  => TextInputConfig t
   -> Dynamic t [l] -- ^ Dynamic with errors
   -> m (Dynamic t Text)
-textField val attrs setValueE modifyAttributesE errsD = mdo
+textField config errsD = do
   let inputClass = "text-input"
       classAttrE = mkInvalidClassE inputClass errsD
-  inputValueD <- textInput val ("class" =: inputClass <> attrs) setValueE (classAttrE <> modifyAttributesE)
+  inputValueD <- textInput $ config
+    & textInputConfig_initialAttributes %~ ("class" =: inputClass <>)
+    & textInputConfig_modifyAttributes %~ (classAttrE <>)
   errorsWidget errsD
   pure inputValueD
 
 labeledTextField :: (MonadReflex t m, LocalizedPrint l0, LocalizedPrint l1, MonadLocalized t m)
   => l0 -- ^ Label
-  -> Text -- ^ Initial value
-  -> Map AttributeName Text -- ^ Initial attributes. Note: don't specify CSS classes here because they will be overwritten
-  -> Event t Text -- ^ Event that updates input value
-  -> Event t (Map AttributeName (Maybe Text)) -- ^ Event that modifies attributes. Note: don't specify CSS classes here because they will be overwritten
+  -> TextInputConfig t -- ^ Note: don't specify CSS classes here because they will be overwritten
   -> Dynamic t [l1] -- ^ Dynamic with errors
   -> m (Dynamic t Text)
-labeledTextField lbl val attrs setValueE modifyAttributesE errsD = mdo
+labeledTextField lbl config errsD = do
   let inputClass = "text-input"
       classAttrE = mkInvalidClassE inputClass errsD
-  inputValueD <- labeledTextInput lbl val ("class" =: inputClass <> attrs) setValueE (classAttrE <> modifyAttributesE)
+  inputValueD <- labeledTextInput lbl $ config
+    & textInputConfig_initialAttributes %~ ("class" =: inputClass <>)
+    & textInputConfig_modifyAttributes %~ (classAttrE <>)
   errorsWidget errsD
   pure inputValueD
 
@@ -152,18 +174,17 @@ textFieldWithBtns ::
     MonadLocalized t m,
     LocalizedPrint l
   )
-  => Text -- ^ Initial value
-  -> Map AttributeName Text -- ^ Initial attributes. Note: don't specify CSS classes here because they will be overwritten
+  => TextInputConfig t -- ^ Note: don't specify CSS classes here because they will be overwritten
   -> [m ()] -- ^ Buttons on the right side of the input field
-  -> Event t Text -- ^ Event that updates input value
-  -> Event t (Map AttributeName (Maybe Text)) -- ^ Event that modifies attributes. Note: don't specify CSS classes here because they will be overwritten
   -> Dynamic t [l] -- ^ Dynamic with errors
   -> m (Dynamic t Text, [Event t ()])
-textFieldWithBtns val attrs buttons setValueE modifyAttributesE errsD = mdo
+textFieldWithBtns config buttons errsD = mdo
   let inputClass = "text-input-with-btns" <> if isAndroid then "-android" else "-desktop"
       classAttrE = mkInvalidClassE inputClass errsD
   result <- divClassDyn "text-input-with-btns-wrapper" $ do
-    inputD <- textInput val ("class" =: inputClass <> attrs) setValueE (classAttrE <> modifyAttributesE)
+    inputD <- textInput $ config
+      & textInputConfig_initialAttributes %~ ("class" =: inputClass <>)
+      & textInputConfig_modifyAttributes %~ (classAttrE <>)
     btnEvents <- divClass "text-input-btns" $ traverse (divButton "text-input-btn") buttons
     pure (inputD, btnEvents)
   errorsWidget errsD
@@ -176,20 +197,19 @@ labeledTextFieldWithBtns ::
     LocalizedPrint l1
   )
   => l0 -- ^ Label
-  -> Text -- ^ Initial value
-  -> Map AttributeName Text -- ^ Initial attributes. Note: don't specify CSS classes here because they will be overwritten
+  -> TextInputConfig t -- ^ Note: don't specify CSS classes here because they will be overwritten
   -> [m ()] -- ^ Buttons on the right side of the input field
-  -> Event t Text -- ^ Event that updates input value
-  -> Event t (Map AttributeName (Maybe Text)) -- ^ Event that modifies attributes. Note: don't specify CSS classes here because they will be overwritten
   -> Dynamic t [l1] -- ^ Dynamic with errors
   -> m (Dynamic t Text, [Event t ()])
-labeledTextFieldWithBtns lbl val attrs buttons setValueE modifyAttributesE errsD = mdo
+labeledTextFieldWithBtns lbl config buttons errsD = mdo
   let inputClass = "text-input-with-btns" <> if isAndroid then "-android" else "-desktop"
       classAttrE = mkInvalidClassE inputClass errsD
-  inputID <- maybe genId pure (M.lookup "id" attrs)
+  inputID <- maybe genId pure (M.lookup "id" $ config ^. textInputConfig_initialAttributes)
   label inputID $ localizedText lbl
   result <- divClassDyn "text-input-with-btns-wrapper" $ do
-    inputD <- textInput val ("id" =: inputID <> "class" =: inputClass <> attrs) setValueE (classAttrE <> modifyAttributesE)
+    inputD <- textInput $ config
+      & textInputConfig_initialAttributes %~ (("id" =: inputID <> "class" =: inputClass) <>)
+      & textInputConfig_modifyAttributes %~ (classAttrE <>)
     btnEvents <- divClass "text-input-btns" $ traverse (divButton "text-input-btn") buttons
     pure (inputD, btnEvents)
   errorsWidget errsD
@@ -202,22 +222,21 @@ labeledTextFieldWithBtnsAndSelector ::
     LocalizedPrint l1
   )
   => l0 -- ^ Label
-  -> Text -- ^ Initial value
-  -> Map AttributeName Text -- ^ Initial attributes. Note: don't specify CSS classes here because they will be overwritten
+  -> TextInputConfig t -- ^ Note: don't specify CSS classes here because they will be overwritten
   -> [m ()] -- ^ Buttons on the right side of the input field
   -> m (Dynamic t a) -- ^ Selector
-  -> Event t Text -- ^ Event that updates input value
-  -> Event t (Map AttributeName (Maybe Text)) -- ^ Event that modifies attributes. Note: don't specify CSS classes here because they will be overwritten
   -> Dynamic t [l1] -- ^ Dynamic with errors
   -> m (Dynamic t Text, [Event t ()], Dynamic t a)
-labeledTextFieldWithBtnsAndSelector lbl val attrs buttons selector setValueE modifyAttributesE errsD = mdo
+labeledTextFieldWithBtnsAndSelector lbl config buttons selector errsD = mdo
   let inputClass = "text-input-with-btns" <> if isAndroid then "-android" else "-desktop"
       classAttrE = mkInvalidClassE inputClass errsD
-  inputID <- maybe genId pure (M.lookup "id" attrs)
+  inputID <- maybe genId pure (M.lookup "id" $ config ^. textInputConfig_initialAttributes)
   label inputID $ localizedText lbl
   result <- row $ do
     (inputD, btnEvents) <- column67 $ divClassDyn "text-input-with-btns-wrapper" $ do
-      inputD <- textInput val ("id" =: inputID <> "class" =: inputClass <> attrs) setValueE (classAttrE <> modifyAttributesE)
+      inputD <- textInput $ config
+        & textInputConfig_initialAttributes %~ (("id" =: inputID <> "class" =: inputClass) <>)
+        & textInputConfig_modifyAttributes %~ (classAttrE <>)
       btnEvents <- divClass "text-input-btns" $ traverse (divButton "text-input-btn") buttons
       pure (inputD, btnEvents)
     selD <- column33 selector

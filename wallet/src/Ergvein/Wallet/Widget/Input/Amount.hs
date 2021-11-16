@@ -48,14 +48,14 @@ sendAmountWidgetBtc minit setValE errsD = divClass "amount-input" $ do
   units <- getSettingsUnitBtc
   let unitInit = maybe units snd minit
       initAmountTxt = maybe "" (\(amount, _) -> showMoneyUnit (Money BTC amount) unitInit) minit
+      inputConfig = def
+        & textInputConfig_initialValue .~ initAmountTxt
+        & textInputConfig_setValue .~ setValE
   (amountD, btnEvents, unitD) <- labeledTextFieldWithBtnsAndSelector
     AmountString
-    initAmountTxt
-    M.empty
+    inputConfig
     [localizedText SendAll]
     (unitsDropdown unitInit allUnitsBTC)
-    setValE
-    never
     errsD
   let sendAllBtnE = head btnEvents
   when isAndroid (availableBalanceWidget BTC unitD)

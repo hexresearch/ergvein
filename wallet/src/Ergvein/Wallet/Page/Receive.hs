@@ -91,7 +91,7 @@ receivePageWidget cur i EgvPubKeyBox{..} = do
       clipboardCopy (keyTxt <$ copyE)
     divClass "receive-adr" $ text $ "#" <> showt i <> ": " <> keyView
     divClass "label-block" $ do
-      labelD <- textInput (getLabelFromEgvPubKey pubKeyBox'key) M.empty never never
+      labelD <- textInput $ def & textInputConfig_initialValue .~ getLabelFromEgvPubKey pubKeyBox'key
       btnE <- labelAddrBtn
       setLabelToExtPubKey "receivePageWidget:2" $ attachWith (\l _ -> (cur, i, l)) (current labelD) btnE
       pure ()
