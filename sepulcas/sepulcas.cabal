@@ -84,7 +84,6 @@ library
         clay >=0.14 && <0.15,
         containers >=0.6 && <0.7,
         data-default,
-        ergvein-common,
         file-embed >=0.0 && <0.1,
         ghcjs-dom,
         jsaddle,
