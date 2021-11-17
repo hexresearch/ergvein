@@ -15,12 +15,12 @@ jobs:
         fetch-depth: 0
 
     - name: Install Nix
-      uses: cachix/install-nix-action@v12
+      uses: cachix/install-nix-action@v15
       with:
         nix_path: nixpkgs=channel:nixos-20.09
 
     - name: Setup cachix
-      uses: cachix/cachix-action@v8
+      uses: cachix/cachix-action@v10
       with:
         name: ergvein
         signingKey: ${{ secrets.CACHIX_KEY }}
@@ -63,10 +63,23 @@ jobs:
         sudo mv /etc/profile.d/nix.sh.backup-before-nix /etc/profile.d/nix.sh	|| true
         sudo rm -rf /etc/nix/nix.conf || true
         sudo rm -rf /etc/nix /nix /root/.nix-profile /root/.nix-defexpr /root/.nix-channels /home/actions/.nix-profile /home/actions/.nix-defexpr /home/actions/.nix-channels || true
+        sudo rm -rf /etc/bash.bashrc.backup-before-nix || true 
+        sudo rm -rf /etc/bashrc.backup-before-nix || true
+        sudo rm -rf /etc/zshrc.backup-before-nix || true
+        sudo rm -rf /tmp/nix.conf || true 
+        sudo apt-get install python -y
+       
+        for i in {1..32}
+        do
+          sudo userdel "nixbld$i" || true
+        done
+        sudo groupdel nixbld || true
+
     - name: Install Nix
-      uses: cachix/install-nix-action@v12
+      uses: cachix/install-nix-action@v15
       with:
         nix_path: nixpkgs=channel:nixos-20.09
+        install_options: --daemon-user-count 4
 
     - name: Reload shell
       run: |
@@ -86,7 +99,7 @@ jobs:
           fi
         done
     - name: Setup cachix
-      uses: cachix/cachix-action@v8
+      uses: cachix/cachix-action@v10
       with:
         name: ergvein
         signingKey: ${{ secrets.CACHIX_KEY }}
