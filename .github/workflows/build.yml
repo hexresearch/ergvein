@@ -66,6 +66,14 @@ jobs:
         sudo rm -rf /etc/bash.bashrc.backup-before-nix || true 
         sudo rm -rf /tmp/nix.conf || true 
         sudo apt-get install python -y
+        sudo userdel nixbld1 || true
+        sudo userdel nixbld2 || true
+        sudo userdel nixbld3 || true
+        sudo userdel nixbld4 || true
+        sudo userdel nixbld5 || true
+        sudo userdel nixbld6 || true
+        sudo userdel nixbld7 || true
+        sudo userdel nixbld8 || true
 
     - name: Install Nix
       uses: cachix/install-nix-action@v15
