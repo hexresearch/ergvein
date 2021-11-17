@@ -20,7 +20,7 @@ jobs:
         nix_path: nixpkgs=channel:nixos-20.09
 
     - name: Setup cachix
-      uses: cachix/cachix-action@v8
+      uses: cachix/cachix-action@v10
       with:
         name: ergvein
         signingKey: ${{ secrets.CACHIX_KEY }}
