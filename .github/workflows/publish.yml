@@ -92,6 +92,16 @@ jobs:
         sudo rm -rf /etc/nix/nix.conf || true
         sudo rm -rf /etc/nix /nix /root/.nix-profile /root/.nix-defexpr /root/.nix-channels /home/actions/.nix-profile /home/actions/.nix-defexpr /home/actions/.nix-channels || true
         sudo rm -rf /etc/bash.bashrc.backup-before-nix || true 
+        sudo rm -rf /etc/bashrc.backup-before-nix || true
+        sudo rm -rf /etc/zshrc.backup-before-nix || true
+        sudo rm -rf /tmp/nix.conf || true 
+        sudo apt-get install python -y
+       
+        for i in {1..32}
+        do
+          sudo userdel "nixbld$i" || true
+        done
+        sudo groupdel nixbld || true
 
     - name: Install Nix
       uses: cachix/install-nix-action@v15
