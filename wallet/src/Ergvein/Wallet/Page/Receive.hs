@@ -61,7 +61,7 @@ receivePageWidget cur i EgvPubKeyBox{..} = do
     setFlagToExtPubKey "receivePageWidget:1" $ (cur, i) <$ newE
     clipboardCopy (keyTxt <$ copyE)
     divClass "receive-adr-andr" $ text $ "#" <> showt i <> ": " <> keyView
-    labelD <- divClass "button-receive" $ textInput (getLabelFromEgvPubKey pubKeyBox'key) M.empty never never
+    labelD <- divClass "button-receive" $ textInput $ def & textInputConfig_initialValue .~ getLabelFromEgvPubKey pubKeyBox'key
     btnE <- labelAddrBtn
     setLabelToExtPubKey "receivePageWidget:2" $ attachWith (\l _ -> (cur, i, l)) (current labelD) btnE
   where
