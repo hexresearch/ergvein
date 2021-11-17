@@ -72,6 +72,8 @@ jobs:
           sudo userdel "nixbld$i" || true
         done
         sudo groupdel nixbld || true
+        
+        id -nu 30005
 
     - name: Install Nix
       uses: cachix/install-nix-action@v15
