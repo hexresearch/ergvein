@@ -63,7 +63,7 @@ getDustThreshold txOut = dustRelayFee * inOutSize
               32 vbytes: previous output hash
               4 vbytes: previous output index
               1 vbyte: the length of the scriptSig field
-              107 vbytes: scriptSig (P2PKH or P2WPkH)
+              107 vbytes: scriptSig (P2PKH or P2WPKH)
               4 vbytes: nSequence
             -}
             then 32 + 4 + 1 + (107 `div` witnessScaleFactor) + 4
@@ -128,6 +128,10 @@ getInputWeight :: BtcInputType -> Word64
 getInputWeight = \case
   BtcP2PKH -> 592
   BtcP2SH -> 612
+  -- If the signing wallet uses signature grinding,
+  -- the r-value is always 32 bytes, reducing
+  -- the signature to 71 bytes and the above maxima to
+  -- 271 WU, 67.75 vbytes, and 148 bytes respectively.
   BtcP2WPKH -> 271
   BtcP2WSH -> 272
   -- BtcP2WPKHInP2SH -> 364
