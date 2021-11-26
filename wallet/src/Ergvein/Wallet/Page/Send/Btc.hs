@@ -131,14 +131,13 @@ makeTxWidget ((unit, amount), fee, addr, rbfEnabled) = mdo
     Left (_, Nothing) -> confirmationErrorWidget CEMNoChangeKey
     Left (Just _, Just (_, changeKey)) -> do
       ps <- sampleDyn psD
-      let recepientOutputType = btcAddrToBtcOutType addr
-          changeOutputType = BtcP2WPKH
-          outputTypes = [recepientOutputType, changeOutputType]
+      let outputTypes = [btcAddrToBtcOutType addr]
+          changeOutType = BtcP2WPKH
           (confs, unconfs) = getBtcUtxoPointsParted ps
-          firstpick = chooseCoins amount fee outputTypes Nothing True $ L.sort confs
-          finalpick = either (const $ chooseCoins amount fee outputTypes Nothing True $ L.sort $ confs <> unconfs) Right firstpick
-      either' finalpick (const $ confirmationErrorWidget CEMNoSolution) $ \(pick, change) ->
-        txSignSendWidget addr unit amount fee changeKey change pick rbfEnabled
+          firstpick = chooseCoins amount fee outputTypes changeOutType Nothing $ L.sort confs
+          finalpick = either (const $ chooseCoins amount fee outputTypes changeOutType Nothing $ L.sort $ confs <> unconfs) Right firstpick
+      either' finalpick (const $ confirmationErrorWidget CEMNoSolution) $ \(pick, mChange) ->
+        txSignSendWidget addr unit amount fee ((changeKey,) <$> mChange) pick rbfEnabled
     Right (tx, unit', amount', estFee, addr') -> do
       confirmationInfoWidget (unit', amount') estFee rbfEnabled addr' (Just tx)
       pure never
@@ -193,21 +192,24 @@ confirmationErrorWidget cem = do
 
 -- | This widget builds & signs the transaction
 txSignSendWidget :: MonadFront t m
-  => BtcAddress     -- ^ The recipient
-  -> UnitBTC        -- ^ BTC Unit to send
-  -> Word64         -- ^ Amount of BTC in the units
-  -> Word64         -- ^ Fee rate in sat/vbyte
-  -> EgvPubKeyBox   -- ^ Keybox to send the change to
-  -> Word64         -- ^ Change
-  -> [UtxoPoint]    -- ^ List of utxo points used as inputs
-  -> RbfEnabled     -- ^ Explicit opt-in RBF signalling
+  => BtcAddress -- ^ The recipient
+  -> UnitBTC -- ^ BTC Unit to send
+  -> Word64 -- ^ Amount of BTC in the units
+  -> Word64 -- ^ Fee rate in sat/vbyte
+  -> Maybe (EgvPubKeyBox, Word64) -- ^ Keybox to send the change to and amount of change
+  -> [UtxoPoint] -- ^ List of utxo points used as inputs
+  -> RbfEnabled -- ^ Explicit opt-in RBF signalling
   -> m (Event t (HT.Tx, UnitBTC, Word64, Word64, BtcAddress)) -- ^ Return the Tx + all relevant information for display
-txSignSendWidget addr unit amount _ changeKey change pick rbfEnabled = mdo
-  let keyTxt = btcAddrToText $ xPubToBtcAddr $ extractXPubKeyFromEgv $ pubKeyBox'key changeKey
-      outs = [(btcAddrToText addr, amount), (keyTxt, change)]
+txSignSendWidget addr unit amount _ mChange pick rbfEnabled = mdo
+  let keyBoxToTxt key = btcAddrToText $ xPubToBtcAddr $ extractXPubKeyFromEgv $ pubKeyBox'key key
+      outs = case mChange of
+        Nothing -> [(btcAddrToText addr, amount)]
+        Just (changeKey, change) -> [(btcAddrToText addr, amount), (keyBoxToTxt changeKey, change)]
       etx = buildAddrTx btcNetwork rbfEnabled (upPoint <$> pick) outs
       inputsAmount = sum $ btcUtxo'amount . upMeta <$> pick
-      outputsAmount = amount + change
+      outputsAmount = case mChange of
+        Nothing -> amount
+        Just (_, change) -> amount + change
       estFee = inputsAmount - outputsAmount
   confirmationInfoWidget (unit, amount) estFee rbfEnabled addr Nothing
   showSignD <- holdDyn True . (False <$) =<< eventToNextFrame etxE

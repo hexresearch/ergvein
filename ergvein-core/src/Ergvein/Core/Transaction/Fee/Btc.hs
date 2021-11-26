@@ -12,7 +12,8 @@ module Ergvein.Core.Transaction.Fee.Btc(
   , replacesByFee
   , haveHigherFee
   , isDust
-  , getDustThreshold
+  , getDustThresholdByTxOut
+  , getDustThresholdByOutType
 ) where
 
 import Control.Monad (forM_)
@@ -51,26 +52,34 @@ isSegwit txOut = case getBtcOutputType txOut of
   Just BtcP2WSH -> True
   _ -> False
 
-getDustThreshold :: TxOut -> Int
-getDustThreshold txOut = dustRelayFee * inOutSize
+-- TODO: now it works correctly for P2PKH and P2WPKH only
+-- Returns amount in satoshi.
+getDustThresholdByTxOut :: TxOut -> Int
+getDustThresholdByTxOut txOut = dustRelayFee * inOutSize
   where
     inOutSize :: Int
     inOutSize = getSerializedSize txOut + txInSize
       where txInSize = if isSegwit txOut
-            {-
-              sum the sizes of the parts of a transaction input
-              with 75% segwit discount applied to the script size
-              32 vbytes: previous output hash
-              4 vbytes: previous output index
-              1 vbyte: the length of the scriptSig field
-              107 vbytes: scriptSig (P2PKH or P2WPKH)
-              4 vbytes: nSequence
-            -}
-            then 32 + 4 + 1 + (107 `div` witnessScaleFactor) + 4
-            else 32 + 4 + 1 + 107 + 4
+              {-
+                sum the sizes of the parts of a transaction input
+                with 75% segwit discount applied to the script size
+                32 vbytes: previous output hash
+                4 vbytes: previous output index
+                1 vbyte: the length of the scriptSig field
+                107 vbytes: scriptSig (P2PKH or P2WPKH)
+                4 vbytes: nSequence
+              -}
+              then 32 + 4 + 1 + (107 `div` witnessScaleFactor) + 4
+              else 32 + 4 + 1 + 107 + 4
+
+getDustThresholdByOutType :: BtcOutputType -> Int
+getDustThresholdByOutType txOutType = dustRelayFee * inOutSize
+  where
+    inOutSize :: Int
+    inOutSize = weightUnitsToVBytes $ fromIntegral $ getInputWeight txOutType + getOutputWeight txOutType
 
 isDust :: TxOut -> Bool
-isDust txOut = fromIntegral (outValue txOut) < getDustThreshold txOut
+isDust txOut = fromIntegral (outValue txOut) < getDustThresholdByTxOut txOut
 
 weightUnitsToVBytes :: Int -> Int
 weightUnitsToVBytes wu = ceiling $ wu % witnessScaleFactor
@@ -128,18 +137,14 @@ getInputWeight :: BtcInputType -> Word64
 getInputWeight = \case
   BtcP2PKH -> 592
   BtcP2SH -> 612
-  -- If the signing wallet uses signature grinding,
-  -- the r-value is always 32 bytes, reducing
-  -- the signature to 71 bytes and the above maxima to
-  -- 271 WU, 67.75 vbytes, and 148 bytes respectively.
-  BtcP2WPKH -> 271
+  BtcP2WPKH -> 272
   BtcP2WSH -> 272
   -- BtcP2WPKHInP2SH -> 364
   -- BtcP2WSHInP2SH -> 412
   -- BtcP2TR -> 229
   _ -> error "getInputWeight: failed to calculate input weight"
 
--- | Returns putput size in weight units
+-- | Returns output size in weight units
 getOutputWeight :: BtcOutputType -> Word64
 getOutputWeight = \case
   BtcP2PKH -> 136

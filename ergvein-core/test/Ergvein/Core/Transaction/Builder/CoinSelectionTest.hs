@@ -4,7 +4,7 @@ import Data.Word (Word64)
 import Test.Tasty.Hspec (shouldBe)
 
 import Ergvein.Core.Transaction.Builder.Btc (chooseCoins)
-import Ergvein.Core.Transaction.Fee.Btc (BtcOutputType, guessTxFee)
+import Ergvein.Core.Transaction.Fee.Btc (BtcOutputType, guessTxFee, getDustThresholdByOutType)
 import Ergvein.Types.Address (BtcAddressType(..))
 import Ergvein.Types.Utxo.Btc (Coin (..))
 
@@ -25,14 +25,12 @@ data TestCase = TestCase
     testCaseRecipientOutTypes :: [BtcOutputType],
     testCaseChangeOutType :: BtcOutputType,
     testCaseMFixedCoins :: Maybe [TestCoin],
-    testCaseExpectedResult :: Either String ([TestCoin], Word64)
+    testCaseExpectedResult :: Either String ([TestCoin], Maybe Word64)
   }
 
 checkTestCase :: TestCase -> IO ()
 checkTestCase TestCase {..} = do
-  let outTypes = testCaseChangeOutType : testCaseRecipientOutTypes
-      findBetterSolution = False
-  chooseCoins testCaseTarget testCaseFeeRate outTypes testCaseMFixedCoins findBetterSolution testCaseCoins `shouldBe` testCaseExpectedResult
+  chooseCoins testCaseTarget testCaseFeeRate testCaseRecipientOutTypes testCaseChangeOutType testCaseMFixedCoins testCaseCoins `shouldBe` testCaseExpectedResult
 
 unit_insufficientFunds1 :: IO ()
 unit_insufficientFunds1 = do
@@ -103,7 +101,7 @@ unit_zeroTarget = do
 unit_success :: IO ()
 unit_success = do
   let
-    target = 5000
+    target = 4000
     feeRate = 1
     recipientOutTypes = [BtcP2WPKH]
     changeOutType = BtcP2WPKH
@@ -130,11 +128,10 @@ unit_success = do
           testCaseRecipientOutTypes = recipientOutTypes,
           testCaseChangeOutType = changeOutType,
           testCaseMFixedCoins = Nothing,
-          testCaseExpectedResult = Right (solution, change)
+          testCaseExpectedResult = Right (solution, Just change)
         }
   checkTestCase testCase
 
--- This test will fail until the coin selection algorithm is fixed.
 unit_doesNotMakeDustChange :: IO ()
 unit_doesNotMakeDustChange = do
   let
@@ -152,23 +149,18 @@ unit_doesNotMakeDustChange = do
           testCaseRecipientOutTypes = recipientOutTypes,
           testCaseChangeOutType = changeOutType,
           testCaseMFixedCoins = Nothing,
-          testCaseExpectedResult = Right (solution, 0)
+          testCaseExpectedResult = Right (solution, Nothing)
         }
   checkTestCase testCase
 
 unit_makesSlightlyLargerThanDustChange :: IO ()
 unit_makesSlightlyLargerThanDustChange = do
   let
-    -- A typical spendable segwit txout is 31 bytes big, and will
-    -- need a CTxIn of at least 67 bytes to spend:
-    -- so dust is a spendable txout less than
-    -- 98*dustRelayFee/1000 (in satoshis).
-    -- 294 satoshis at the default rate of 3000 sat/kB
-    change = 294
+    changeOutType = BtcP2WPKH
+    change = fromIntegral $ getDustThresholdByOutType changeOutType
     target = sum (coinValue <$> solution) - txFee - change
     feeRate = 1
     recipientOutTypes = [BtcP2WPKH]
-    changeOutType = BtcP2WPKH
     solution = [TestCoin 2000 BtcP2WPKH]
     txFee = fromIntegral $ guessTxFee feeRate (changeOutType : recipientOutTypes) (coinType <$> solution)
     testCase =
@@ -179,6 +171,86 @@ unit_makesSlightlyLargerThanDustChange = do
         testCaseRecipientOutTypes = recipientOutTypes,
         testCaseChangeOutType = changeOutType,
         testCaseMFixedCoins = Nothing,
-        testCaseExpectedResult = Right (solution, change)
+        testCaseExpectedResult = Right (solution, Just change)
+      }
+  print change
+  checkTestCase testCase
+
+unit_sweepWallet :: IO ()
+unit_sweepWallet = do
+  let
+    changeOutType = BtcP2WPKH
+    target = sum (coinValue <$> solution) - txFee
+    feeRate = 1
+    recipientOutTypes = [BtcP2WPKH]
+    coins =
+      [ TestCoin 1000 BtcP2WPKH,
+        TestCoin 2000 BtcP2WPKH,
+        TestCoin 3000 BtcP2WPKH,
+        TestCoin 4000 BtcP2WPKH
+      ]
+    solution = coins
+    txFee = fromIntegral $ guessTxFee feeRate recipientOutTypes (coinType <$> solution)
+    testCase =
+      TestCase
+      { testCaseCoins = coins,
+        testCaseTarget = target,
+        testCaseFeeRate = feeRate,
+        testCaseRecipientOutTypes = recipientOutTypes,
+        testCaseChangeOutType = changeOutType,
+        testCaseMFixedCoins = Nothing,
+        testCaseExpectedResult = Right (solution, Nothing)
+      }
+  checkTestCase testCase
+
+unit_сoinMatchesTarget :: IO ()
+unit_сoinMatchesTarget = do
+  let
+    changeOutType = BtcP2WPKH
+    target = sum (coinValue <$> solution) - txFee
+    feeRate = 1
+    recipientOutTypes = [BtcP2WPKH]
+    solution = [TestCoin 3000 BtcP2WPKH]
+    txFee = fromIntegral $ guessTxFee feeRate recipientOutTypes (coinType <$> solution)
+    testCase =
+      TestCase
+      { testCaseCoins =
+        [ TestCoin 1000 BtcP2WPKH,
+          TestCoin 2000 BtcP2WPKH,
+          TestCoin 3000 BtcP2WPKH,
+          TestCoin 4000 BtcP2WPKH
+        ],
+        testCaseTarget = target,
+        testCaseFeeRate = feeRate,
+        testCaseRecipientOutTypes = recipientOutTypes,
+        testCaseChangeOutType = changeOutType,
+        testCaseMFixedCoins = Nothing,
+        testCaseExpectedResult = Right (solution, Nothing)
+      }
+  checkTestCase testCase
+
+unit_sumOfAllCoinsLessThanTargetMatchesTarget :: IO ()
+unit_sumOfAllCoinsLessThanTargetMatchesTarget = do
+  let
+    changeOutType = BtcP2WPKH
+    target = sum (coinValue <$> solution) - txFee
+    feeRate = 1
+    recipientOutTypes = [BtcP2WPKH]
+    solution = [TestCoin 1000 BtcP2WPKH, TestCoin 2000 BtcP2WPKH]
+    txFee = fromIntegral $ guessTxFee feeRate recipientOutTypes (coinType <$> solution)
+    testCase =
+      TestCase
+      { testCaseCoins =
+        [ TestCoin 4000 BtcP2WPKH,
+          TestCoin 1000 BtcP2WPKH,
+          TestCoin 3000 BtcP2WPKH,
+          TestCoin 2000 BtcP2WPKH
+        ],
+        testCaseTarget = target,
+        testCaseFeeRate = feeRate,
+        testCaseRecipientOutTypes = recipientOutTypes,
+        testCaseChangeOutType = changeOutType,
+        testCaseMFixedCoins = Nothing,
+        testCaseExpectedResult = Right (solution, Nothing)
       }
   checkTestCase testCase
