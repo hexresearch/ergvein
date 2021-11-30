@@ -173,7 +173,6 @@ unit_makesSlightlyLargerThanDustChange = do
         testCaseMFixedCoins = Nothing,
         testCaseExpectedResult = Right (solution, Just change)
       }
-  print change
   checkTestCase testCase
 
 unit_sweepWallet :: IO ()
@@ -251,6 +250,114 @@ unit_sumOfAllCoinsLessThanTargetMatchesTarget = do
         testCaseRecipientOutTypes = recipientOutTypes,
         testCaseChangeOutType = changeOutType,
         testCaseMFixedCoins = Nothing,
+        testCaseExpectedResult = Right (solution, Nothing)
+      }
+  checkTestCase testCase
+
+unit_fixedCoins_noAdditionalInputRequired :: IO ()
+unit_fixedCoins_noAdditionalInputRequired = do
+  let
+    changeOutType = BtcP2WPKH
+    target = 1000
+    feeRate = 1
+    recipientOutTypes = [BtcP2WPKH]
+    fixedCoins = [TestCoin 2000 BtcP2WPKH]
+    solution = fixedCoins
+    txFee = fromIntegral $ guessTxFee feeRate (changeOutType : recipientOutTypes) (coinType <$> solution)
+    change =
+      sum (coinValue <$> solution)
+        - target
+        - txFee
+    testCase =
+      TestCase
+      { testCaseCoins =
+        [ TestCoin 1000 BtcP2WPKH],
+        testCaseTarget = target,
+        testCaseFeeRate = feeRate,
+        testCaseRecipientOutTypes = recipientOutTypes,
+        testCaseChangeOutType = changeOutType,
+        testCaseMFixedCoins = Just fixedCoins,
+        testCaseExpectedResult = Right (solution, Just change)
+      }
+  checkTestCase testCase
+
+unit_fixedCoins_additionalInputRequired :: IO ()
+unit_fixedCoins_additionalInputRequired = do
+  let
+    changeOutType = BtcP2WPKH
+    target = 2100
+    feeRate = 1
+    recipientOutTypes = [BtcP2WPKH]
+    fixedCoins = [TestCoin 2000 BtcP2WPKH]
+    solution = TestCoin 1000 BtcP2WPKH : fixedCoins
+    txFee = fromIntegral $ guessTxFee feeRate (changeOutType : recipientOutTypes) (coinType <$> solution)
+    change =
+      sum (coinValue <$> solution)
+        - target
+        - txFee
+    testCase =
+      TestCase
+      { testCaseCoins =
+        [TestCoin 1000 BtcP2WPKH],
+        testCaseTarget = target,
+        testCaseFeeRate = feeRate,
+        testCaseRecipientOutTypes = recipientOutTypes,
+        testCaseChangeOutType = changeOutType,
+        testCaseMFixedCoins = Just fixedCoins,
+        testCaseExpectedResult = Right (solution, Just change)
+      }
+  checkTestCase testCase
+
+unit_fixedCoins_сoinMatchesTarget :: IO ()
+unit_fixedCoins_сoinMatchesTarget = do
+  let
+    changeOutType = BtcP2WPKH
+    target = sum (coinValue <$> solution) - txFee
+    feeRate = 1
+    recipientOutTypes = [BtcP2WPKH]
+    fixedCoins = [TestCoin 2000 BtcP2WPKH]
+    solution = TestCoin 1000 BtcP2WPKH : fixedCoins
+    txFee = fromIntegral $ guessTxFee feeRate recipientOutTypes (coinType <$> solution)
+    testCase =
+      TestCase
+      { testCaseCoins = [
+          TestCoin 2000 BtcP2WPKH,
+          TestCoin 3000 BtcP2WPKH,
+          TestCoin 1000 BtcP2WPKH,
+          TestCoin 4000 BtcP2WPKH
+        ],
+        testCaseTarget = target,
+        testCaseFeeRate = feeRate,
+        testCaseRecipientOutTypes = recipientOutTypes,
+        testCaseChangeOutType = changeOutType,
+        testCaseMFixedCoins = Just fixedCoins,
+        testCaseExpectedResult = Right (solution, Nothing)
+      }
+  checkTestCase testCase
+
+unit_fixedCoins_sumOfAllCoinsLessThanTargetMatchesTarget :: IO ()
+unit_fixedCoins_sumOfAllCoinsLessThanTargetMatchesTarget = do
+  let
+    changeOutType = BtcP2WPKH
+    target = sum (coinValue <$> solution) - txFee
+    feeRate = 1
+    recipientOutTypes = [BtcP2WPKH]
+    fixedCoins = [TestCoin 2500 BtcP2WPKH]
+    solution = fixedCoins ++ [TestCoin 2000 BtcP2WPKH, TestCoin 3000 BtcP2WPKH, TestCoin 1000 BtcP2WPKH]
+    txFee = fromIntegral $ guessTxFee feeRate recipientOutTypes (coinType <$> solution)
+    testCase =
+      TestCase
+      { testCaseCoins = [
+          TestCoin 2000 BtcP2WPKH,
+          TestCoin 3000 BtcP2WPKH,
+          TestCoin 10000 BtcP2WPKH,
+          TestCoin 1000 BtcP2WPKH
+        ],
+        testCaseTarget = target,
+        testCaseFeeRate = feeRate,
+        testCaseRecipientOutTypes = recipientOutTypes,
+        testCaseChangeOutType = changeOutType,
+        testCaseMFixedCoins = Just fixedCoins,
         testCaseExpectedResult = Right (solution, Nothing)
       }
   checkTestCase testCase
