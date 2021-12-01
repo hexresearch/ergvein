@@ -639,6 +639,8 @@ sendPageCss = do
     fontSize $ pt 16
     marginRight $ rem 1
     height $ pct 100
+    display flex
+    alignItems center
   ".text-input-btn" ? do
     display flex
     alignItems center
