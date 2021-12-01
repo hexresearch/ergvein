@@ -28,15 +28,15 @@ import qualified Data.ByteString as B
 import qualified Data.List as L
 import qualified Data.Text as T
 
--- {-
---   Functions listed below are modificated functions from Network.Haskoin.Transaction.Builder module.
---   https://hackage.haskell.org/package/haskoin-core-0.12.0/src/src/Network/Haskoin/Transaction/Builder.hs
---   These functions have been modified to support the fee rate specified in satoshi per virtual byte.
--- -}
+{-
+  Functions listed below are modificated functions from Network.Haskoin.Transaction.Builder module.
+  https://hackage.haskell.org/package/haskoin-core-0.12.0/src/src/Network/Haskoin/Transaction/Builder.hs
+  These functions have been modified to support the fee rate specified in satoshi per virtual byte.
+-}
 
--- -- | Coin selection algorithm for transactions. This
--- -- function returns the selected coins together with the amount of change to
--- -- send back to yourself, taking the fee into account.
+-- | Coin selection algorithm for transactions. This
+-- function returns the selected coins together with the amount of change to
+-- send back to yourself, taking the fee into account.
 chooseCoins ::
   Coin c =>
   -- | value to send
