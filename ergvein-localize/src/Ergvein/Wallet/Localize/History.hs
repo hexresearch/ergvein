@@ -142,7 +142,6 @@ data BumpFeeWidgetStrings =
   | BumpFeeGetUtxoError
   | BumpFeeHeader
   | BumpFeeInsufficientFundsError
-  | BumpFeeInvalidAddressError
   | BumpFeeNewFee
   | BumpFeeNewFeeRate
   | BumpFeeNewFeeRateAmount !Word64
@@ -162,7 +161,7 @@ instance LocalizedPrint BumpFeeWidgetStrings where
       BumpFeeCurrentFeeRate              -> "Current fee rate"
       BumpFeeDecodeOutsError             -> "Couldn't decode outputs"
       BumpFeeFeeAmount amount units      -> showMoneyUnit amount units <> " " <> display units
-      BumpFeeFeeRateAmount amount        -> (showf 3 $ (realToFrac amount :: Double)) <> " " <> display smallestUnitBTC <> "/vbyte"
+      BumpFeeFeeRateAmount amount        -> showf 3 (realToFrac amount :: Double) <> " " <> display smallestUnitBTC <> "/vbyte"
       BumpFeeFeeRateUnknown              -> "unknown"
       BumpFeeFeeUnknown                  -> "unknown"
       BumpFeeGetChangeKeyError           -> "Couldn't get change key"
@@ -171,7 +170,6 @@ instance LocalizedPrint BumpFeeWidgetStrings where
       BumpFeeGetUtxoError                -> "Couldn't get UTXO"
       BumpFeeHeader                      -> "Enter new fee rate"
       BumpFeeInsufficientFundsError      -> "Insufficient funds"
-      BumpFeeInvalidAddressError         -> "Invalid address"
       BumpFeeNewFee                      -> "New fee"
       BumpFeeNewFeeRate                  -> "New fee rate"
       BumpFeeNewFeeRateAmount amount     -> showt amount <> " " <> display smallestUnitBTC <> "/vbyte"
@@ -189,7 +187,7 @@ instance LocalizedPrint BumpFeeWidgetStrings where
       BumpFeeCurrentFeeRate              -> "Текущая комиссия за байт"
       BumpFeeDecodeOutsError             -> "Не удалось декодировать выходы"
       BumpFeeFeeAmount amount units      -> showMoneyUnit amount units <> " " <> display units
-      BumpFeeFeeRateAmount amount        -> (showf 3 $ (realToFrac amount :: Double)) <> " " <> display smallestUnitBTC <> "/vbyte"
+      BumpFeeFeeRateAmount amount        -> showf 3 (realToFrac amount :: Double) <> " " <> display smallestUnitBTC <> "/vbyte"
       BumpFeeFeeRateUnknown              -> "неизвестно"
       BumpFeeFeeUnknown                  -> "неизвестно"
       BumpFeeGetChangeKeyError           -> "Не удалось получить ключ для сдачи"
@@ -198,7 +196,6 @@ instance LocalizedPrint BumpFeeWidgetStrings where
       BumpFeeGetUtxoError                -> "Не удалось получить UTXO"
       BumpFeeHeader                      -> "Укажите новый размер комиссии"
       BumpFeeInsufficientFundsError      -> "Недостаточно средств"
-      BumpFeeInvalidAddressError         -> "Неверный адрес"
       BumpFeeNewFee                      -> "Новая комиссия"
       BumpFeeNewFeeRate                  -> "Новая комиссия за байт"
       BumpFeeNewFeeRateAmount amount     -> showt amount <> " " <> display smallestUnitBTC <> "/vbyte"

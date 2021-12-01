@@ -667,8 +667,6 @@ sendPageCss = do
     marginRight $ rem 0.5
   ".send-confirm-row" ? do
     textAlign $ alignSide sideLeft
-  ".send-confirm-box" ? do
-    pure ()
   ".send-page .toggle-switch" ? do
     marginBottom $ rem 0
 

@@ -61,18 +61,19 @@ data ConfirmationErrorMessage
   | CEMNoSolution
   | CEMSignFail
   | CEMTxBuildFail
+  deriving (Eq, Show)
 
 instance LocalizedPrint ConfirmationErrorMessage where
   localizedShow l v = case l of
     English -> case v of
       CEMEmptyUTXO    -> "Empty UTXO set"
       CEMNoChangeKey  -> "Failed to get an address for the change"
-      CEMNoSolution   -> "No solution found. Probably not enough money"
+      CEMNoSolution   -> "Insufficient funds"
       CEMSignFail     -> "Failed to sign the transaction"
       CEMTxBuildFail  -> "Failed to build a transaction"
     Russian -> case v of
       CEMEmptyUTXO    -> "Нет непотраченных выходов"
       CEMNoChangeKey  -> "Не смог получить адрес для сдачи"
-      CEMNoSolution   -> "Нет решения. Возможно недостаточно денег"
+      CEMNoSolution   -> "Недостаточно средств"
       CEMSignFail     -> "Не удалось подписать транзакцию"
       CEMTxBuildFail  -> "Не удалось создать транзакцию"

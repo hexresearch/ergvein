@@ -3,7 +3,7 @@ module Ergvein.Core.Transaction.Builder.CoinSelectionTest where
 import Data.Word (Word64)
 import Test.Tasty.Hspec (shouldBe)
 
-import Ergvein.Core.Transaction.Builder.Btc (chooseCoins)
+import Ergvein.Core.Transaction.Builder.Btc (chooseCoins, CoinSelectionError(..))
 import Ergvein.Core.Transaction.Fee.Btc (BtcOutputType, guessTxFee, getDustThresholdByOutType)
 import Ergvein.Types.Address (BtcAddressType(..))
 import Ergvein.Types.Utxo.Btc (Coin (..))
@@ -25,7 +25,7 @@ data TestCase = TestCase
     testCaseRecipientOutTypes :: [BtcOutputType],
     testCaseChangeOutType :: BtcOutputType,
     testCaseMFixedCoins :: Maybe [TestCoin],
-    testCaseExpectedResult :: Either String ([TestCoin], Maybe Word64)
+    testCaseExpectedResult :: Either CoinSelectionError ([TestCoin], Maybe Word64)
   }
 
 checkTestCase :: TestCase -> IO ()
@@ -42,7 +42,7 @@ unit_insufficientFunds1 = do
             testCaseRecipientOutTypes = [BtcP2WPKH],
             testCaseChangeOutType = BtcP2WPKH,
             testCaseMFixedCoins = Nothing,
-            testCaseExpectedResult = Left "chooseCoins: No solution found"
+            testCaseExpectedResult = Left InsufficientFunds
           }
   checkTestCase testCase
 
@@ -61,7 +61,7 @@ unit_insufficientFunds2 = do
             testCaseRecipientOutTypes = [BtcP2WPKH],
             testCaseChangeOutType = BtcP2WPKH,
             testCaseMFixedCoins = Nothing,
-            testCaseExpectedResult = Left "chooseCoins: No solution found"
+            testCaseExpectedResult = Left InsufficientFunds
           }
   checkTestCase testCase
 
@@ -75,7 +75,7 @@ unit_insufficientFundsAfterFees = do
             testCaseRecipientOutTypes = [BtcP2WPKH],
             testCaseChangeOutType = BtcP2WPKH,
             testCaseMFixedCoins = Nothing,
-            testCaseExpectedResult = Left "chooseCoins: No solution found"
+            testCaseExpectedResult = Left InsufficientFunds
           }
   checkTestCase testCase
 
@@ -94,7 +94,7 @@ unit_zeroTarget = do
             testCaseRecipientOutTypes = [BtcP2WPKH],
             testCaseChangeOutType = BtcP2WPKH,
             testCaseMFixedCoins = Nothing,
-            testCaseExpectedResult = Left "chooseCoins: Target must be > 0"
+            testCaseExpectedResult = Left TargetMustBePositive
           }
   checkTestCase testCase
 

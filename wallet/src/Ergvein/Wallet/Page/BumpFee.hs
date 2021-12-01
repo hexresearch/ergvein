@@ -15,6 +15,7 @@ import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.Balances
+import Ergvein.Wallet.Page.TxInfo.Common
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Widget.Input.Fee
 import Ergvein.Wallet.Wrapper
@@ -24,7 +25,6 @@ import Sepulcas.Elements
 import Network.Haskoin.Network (Inv(..), InvVector(..), InvType(..), Message(..))
 
 import qualified Data.List as L
-import qualified Data.Text as T
 import qualified Network.Haskoin.Transaction as HT
 
 bumpFeePage :: MonadFront t m => Currency -> TxView -> Maybe (FeeMode, Word64) -> m ()
@@ -115,15 +115,13 @@ prepareTxData e = do
                             }
   handleDangerMsg eDataE
 
-chooseCoinsRbf :: Word64 -> Word64 -> [BtcOutputType] -> BtcOutputType -> [UtxoPoint] -> [UtxoPoint] -> [UtxoPoint] -> Either Text ([UtxoPoint], Maybe Word64)
+chooseCoinsRbf :: Word64 -> Word64 -> [BtcOutputType] -> BtcOutputType -> [UtxoPoint] -> [UtxoPoint] -> [UtxoPoint] -> Either CoinSelectionError ([UtxoPoint], Maybe Word64)
 chooseCoinsRbf amount newFeeRate outputTypes changeOutType fixedUtxo confirmedUtxo unconfirmedUtxo =
   let
     firstpick = chooseCoins amount newFeeRate outputTypes changeOutType (Just fixedUtxo) $ L.sort confirmedUtxo
     finalpick = either (const $ chooseCoins amount newFeeRate outputTypes changeOutType (Just fixedUtxo) $ L.sort $ confirmedUtxo <> unconfirmedUtxo) Right firstpick
   in
-    case finalpick of
-      Left e -> Left $ T.pack e
-      Right pick -> Right pick
+    finalpick
 
 -- Removes all change addrs from the given list.
 extractOutputToKeep :: (HasPubStorage m, PlatformNatives) => [HT.TxOut] -> m [HT.TxOut]
@@ -163,7 +161,7 @@ makeRbfTx txDataE = do
                 let changeAddr = btcAddrToText $ xPubToBtcAddr $ extractXPubKeyFromEgv $ pubKeyBox'key changeKey
                 in rbfTxData'outsToKeep ++ [(changeAddr, change)]
             eTx = buildAddrTx btcNetwork rbfTxData'rbfEnabled (upPoint <$> rbfTxData'coins) outs
-        in (txData, ) <$> first (const BumpFeeInvalidAddressError) eTx
+        in (txData, ) <$> eTx
   handleDangerMsg eTxE
 
 signSendWidget :: MonadFront t m => RbfTxData -> HT.Tx -> m ()
@@ -210,10 +208,3 @@ showTxId tx = Workflow $ do
     , retractablePrev = Nothing
   }
   pure (True, never)
-
-makeTxIdLink :: MonadFront t m => Text -> m ()
-makeTxIdLink txIdText = do
-  settings <- getSettings
-  let urlPrefixes = btcSettings'explorerUrls $ getBtcSettings settings
-      urlPrefix = if isTestnet then testnetUrl urlPrefixes else mainnetUrl urlPrefixes
-  hyperlink "link" txIdText (urlPrefix <> "/tx/" <> txIdText)
