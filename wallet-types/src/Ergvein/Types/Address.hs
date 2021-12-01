@@ -5,7 +5,6 @@ module Ergvein.Types.Address (
     , btcAddrToText
     , btcAddrFromText
     , BtcAddressType(..)
-    , btcAddrToBtcOutType
     , egvAddrToText
     , egvAddrFromText
     , egvAddrCurrency
