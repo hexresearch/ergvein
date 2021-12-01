@@ -1,5 +1,5 @@
 module Ergvein.Wallet.Navbar.Types (
-    NavbarItem (..)
+    NavbarItem(..)
   ) where
 
 import Ergvein.Wallet.Language

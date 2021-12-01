@@ -170,7 +170,7 @@ moneyToRational (Money cur amount) = fromIntegral amount % (10 ^ currencyResolut
 {-# INLINE moneyToRational #-}
 
 -- | Convert to rational number amount of cryptocurrency in specified units
-moneyToRationalUnit :: (IsMoneyUnit a) => Money -> a -> Rational
+moneyToRationalUnit :: IsMoneyUnit a => Money -> a -> Rational
 moneyToRationalUnit (Money _ amount) units = fromIntegral amount % (10 ^ unitResolution units)
 {-# INLINE moneyToRationalUnit #-}
 
@@ -181,7 +181,7 @@ moneyFromRational cur amount = Money cur val
     val = round $ amount * (10 ^ currencyResolution cur)
 {-# INLINE moneyFromRational #-}
 
-moneyFromRationalUnit :: (IsMoneyUnit a) => a -> Rational -> Money
+moneyFromRationalUnit :: IsMoneyUnit a => a -> Rational -> Money
 moneyFromRationalUnit units amount = Money cur val
   where
     cur = unitCurrency units
@@ -193,7 +193,7 @@ moneyFromRationalUnit units amount = Money cur val
 showMoney :: Money -> Text
 showMoney money = T.pack $ printf "%u" $ moneyAmount money
 
-showMoneyUnit :: (IsMoneyUnit a) => Money -> a -> Text
+showMoneyUnit :: IsMoneyUnit a => Money -> a -> Text
 showMoneyUnit money units = if unitIsSmallest units
   then showMoney money
   else T.pack $ printf "%f" (realToFrac (moneyToRationalUnit money units) :: Double)

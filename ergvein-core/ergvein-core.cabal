@@ -135,7 +135,6 @@ library
     , iproute
     , lens
     , memory
-    , socket-manager
     , MonadRandom
     , mtl
     , network
@@ -149,6 +148,7 @@ library
     , safecopy
     , sepulcas-log
     , sepulcas-native
+    , socket-manager
     , socks
     , some
     , stm

@@ -51,5 +51,5 @@ import Ergvein.Wallet.Localize.Storage
 import Ergvein.Wallet.Localize.TestnetDisclaimer
 import Ergvein.Wallet.Localize.Transaction
 import Ergvein.Wallet.Localize.Util
-import Ergvein.Wallet.Localize.Validate()
+import Ergvein.Wallet.Localize.Validate ()
 import Ergvein.Wallet.Localize.Status

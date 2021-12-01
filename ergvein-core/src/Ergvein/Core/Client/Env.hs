@@ -29,8 +29,6 @@ data ClientEnv t = ClientEnv {
 , cenv'activeAddrs     :: !(ExternalRef t (S.Set ErgveinNodeAddr))
 , cenv'indexConmap     :: !(ExternalRef t (Map ErgveinNodeAddr (IndexerConnection t)))
 , cenv'indexStatus     :: !(ExternalRef t (Map ErgveinNodeAddr IndexerStatus))
-, cenv'reqUrlNum       :: !(ExternalRef t (Int, Int))
-, cenv'actUrlNum       :: !(ExternalRef t Int)
 , cenv'timeout         :: !(ExternalRef t NominalDiffTime)
 , cenv'indexReqSel     :: !(IndexReqSelector t)
 , cenv'indexReqFire    :: !(Map ErgveinNodeAddr IndexerMsg -> IO ())
@@ -57,10 +55,6 @@ instance (HasClientEnv t m, MonadClientConstr t m) => MonadClient t m where
   {-# INLINE getStatusConnsRef #-}
   getInactiveAddrsRef = fmap cenv'inactiveAddrs getClientEnv
   {-# INLINE getInactiveAddrsRef #-}
-  getActiveUrlsNumRef = fmap cenv'actUrlNum getClientEnv
-  {-# INLINE getActiveUrlsNumRef #-}
-  getRequiredUrlNumRef = fmap cenv'reqUrlNum getClientEnv
-  {-# INLINE getRequiredUrlNumRef #-}
   getRequestTimeoutRef = fmap cenv'timeout getClientEnv
   {-# INLINE getRequestTimeoutRef #-}
   getIndexReqSelector = fmap cenv'indexReqSel getClientEnv
@@ -78,10 +72,8 @@ newClientEnv = do
   urlsArchive     <- newExternalRef . S.fromList . fmap namedAddrName =<< resolveAddrs rs defIndexerPort (settingsArchivedAddrs settings)
   inactiveUrls    <- newExternalRef . S.fromList . fmap namedAddrName =<< resolveAddrs rs defIndexerPort (settingsDeactivatedAddrs settings)
   activeAddrsRef  <- newExternalRef $ S.fromList socadrs
-  indexConmapRef  <- newExternalRef $ M.empty
-  indexStatusRef  <- newExternalRef $ M.empty
-  reqUrlNumRef    <- newExternalRef $ settingsReqUrlNum settings
-  actUrlNumRef    <- newExternalRef $ settingsActUrlNum settings
+  indexConmapRef  <- newExternalRef M.empty
+  indexStatusRef  <- newExternalRef M.empty
   timeoutRef      <- newExternalRef $ settingsReqTimeout settings
   (iReqE, iReqFire) <- newTriggerEvent
   let indexSel = fanMap iReqE
@@ -92,8 +84,6 @@ newClientEnv = do
     <*> pure activeAddrsRef
     <*> pure indexConmapRef
     <*> pure indexStatusRef
-    <*> pure reqUrlNumRef
-    <*> pure actUrlNumRef
     <*> pure timeoutRef
     <*> pure indexSel
     <*> pure iReqFire

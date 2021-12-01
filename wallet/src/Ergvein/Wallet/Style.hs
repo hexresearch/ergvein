@@ -20,6 +20,7 @@ import qualified Clay.Media as M
 import Ergvein.Core
 import Sepulcas.Native
 import Sepulcas.Style
+import Clay (marginBottom)
 
 compileFrontendCss :: (MonadJSM m, PlatformNatives) => m ByteString
 compileFrontendCss = compileStyles frontendCss
@@ -609,6 +610,17 @@ sendPageCss :: Css
 sendPageCss = do
   ".send-page" ? do
     textAlign $ alignSide sideLeft
+  ".recipient-input" ? do
+    marginBottom $ rem 1
+  ".fee-input" ? do
+    marginBottom $ rem 1
+  ".fee-rate-msg" ? do
+    marginTop $ rem 0.5
+    marginBottom $ rem 0
+  ".amount-input" ? do
+    marginBottom $ rem 1
+  ".text-input" ? do
+    marginBottom $ rem 0
   ".text-input-with-btns-wrapper" ? do
     display flex
     alignItems center
@@ -623,14 +635,16 @@ sendPageCss = do
     important $ paddingRight $ rem 5
   ".text-input-btns" ? do
     position absolute
-    display flex
-    alignItems center
     right $ rem 0
     fontSize $ pt 16
     marginRight $ rem 1
+    height $ pct 100
   ".text-input-btn" ? do
+    display flex
+    alignItems center
     paddingLeft $ rem 1
     paddingRight $ rem 1
+    height $ pct 100
   ".text-input-btn:hover" ? do
     cursor pointer
     color hoverColor
@@ -651,7 +665,7 @@ sendPageCss = do
     marginRight $ rem 1
   ".button-icon-wrapper" ? do
     paddingLeft $ rem 1
-  ".is-invalid input" ? border solid (rem 0.1) red
+  "input.is-invalid" ? border solid (rem 0.1) red
   ".btn-fee-on" ? do
     important $ backgroundColor gray
     important $ color white

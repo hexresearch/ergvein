@@ -16,8 +16,9 @@ import Ergvein.Wallet.Wrapper
 import Sepulcas.Clipboard
 import Sepulcas.Elements
 
-import qualified Data.Text as T
 import qualified Data.List as L
+import qualified Data.Map.Strict as M
+import qualified Data.Text as T
 
 #ifdef ANDROID
 import Sepulcas.Share
@@ -60,7 +61,7 @@ receivePageWidget cur i EgvPubKeyBox{..} = do
     setFlagToExtPubKey "receivePageWidget:1" $ (cur, i) <$ newE
     clipboardCopy (keyTxt <$ copyE)
     divClass "receive-adr-andr" $ text $ "#" <> showt i <> ": " <> keyView
-    labelD <- divClass "button-receive" $ textFieldNoLabel $ getLabelFromEgvPubKey pubKeyBox'key
+    labelD <- divClass "button-receive" $ textInput $ def & textInputConfig_initialValue .~ getLabelFromEgvPubKey pubKeyBox'key
     btnE <- labelAddrBtn
     setLabelToExtPubKey "receivePageWidget:2" $ attachWith (\l _ -> (cur, i, l)) (current labelD) btnE
   where
@@ -90,13 +91,13 @@ receivePageWidget cur i EgvPubKeyBox{..} = do
       clipboardCopy (keyTxt <$ copyE)
     divClass "receive-adr" $ text $ "#" <> showt i <> ": " <> keyView
     divClass "label-block" $ do
-      labelD <- textFieldNoLabel $ getLabelFromEgvPubKey pubKeyBox'key
+      labelD <- textInput $ def & textInputConfig_initialValue .~ getLabelFromEgvPubKey pubKeyBox'key
       btnE <- labelAddrBtn
       setLabelToExtPubKey "receivePageWidget:2" $ attachWith (\l _ -> (cur, i, l)) (current labelD) btnE
       pure ()
   where
     keyTxt = egvAddrToText $ egvXPubKeyToEgvAddress pubKeyBox'key
-    keyView = T.pack $ L.intercalate " " $ mkChunks 4 $ T.unpack keyTxt
+    keyView = T.pack $ unwords $ mkChunks 4 $ T.unpack keyTxt
 #endif
 
 newAddrBtn :: MonadFront t m => m (Event t ())

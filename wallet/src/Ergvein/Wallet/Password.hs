@@ -32,18 +32,18 @@ import Ergvein.Wallet.Wrapper
 import Sepulcas.Elements
 import Sepulcas.Validate
 
-import qualified Data.Map.Strict as Map
+import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import qualified Data.Text as T
 
 newtype PasswordTries = PasswordTries {
-  passwordTriesCount  :: Map.Map Text Integer
+  passwordTriesCount  :: M.Map Text Integer
 } deriving (Eq, Show)
 
 $(deriveJSON (aesonOptionsStripPrefix "password") ''PasswordTries)
 
 emptyPT :: PasswordTries
-emptyPT = PasswordTries Map.empty
+emptyPT = PasswordTries M.empty
 {-# INLINE emptyPT #-}
 
 saveCounter :: (MonadIO m, PlatformNatives, HasStoreDir m) => PasswordTries -> m ()
@@ -70,8 +70,8 @@ checkPasswordsMatch e d1 d2 = flip push e $ const $ do
 
 setupPassword :: MonadFrontBase t m => Event t () -> m (Event t Password)
 setupPassword e = divClass "setup-password" $ form $ fieldset $ mdo
-  p1D <- passFieldWithEye PWSPassword noMatchE
-  p2D <- passFieldWithEye PWSRepeat noMatchE
+  p1D <- passField PWSPassword noMatchE
+  p2D <- passField PWSRepeat noMatchE
   let noMatchE = checkPasswordsMatch e p1D p2D
   validateEvent $ poke e $ const $ runExceptT $ do
     p1 <- sampleDyn p1D
@@ -82,9 +82,11 @@ setupPassword e = divClass "setup-password" $ form $ fieldset $ mdo
 setupLoginPassword :: MonadFrontBase t m => Maybe Text -> Event t () -> m (Event t (Text, Password))
 setupLoginPassword mlogin e = divClass "setup-password" $ form $ fieldset $ mdo
   existingWalletNames <- listStorages
-  loginD <- textFieldAttr PWSLogin ("placeholder" =: "my wallet name") $ fromMaybe (nameProposal existingWalletNames) mlogin
-  p1D <- passFieldWithEye PWSPassword noMatchE
-  p2D <- passFieldWithEye PWSRepeat noMatchE
+  loginD <- labeledTextInput PWSLogin $ def
+    & textInputConfig_initialValue .~ fromMaybe (nameProposal existingWalletNames) mlogin
+    & textInputConfig_initialAttributes .~ ("placeholder" =: "my wallet name")
+  p1D <- passField PWSPassword noMatchE
+  p2D <- passField PWSRepeat noMatchE
   let noMatchE = checkPasswordsMatch e p1D p2D
   validateEvent $ poke e $ const $ runExceptT $ do
     p1 <- sampleDyn p1D
@@ -105,7 +107,8 @@ nameProposal s = let
 setupLogin :: MonadFrontBase t m => Event t () -> m (Event t Text)
 setupLogin e = divClass "setup-password" $ form $ fieldset $ mdo
   existingWalletNames <- listStorages
-  loginD <- textField PWSLogin (nameProposal existingWalletNames)
+  loginD <- labeledTextInput PWSLogin $ def
+    & textInputConfig_initialValue .~ nameProposal existingWalletNames
   validateEvent $ poke e $ const $ runExceptT $ do
     l <- sampleDyn loginD
     check PWSEmptyLogin $ not $ T.null l
@@ -119,7 +122,8 @@ setupDerivPrefix ac mpath = do
     localizedText PWSDerivDescr2
   divClass "setup-password" $ form $ fieldset $ mdo
     let dval = fromMaybe defValue mpath
-    pathTD <- textField PWSDeriv $ showDerivPath dval
+    pathTD <- labeledTextInput PWSDeriv $ def
+      & textInputConfig_initialValue .~ showDerivPath dval
     pathE <- validateEvent $ ffor (updated pathTD) $ maybe (Left PWSInvalidPath) Right . parseDerivePath
     holdDyn dval pathE
   where
@@ -137,7 +141,7 @@ askTextPasswordWidget :: (MonadFrontBase t m, LocalizedPrint l1, LocalizedPrint 
 askTextPasswordWidget title description clearInputE = divClass "my-a" $ do
   h4 $ localizedText title
   divClass "" $ do
-    pD <- passFieldWithEye description clearInputE
+    pD <- passField description clearInputE
     e <- submitClass "button button-outline" PWSGo
     pure $ tag (current pD) e
 
@@ -156,7 +160,7 @@ askPasswordImpl name writeMeta clearInputE = do
   when writeMeta $ storeValue fpath True True
   divClass "ask-password my-a" $ form $ fieldset $ do
     h4 $ localizedText PPSUnlock
-    pD <- passFieldWithEye (PWSPassNamed name) clearInputE
+    pD <- passField (PWSPassNamed name) clearInputE
     divClass "fit-content ml-a mr-a" $ do
       e <- divClass "" $ submitClass "button button-outline w-100" PWSGo
       pure $ tag (current pD) e
@@ -167,7 +171,7 @@ askPinCodeImpl name writeMeta clearInputE = do
   when writeMeta $ storeValue fpath False True
   mdo
     c <- loadCounter
-    let cInt = fromMaybe 0 $ Map.lookup name (passwordTriesCount c)
+    let cInt = fromMaybe 0 $ M.lookup name (passwordTriesCount c)
     now <- liftIO getCurrentTime
     a <- clockLossy 1 now
     freezeD <- networkHold (pure False) $ ffor (updated a) $ \TickInfo{..} -> do
@@ -189,7 +193,7 @@ askPinCodeImpl name writeMeta clearInputE = do
         then pure cS
         else pure $ cS + 1
     performEvent_ $ ffor (updated counterD) $ \cS ->
-      saveCounter $ PasswordTries $ Map.insert name cS (passwordTriesCount c)
+      saveCounter $ PasswordTries $ M.insert name cS (passwordTriesCount c)
     pure $ attachPromptlyDynWithMaybe (\freeze p -> if not freeze then Just p else Nothing) freezeD passE
 
 askPasswordModal :: MonadFront t m => m ()

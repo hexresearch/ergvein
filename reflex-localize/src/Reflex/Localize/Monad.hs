@@ -16,7 +16,7 @@ class (Reflex t, Monad m) => MonadLocalized t m | m -> t where
   -- | Switch frontend language
   setLanguage :: Language -> m ()
   -- | Switch frontend language by event
-  setLanguageE :: Event t (Language) -> m ()
+  setLanguageE :: Event t Language -> m ()
   -- | Get language of the frontend
   getLanguage :: m (Dynamic t Language)
 
