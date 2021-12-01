@@ -7,6 +7,7 @@ module Ergvein.Wallet.Page.TxInfo.Common(
   , symb
   , symbCol
   , transTypeCol
+  , makeTxIdLink
   , makeNumberedTxIdLink
   ) where
 
@@ -56,6 +57,13 @@ symbCol txType ma = divClass ("history-amount-" <> (T.toLower . showt) txType) $
 
 transTypeCol :: MonadFront t m => TransType -> m a -> m a
 transTypeCol txType = divClass ("history-amount-" <> (T.toLower . showt) txType)
+
+makeTxIdLink :: MonadFront t m => Text -> m ()
+makeTxIdLink txIdText = do
+  settings <- getSettings
+  let urlPrefixes = btcSettings'explorerUrls $ getBtcSettings settings
+      urlPrefix = if isTestnet then testnetUrl urlPrefixes else mainnetUrl urlPrefixes
+  hyperlink "link" txIdText (urlPrefix <> "/tx/" <> txIdText)
 
 makeNumberedTxIdLink :: MonadFront t m => Currency -> (Int, TxId) -> m ()
 makeNumberedTxIdLink currency (num, txId) = do

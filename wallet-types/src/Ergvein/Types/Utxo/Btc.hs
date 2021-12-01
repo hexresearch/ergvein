@@ -119,7 +119,7 @@ type ConfirmedUtxoPoints = [UtxoPoint]
 
 type UnconfirmedUtxoPoints = [UtxoPoint]
 
-class Coin c where
+class Eq c => Coin c where
   coinValue :: c -> Word64
   coinType  :: c -> BtcAddressType
 

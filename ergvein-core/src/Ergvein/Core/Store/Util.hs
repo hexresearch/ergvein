@@ -34,15 +34,16 @@ module Ergvein.Core.Store.Util(
 import Control.Lens
 import Control.Monad
 import Control.Monad.IO.Class
-import Data.ByteArray           (Bytes, convert)
-import Data.ByteArray.Sized     (SizedByteArray, unsafeSizedByteArray)
-import Data.ByteString          (ByteString)
-import Data.List                (foldl')
+import Data.ByteArray (Bytes, convert)
+import Data.ByteArray.Sized (SizedByteArray, unsafeSizedByteArray)
+import Data.ByteString (ByteString)
+import Data.Either (fromRight)
+import Data.List (foldl')
 import Data.Maybe
 import Data.Proxy
 import Data.SafeCopy
 import Data.Serialize
-import Data.Text                (Text)
+import Data.Text (Text)
 import Data.Text.Encoding
 import Ergvein.Core.Platform
 import Ergvein.Core.Store.Constants
@@ -115,7 +116,7 @@ createPubStorage isRestored seedBackupRequired mpath rootPrvKey cs startingHeigh
 
 createCurrencyPubStorage :: Maybe DerivPrefix -> EgvRootXPrvKey -> BlockHeight -> Currency -> CurrencyPubStorage
 createCurrencyPubStorage mpath rootPrvKey startingHeight c = CurrencyPubStorage {
-    _currencyPubStorage'pubKeystore   = (createPubKeystore $ deriveCurrencyMasterPubKey dpath rootPrvKey c)
+    _currencyPubStorage'pubKeystore   = createPubKeystore $ deriveCurrencyMasterPubKey dpath rootPrvKey c
   , _currencyPubStorage'path          = dpath
   , _currencyPubStorage'scannedHeight = startingHeight
   , _currencyPubStorage'chainHeight   = 0
@@ -298,7 +299,7 @@ saveStorageSafelyToFile caller pubKey storage = do
     Right encStorage -> do
       void $ moveStoredFile fname backupFname
       let bs = runPut $ safePut encStorage
-      fmap Right $ storeBS fname bs True
+      Right <$> storeBS fname bs True
 
 loadStorageFromFile :: (MonadIO m, HasStoreDir m, PlatformNatives)
   => WalletName -> Password -> m (Either StorageAlert WalletStorage)
@@ -322,9 +323,7 @@ loadStorageFromFile login pass = do
 -- | Scan storage folder for all wallets
 listStorages :: (MonadIO m, HasStoreDir m, PlatformNatives)
   => m [WalletName]
-listStorages = do
-  ns <- listKeys
-  pure $ catMaybes . fmap isWallet $ ns
+listStorages = mapMaybe isWallet <$> listKeys
   where
     isWallet n = let
       (a, _) = T.breakOn storageFilePrefix n
@@ -338,8 +337,8 @@ lastWalletFile = ".last-wallet"
 getLastStorage :: (MonadIO m, HasStoreDir m, PlatformNatives)
   => m (Maybe WalletName)
 getLastStorage = do
-  mres <- retrieveValue lastWalletFile Nothing
-  pure $ either (const Nothing) id $ mres
+  eRes :: Either NativeAlerts (Maybe WalletName) <- retrieveValue lastWalletFile Nothing
+  pure $ fromRight Nothing eRes
 
 -- | Try to write `.last-wallet` file to set name of wallet
 setLastStorage :: (MonadIO m, HasStoreDir m, PlatformNatives)
@@ -411,8 +410,8 @@ derivePubKeys :: Currency -> PubStorage -> (Int, Int) -> PubKeystore
 derivePubKeys currency pubStorage (external, internal) = ks''
   where
     currencyStr = T.unpack $ currencyName currency
-    masterPubKey = maybe (error $ "No " <> currencyStr <> " master key!") id $ pubStoragePubMaster currency pubStorage
-    ks = maybe (error $ "No " <> currencyStr <> " key storage!") id $ pubStorageKeyStorage currency pubStorage
+    masterPubKey = fromMaybe (error $ "No " <> currencyStr <> " master key!") $ pubStoragePubMaster currency pubStorage
+    ks = fromMaybe (error $ "No " <> currencyStr <> " key storage!") $ pubStorageKeyStorage currency pubStorage
     externalKeysCount = V.length $ pubStorageKeys currency External pubStorage
     internalKeysCount = V.length $ pubStorageKeys currency Internal pubStorage
     newExternalKeys = derivePubKey masterPubKey External . fromIntegral <$> [externalKeysCount .. externalKeysCount + external - 1]
@@ -421,7 +420,7 @@ derivePubKeys currency pubStorage (external, internal) = ks''
     ks'' = foldl' (flip $ addXPubKeyToKeystore Internal) ks' newInternalKeys
 
 calcMissingKeys :: KeyPurpose -> Maybe Int -> Int -> Int
-calcMissingKeys keyPurpose (Just lastUnusedKeyIndex) keysCount = (spareKeysCount keyPurpose) - (keysCount - lastUnusedKeyIndex)
+calcMissingKeys keyPurpose (Just lastUnusedKeyIndex) keysCount = spareKeysCount keyPurpose - (keysCount - lastUnusedKeyIndex)
 calcMissingKeys keyPurpose Nothing _ = spareKeysCount keyPurpose
 
 spareKeysCount :: KeyPurpose -> Int
@@ -443,7 +442,7 @@ getBtcUtxos :: PubStorage -> M.Map HT.OutPoint BtcUtxoMeta
 getBtcUtxos pubStorage = pubStorage ^. btcPubStorage . currencyPubStorage'meta . _PubStorageBtc . btcPubStorage'utxos
 
 getBtcUtxoPoints :: PubStorage -> [UtxoPoint]
-getBtcUtxoPoints pubStorage = (uncurry UtxoPoint) <$> (M.toList $ getBtcUtxos pubStorage)
+getBtcUtxoPoints pubStorage = uncurry UtxoPoint <$> M.toList (getBtcUtxos pubStorage)
 
 getBtcUtxoPointsParted :: PubStorage -> (ConfirmedUtxoPoints, UnconfirmedUtxoPoints)
 getBtcUtxoPointsParted pubStorage = partitionBtcUtxos $ M.toList $ getBtcUtxos pubStorage
