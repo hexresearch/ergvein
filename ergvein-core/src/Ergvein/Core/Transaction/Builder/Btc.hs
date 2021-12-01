@@ -37,29 +37,6 @@ import qualified Data.Text as T
 -- -- | Coin selection algorithm for transactions. This
 -- -- function returns the selected coins together with the amount of change to
 -- -- send back to yourself, taking the fee into account.
--- chooseCoins ::
---   Coin c =>
---   -- | value to send
---   Word64 ->
---   -- | fee per vbyte
---   Word64 ->
---   -- | list of output types (change not included)
---   [BtcOutputType] ->
---   -- | change output type
---   BtcOutputType ->
---   -- | coins that should persist in the solution.
---   -- Note: fixed coins may or may not be included in the list of coins to choose from
---   -- they will still be removed from the list later
---   Maybe [c] ->
---   -- | list of ordered coins to choose from
---   [c] ->
---   -- | coin selection and change
---   Either String ([c], Maybe Word64)
--- chooseCoins target feeRate outTypes changeOutType mFixedCoins coins
-
-
-
-
 chooseCoins ::
   Coin c =>
   -- | value to send
