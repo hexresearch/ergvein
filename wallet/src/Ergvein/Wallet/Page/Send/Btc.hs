@@ -28,7 +28,7 @@ import Ergvein.Wallet.Widget.Input.Amount
 import Ergvein.Wallet.Widget.Input.Fee
 import Ergvein.Wallet.Widget.Input.Recipient
 import Ergvein.Wallet.Wrapper
-import Sepulcas.Alert (handleDangerMsg)
+import Sepulcas.Alert (showDangerMsg, handleDangerMsg)
 import Sepulcas.Elements
 import Sepulcas.Elements.Toggle
 import Sepulcas.Text (Display(..))
@@ -53,7 +53,7 @@ validateAmountHelper unitD threshold amount = do
   pure $ toEither $ validateAmount threshold unit amount
 
 -- | Returns maximum available balance to send in satoshis.
-calcMaxAvailableAmount :: PubStorage -> Word64 -> BtcAddress-> Word64
+calcMaxAvailableAmount :: PubStorage -> Word64 -> BtcAddress -> Word64
 calcMaxAvailableAmount pubStorage feeRate recipient =
   let utxos = filter (not . isSendingUtxo . btcUtxo'status) $ M.elems $ getBtcUtxos pubStorage
       maxSpendableAmount = sum $ btcUtxo'amount <$> utxos
@@ -109,10 +109,12 @@ sendPageBtc mInitInput = mdo
               pure $ Right $ calcMaxAvailableAmount pubStorage feeRate recipient
             _  -> pure $ Left [SendAllErr]
         setAmountSatE = fmapMaybe eitherToMaybe sendAllResultE
+        sendAllInsufficientFundsErrE = InsufficientFunds <$ ffilter (== 0) setAmountSatE
         sendAllErrsE = fromLeft [] <$> sendAllResultE
-        setAmountE = poke setAmountSatE $ \amount -> do
+        setAmountE = poke (ffilter (/= 0) setAmountSatE) $ \amount -> do
           u <- sampleDyn amountUnitD
           pure $ showMoneyUnit (Money BTC amount) u
+      showDangerMsg sendAllInsufficientFundsErrE
       -- A delay of 0.05 gives the dynamics time to update before validation
       autoFeeModeE <- delay 0.05 $ void $ ffilter (/= FeeModeManual) $ updated feeModeD
       setRecipientNextFrameE <- delay 0.05 setRecipientE
@@ -158,7 +160,7 @@ sendPageBtc mInitInput = mdo
   pure ()
 
 makeTx :: MonadFront t m
-  => Event t (UserInput)
+  => Event t UserInput
   -> m (Event t (Either ConfirmationErrorMessage (UserInput, [UtxoPoint], Word64, HT.Tx)))
 makeTx userInputE = do
   pubStorageD <- getPubStorageD
