@@ -60,17 +60,23 @@ chooseCoins ::
 chooseCoins target feeRate outTypes changeOutType mFixedCoins coins =
   case mFixedCoins of
     Nothing ->
-      let coinMatchesTarget :: Coin c => c -> Bool
-          coinMatchesTarget c = coinValue c == target + guessTxFee feeRate outTypes [coinType c]
-          allCoinsSmallerThanTarget = filter (\coin -> coinValue coin < target) coins
-          sumOfAllCoinsSmallerThanTarget = sum $ coinValue <$> allCoinsSmallerThanTarget
-       in case L.find coinMatchesTarget coins of
+      let tolerance = 100
+          coinMatchesTarget :: Coin c => c -> Bool
+          coinMatchesTarget c =
+            let goal = target + guessTxFee feeRate outTypes [coinType c]
+                val = coinValue c
+            in val >= goal && val <= goal + tolerance
+          allCoinsLessThanTarget = filter (\coin -> coinValue coin < target) coins
+          sumOfallCoinsLessThanTarget = sum $ coinValue <$> allCoinsLessThanTarget
+       in case L.sortOn coinValue $ L.filter coinMatchesTarget coins of
             -- If any of coins matches the target, it will be used.
-            Just coin -> Right ([coin], Nothing)
-            Nothing ->
-              if sumOfAllCoinsSmallerThanTarget == target + guessTxFee feeRate outTypes (coinType <$> allCoinsSmallerThanTarget)
-                then -- If the sum of all coins smaller than the target happens to match the target, they will be used.
-                  Right (allCoinsSmallerThanTarget, Nothing)
+            (coin:xs) -> Right ([coin], Nothing)
+            [] ->
+              if
+                let goal = target + guessTxFee feeRate outTypes (coinType <$> allCoinsLessThanTarget)
+                in sumOfallCoinsLessThanTarget >= goal && sumOfallCoinsLessThanTarget <= goal + tolerance
+                then -- If the sum of all coins less than the target happens to match the target, they will be used.
+                  Right (allCoinsLessThanTarget, Nothing)
                 else -- Otherwise, the FIFO approach is used.
                   runIdentity . runConduit $
                     sourceList coins .| chooseCoinsSink target feeRate outTypes changeOutType Nothing
@@ -90,15 +96,15 @@ chooseCoins target feeRate outTypes changeOutType mFixedCoins coins =
               let unfixedCoins = coins \\ fixedCoins
                   coinPlusFixedMatchesTarget :: Coin c => c -> Bool
                   coinPlusFixedMatchesTarget c = coinValue c + fixedCoinsValue == target + guessTxFee feeRate outTypes (coinType c : fixedCoinsTypes)
-                  allCoinsSmallerThanTarget = filter (\coin -> coinValue coin < target - fixedCoinsValue) unfixedCoins
-                  sumOfAllCoinsSmallerThanTargetMinusFixed = sum $ coinValue <$> allCoinsSmallerThanTarget
+                  allCoinsLessThanTarget = filter (\coin -> coinValue coin < target - fixedCoinsValue) unfixedCoins
+                  sumOfallCoinsLessThanTargetMinusFixed = sum $ coinValue <$> allCoinsLessThanTarget
                in case L.find coinPlusFixedMatchesTarget unfixedCoins of
                     -- If any of coins plus fixed coins match the target, it will be used.
                     Just coin -> Right (coin : fixedCoins, Nothing)
                     Nothing ->
-                      if sumOfAllCoinsSmallerThanTargetMinusFixed + fixedCoinsValue == target + guessTxFee feeRate outTypes ((coinType <$> allCoinsSmallerThanTarget) ++ fixedCoinsTypes)
+                      if sumOfallCoinsLessThanTargetMinusFixed + fixedCoinsValue == target + guessTxFee feeRate outTypes ((coinType <$> allCoinsLessThanTarget) ++ fixedCoinsTypes)
                         then -- If the sum of all coins smaller than the target plus fixed coins happen to match the target, they will be used.
-                          Right (fixedCoins ++ allCoinsSmallerThanTarget, Nothing)
+                          Right (fixedCoins ++ allCoinsLessThanTarget, Nothing)
                         else -- Otherwise, the FIFO approach is used.
                           runIdentity . runConduit $
                             sourceList unfixedCoins .| chooseCoinsSink target feeRate outTypes changeOutType (Just fixedCoins)

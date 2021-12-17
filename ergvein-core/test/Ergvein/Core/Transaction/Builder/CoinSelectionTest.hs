@@ -242,8 +242,35 @@ unit_sumOfAllCoinsLessThanTargetMatchesTarget = do
       { testCaseCoins =
         [ TestCoin 4000 BtcP2WPKH,
           TestCoin 1000 BtcP2WPKH,
-          TestCoin 3000 BtcP2WPKH,
+          TestCoin 3500 BtcP2WPKH,
           TestCoin 2000 BtcP2WPKH
+        ],
+        testCaseTarget = target,
+        testCaseFeeRate = feeRate,
+        testCaseRecipientOutTypes = recipientOutTypes,
+        testCaseChangeOutType = changeOutType,
+        testCaseMFixedCoins = Nothing,
+        testCaseExpectedResult = Right (solution, Nothing)
+      }
+  checkTestCase testCase
+
+unit_tolerance_сoinMatchesTarget :: IO ()
+unit_tolerance_сoinMatchesTarget = do
+  let
+    changeOutType = BtcP2WPKH
+    target = sum (coinValue <$> solution) - txFee - 10
+    feeRate = 1
+    recipientOutTypes = [BtcP2WPKH]
+    solution = [TestCoin 3000 BtcP2WPKH]
+    txFee = fromIntegral $ guessTxFee feeRate recipientOutTypes (coinType <$> solution)
+    testCase =
+      TestCase
+      { testCaseCoins =
+        [ TestCoin 1000 BtcP2WPKH,
+          TestCoin 2000 BtcP2WPKH,
+          TestCoin 3050 BtcP2WPKH,
+          TestCoin 3000 BtcP2WPKH,
+          TestCoin 4000 BtcP2WPKH
         ],
         testCaseTarget = target,
         testCaseFeeRate = feeRate,
