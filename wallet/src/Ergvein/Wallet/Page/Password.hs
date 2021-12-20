@@ -51,7 +51,7 @@ setupBtcStartingHeight = do
   divClass "password-setup-descr" $ h5 $ localizedText SHSDescr
   divClass "setup-password" $ form $ fieldset $ mdo
     let defHeight = filterStartingHeight BTC
-    hD <- textField SHSLabel $ showt defHeight
+    hD <- labeledTextInput SHSLabel $ def & textInputConfig_initialValue .~ showt defHeight
     let parseE = ffor (updated hD) $ \v -> case readMaybe (T.unpack v) of
           Nothing -> Left SHSParseError
           Just h -> if h < 0 then Left SHSNonNegError else Right h
@@ -68,8 +68,8 @@ setupPasswordPage wt seedBackupRequired mpath mnemonic curs mlogin = wrapperSimp
   rec
     existingWalletNames <- listStorages
     (_, pathD, heightD, logPassE) <- divClass "setup-password" $ form $ fieldset $ mdo
-      p1D <- passFieldWithEye PWSPassword noMatchE
-      p2D <- passFieldWithEye PWSRepeat noMatchE
+      p1D <- passField PWSPassword noMatchE
+      p2D <- passField PWSRepeat noMatchE
       let noMatchE = checkPasswordsMatch btnE p1D p2D
       lpE <- validateEvent $ poke btnE $ const $ runExceptT $ do
         p1 <- sampleDyn p1D
@@ -79,7 +79,9 @@ setupPasswordPage wt seedBackupRequired mpath mnemonic curs mlogin = wrapperSimp
         check PWSNoMatch $ p1 == p2
         pure (l,p1)
       (loginD, pathD, heightD) <- dropdownContainer PWSMoreOptions PWSLessOptions (constDyn True) $ do
-        loginD_ <- textFieldAttr PWSLogin ("placeholder" =: "my wallet name") $ fromMaybe (nameProposal existingWalletNames) mlogin
+        loginD_ <- labeledTextInput PWSLogin $ def
+          & textInputConfig_initialValue .~ fromMaybe (nameProposal existingWalletNames) mlogin
+          & textInputConfig_initialAttributes .~ ("placeholder" =: "my wallet name")
         pathD_ <- setupDerivPrefix curs mpath
         heightD_ <- case wt of
           WalletGenerated -> pure 0
@@ -108,7 +110,7 @@ setupPinWidget = divClass "pincode-widget" $ mdo
   inputD <- foldDyn (pinCodeFoldFunc PinCodeSetup) [] actE
   divClass "pincode-widget-dots-wrapper mb-2" $ do
     pinCodeDots (length <$> inputD)
-    void $ divClass "pincode-widget-errors" $ simpleList errsD displayError
+    void $ divClass "pincode-widget-errors" $ simpleList errsD displayErrorDyn
   actE <- numPadWidget PinCodeSetup
   errsD <- holdDyn [] tooShortErrE
   let submitE = ffilter (== NumPadSubmit) actE
@@ -142,7 +144,7 @@ confirmPinWidget pass = divClass "pincode-widget" $ mdo
   inputD <- foldDyn (pinCodeFoldFunc (PinCodeConfirm pinCodeLength)) [] $ leftmost [clearE, actE]
   divClass "pincode-widget-dots-wrapper mb-2" $ do
     confirmPinCodeDots pinCodeLength (length <$> inputD)
-    void $ divClass "pincode-widget-errors" $ simpleList errsD displayError
+    void $ divClass "pincode-widget-errors" $ simpleList errsD displayErrorDyn
   actE <- numPadWidget $ PinCodeConfirm pinCodeLength
   errsD <- holdDyn [] matchErrE
   let passD = T.concat . map showt <$> inputD

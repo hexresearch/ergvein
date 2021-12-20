@@ -110,10 +110,6 @@ class MonadClientConstr t m => MonadClient t m | m -> t where
   getStatusConnsRef :: m (ExternalRef t (Map ErgveinNodeAddr IndexerStatus))
   -- | Get deactivated urls' reference. Internal
   getInactiveAddrsRef :: m (ExternalRef t (Set ErgveinNodeAddr))
-  -- | Get reference to the minimal number of active urls. Internal
-  getActiveUrlsNumRef :: m (ExternalRef t Int)
-  -- | Get num reference. Internal
-  getRequiredUrlNumRef :: m (ExternalRef t (Int, Int))
   -- | Get request timeout ref
   getRequestTimeoutRef :: m (ExternalRef t NominalDiffTime)
   -- | Get indexer request event
@@ -191,7 +187,7 @@ closeAndWait urlE = do
   closedEE <- performEvent $ ffor urlE $ \url -> do
     let sa = url
     liftIO $ req $ M.singleton sa IndexerClose
-    mconn <- fmap (M.lookup sa) $ readExternalRef connsRef
+    mconn <- M.lookup sa <$> readExternalRef connsRef
     pure $ case mconn of
       Nothing -> never
       Just conn -> url <$ indexConClosedE conn

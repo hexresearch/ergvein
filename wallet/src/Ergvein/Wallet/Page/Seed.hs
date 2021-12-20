@@ -13,7 +13,8 @@ module Ergvein.Wallet.Page.Seed(
 
 import Control.Monad.Random.Strict
 import Data.Bifunctor
-import Data.Either (isLeft)
+import Data.ByteString (ByteString)
+import Data.Either (isLeft, fromLeft)
 import Data.Maybe
 import Data.Text.Encoding (decodeUtf8With)
 import Data.Text.Encoding.Error (lenientDecode)
@@ -39,9 +40,10 @@ import Sepulcas.Clipboard
 import Sepulcas.Elements
 import Sepulcas.Resize
 
-import qualified Data.List      as L
-import qualified Data.Serialize as S
-import qualified Data.Text      as T
+import qualified Data.List       as L
+import qualified Data.Map.Strict as M
+import qualified Data.Serialize  as S
+import qualified Data.Text       as T
 
 data GoPage = GoBackupNow | GoBackupLater
 
@@ -382,20 +384,24 @@ plainRestorePage mnemLength = wrapperSimple True $ mdo
         divClass "" . localizedText . SPSMisspelledWord
       pure never
 
+validateEncryptedMnemonic :: Text -> Either [SeedPageStrings] EncryptedByteString
+validateEncryptedMnemonic encryptedMnemonic = maybe (Left [SPSMnemonicDecodeError]) Right $
+  (eitherToMaybe . S.decode <=< decodeBase58CheckBtc) encryptedMnemonic
+
 base58RestorePage :: MonadFrontBase t m => m ()
 base58RestorePage = wrapperSimple True $ mdo
   h4 $ localizedText SPSBase58Title
-  encodedEncryptedMnemonicErrsD <- holdDyn Nothing $ ffor validationE eitherToMaybe'
-  encodedEncryptedMnemonicD <- validatedTextFieldSetValNoLabel "" encodedEncryptedMnemonicErrsD inputE
+  encryptedMnemonicD <- divClass "mb-1" $ textField (def & textInputConfig_setValue .~ inputE) errsD
   inputE <- pasteBtnsWidget
-  submitE <- networkHoldDynE $ ffor encodedEncryptedMnemonicD $ \v -> if v == ""
-    then pure never
-    else outlineButton CSForward
-  let validationE = poke submitE $ \_ -> do
-        encodedEncryptedMnemonic <- sampleDyn encodedEncryptedMnemonicD
-        pure $ maybe (Left [SPSMnemonicDecodeError]) Right $
-          (eitherToMaybe . S.decode <=< decodeBase58CheckBtc) encodedEncryptedMnemonic
-      goE = fmapMaybe eitherToMaybe validationE
+  submitE <- outlineButton CSForward
+  errsD <- mkErrsDyn submitE encryptedMnemonicD (pure . validateEncryptedMnemonic)
+  let
+    goE = flip push submitE $ const $ do
+      encryptedMnemonic <- sampleDyn encryptedMnemonicD
+      let eEncryptedMnemonic = validateEncryptedMnemonic encryptedMnemonic
+      case eEncryptedMnemonic of
+        Right encryptedMnemonic -> pure $ Just encryptedMnemonic
+        _ -> pure Nothing
   void $ nextWidget $ ffor goE $ \encryptedMnemonic -> Retractable {
       retractableNext = askSeedPasswordPage encryptedMnemonic
     , retractablePrev = Just $ pure base58RestorePage

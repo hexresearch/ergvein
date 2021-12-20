@@ -1,29 +1,34 @@
-{-# OPTIONS_GHC -Wall #-}
-
-module Ergvein.Core.Transaction.Builder.Btc(
-    chooseCoins
-  , buildTx
-  , buildAddrTx
-) where
+module Ergvein.Core.Transaction.Builder.Btc
+  ( CoinSelectionError (..),
+    TxCreationError (..),
+    chooseCoins,
+    buildTx,
+    buildAddrTx,
+  )
+where
 
 import Control.Monad.Identity (runIdentity)
+import qualified Data.ByteString as B
 import Data.Conduit (ConduitT, Void, await, runConduit, (.|))
 import Data.Conduit.List (sourceList)
+import Data.List ((\\))
+import qualified Data.List as L
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Word (Word64)
+import Ergvein.Core.Transaction.Fee.Btc (BtcInputType, BtcOutputType, getDustThresholdByOutType, guessTxFee)
+import Ergvein.Types.Network (Network)
+import Ergvein.Types.Transaction (RbfEnabled)
+import Ergvein.Types.Utxo.Btc (Coin (..))
 import Network.Haskoin.Address (addressToOutput, stringToAddr)
 import Network.Haskoin.Script (ScriptOutput (..), encodeOutputBS)
 import Network.Haskoin.Transaction (OutPoint (..), Tx (..), TxIn (..), TxOut (..))
 import Network.Haskoin.Util (maybeToEither)
 
-import Ergvein.Core.Transaction.Fee.Btc (BtcOutputType, guessTxFee)
-import Ergvein.Types.Network (Network)
-import Ergvein.Types.Transaction (RbfEnabled)
-import Ergvein.Types.Utxo.Btc (Coin (..))
-
-import qualified Data.Text                          as T
-import qualified Data.ByteString                    as B
+data CoinSelectionError
+  = InsufficientFunds
+  | TargetMustBePositive
+  deriving (Eq, Show)
 
 {-
   Functions listed below are modificated functions from Network.Haskoin.Transaction.Builder module.
@@ -35,95 +40,150 @@ import qualified Data.ByteString                    as B
 -- function returns the selected coins together with the amount of change to
 -- send back to yourself, taking the fee into account.
 chooseCoins ::
-     Coin c
-  => Word64          -- ^ value to send
-  -> Word64          -- ^ fee per vbyte
-  -> [BtcOutputType] -- ^ list of output types (including change)
-  -> Maybe [c]       -- ^ coins that should persist in the solution
-  -> Bool            -- ^ try to find better solutions
-  -> [c]             -- ^ list of ordered coins to choose from
-  -> Either String ([c], Word64) -- ^ coin selection and change
-chooseCoins target fee outTypes mFixedCoins continue coins =
-  runIdentity . runConduit $
-  sourceList coins .| chooseCoinsSink target fee outTypes mFixedCoins continue
+  Coin c =>
+  -- | value to send
+  Word64 ->
+  -- | fee per vbyte
+  Word64 ->
+  -- | list of output types (change not included)
+  [BtcOutputType] ->
+  -- | change output type
+  BtcOutputType ->
+  -- | coins that should persist in the solution.
+  -- Note: fixed coins may or may not be included in the list of coins to choose from
+  -- they will still be removed from the list later
+  Maybe [c] ->
+  -- | list of ordered coins to choose from
+  [c] ->
+  -- | coin selection and change
+  Either CoinSelectionError ([c], Maybe Word64)
+chooseCoins target feeRate outTypes changeOutType mFixedCoins coins =
+  case mFixedCoins of
+    Nothing ->
+      let tolerance = 100
+          coinMatchesTarget :: Coin c => c -> Bool
+          coinMatchesTarget c =
+            let goal = target + guessTxFee feeRate outTypes [coinType c]
+                val = coinValue c
+            in val >= goal && val <= goal + tolerance
+          allCoinsLessThanTarget = filter (\coin -> coinValue coin < target) coins
+          sumOfallCoinsLessThanTarget = sum $ coinValue <$> allCoinsLessThanTarget
+       in case L.sortOn coinValue $ L.filter coinMatchesTarget coins of
+            -- If any of coins matches the target, it will be used.
+            (coin:xs) -> Right ([coin], Nothing)
+            [] ->
+              if
+                let goal = target + guessTxFee feeRate outTypes (coinType <$> allCoinsLessThanTarget)
+                in sumOfallCoinsLessThanTarget >= goal && sumOfallCoinsLessThanTarget <= goal + tolerance
+                then -- If the sum of all coins less than the target happens to match the target, they will be used.
+                  Right (allCoinsLessThanTarget, Nothing)
+                else -- Otherwise, the FIFO approach is used.
+                  runIdentity . runConduit $
+                    sourceList coins .| chooseCoinsSink target feeRate outTypes changeOutType Nothing
+    Just fixedCoins ->
+      let fixedCoinsTypes = coinType <$> fixedCoins
+          goalWithoutChange = target + guessTxFee feeRate outTypes fixedCoinsTypes
+          goalWithChange = target + guessTxFee feeRate (changeOutType : outTypes) fixedCoinsTypes
+          fixedCoinsValue = sum $ coinValue <$> fixedCoins
+       in if fixedCoinsValue >= goalWithoutChange
+            then -- Fixed coins are enough to fund the transaction
+              let mChange =
+                    if fixedCoinsValue - goalWithChange >= fromIntegral (getDustThresholdByOutType changeOutType)
+                      then Just $ fixedCoinsValue - goalWithChange
+                      else Nothing
+               in Right (fixedCoins, mChange)
+            else -- Fixed coins are not enough to fund the transaction, trying to find additional coins
+              let unfixedCoins = coins \\ fixedCoins
+                  coinPlusFixedMatchesTarget :: Coin c => c -> Bool
+                  coinPlusFixedMatchesTarget c = coinValue c + fixedCoinsValue == target + guessTxFee feeRate outTypes (coinType c : fixedCoinsTypes)
+                  allCoinsLessThanTarget = filter (\coin -> coinValue coin < target - fixedCoinsValue) unfixedCoins
+                  sumOfallCoinsLessThanTargetMinusFixed = sum $ coinValue <$> allCoinsLessThanTarget
+               in case L.find coinPlusFixedMatchesTarget unfixedCoins of
+                    -- If any of coins plus fixed coins match the target, it will be used.
+                    Just coin -> Right (coin : fixedCoins, Nothing)
+                    Nothing ->
+                      if sumOfallCoinsLessThanTargetMinusFixed + fixedCoinsValue == target + guessTxFee feeRate outTypes ((coinType <$> allCoinsLessThanTarget) ++ fixedCoinsTypes)
+                        then -- If the sum of all coins smaller than the target plus fixed coins happen to match the target, they will be used.
+                          Right (fixedCoins ++ allCoinsLessThanTarget, Nothing)
+                        else -- Otherwise, the FIFO approach is used.
+                          runIdentity . runConduit $
+                            sourceList unfixedCoins .| chooseCoinsSink target feeRate outTypes changeOutType (Just fixedCoins)
 
--- | Coin selection algorithm for normal (non-multisig) transactions. This
+-- | Coin selection algorithm for transactions. This
 -- function returns the selected coins together with the amount of change to
 -- send back to yourself, taking the fee into account. This version uses a Sink
 -- for conduit-based coin selection.
 chooseCoinsSink ::
-     (Monad m, Coin c)
-  => Word64          -- ^ value to send
-  -> Word64          -- ^ fee per vbyte
-  -> [BtcOutputType] -- ^ list of output types (including change)
-  -> Maybe [c]       -- ^ fixed coins that should persist in the solution
-  -> Bool            -- ^ try to find better solution
-  -> ConduitT c Void m (Either String ([c], Word64))
-  -- ^ coin selection and change
-chooseCoinsSink target fee outTypes mFixedCoins continue
+  (Monad m, Coin c) =>
+  -- | value to send
+  Word64 ->
+  -- | fee per vbyte
+  Word64 ->
+  -- | list of output types (change not included)
+  [BtcOutputType] ->
+  -- | change output type
+  BtcOutputType ->
+  -- | fixed coins that should persist in the solution
+  Maybe [c] ->
+  -- | coin selection and change
+  ConduitT c Void m (Either CoinSelectionError ([c], Maybe Word64))
+chooseCoinsSink target feeRate outTypes changeOutType mFixedCoins
   | target > 0 =
-    maybeToEither err <$>
-      greedyAddSink target (guessTxFee fee outTypes . map coinType) mFixedCoins continue
-  | otherwise = return $ Left "chooseCoins: Target must be > 0"
-  where
-  err = "chooseCoins: No solution found"
+    maybeToEither InsufficientFunds
+      <$> greedyAddSink target (guessTxFee feeRate) outTypes changeOutType mFixedCoins
+  | otherwise = return $ Left TargetMustBePositive
 
--- | Select coins greedily by starting from an empty solution. If the 'continue'
--- flag is set, the algorithm will try to find a better solution in the stream
--- after a solution is found. If the next solution found is not strictly better
--- than the previously found solution, the algorithm stops and returns the
--- previous solution. If the continue flag is not set, the algorithm will return
+-- | Select coins greedily by starting from an empty solution. The algorithm will return
 -- the first solution it finds in the stream.
-greedyAddSink :: (Monad m, Coin c)
-              => Word64          -- ^ value to send
-              -> ([c] -> Word64) -- ^ coins to fee function
-              -> Maybe [c]       -- ^ coins that should persist in the solution
-              -> Bool            -- ^ try to find better solutions
-              -> ConduitT c Void m (Maybe ([c], Word64))
-              -- ^ coin selection and change
-greedyAddSink target guessFee mFixedCoins continue =
-    go initAcc initATot initPS initPTot
+greedyAddSink ::
+  (Monad m, Coin c) =>
+  -- | value to send
+  Word64 ->
+  -- | coins to fee function
+  ([BtcOutputType] -> [BtcInputType] -> Word64) ->
+  -- | list of output types (change not included)
+  [BtcOutputType] ->
+  -- | change output type
+  BtcOutputType ->
+  -- | coins that should persist in the solution
+  Maybe [c] ->
+  -- | coin selection and change
+  ConduitT c Void m (Maybe ([c], Maybe Word64))
+greedyAddSink target guessFee outTypes changeOutType mFixedCoins =
+  go initAcc initATot
   where
     initAcc = fromMaybe [] mFixedCoins
     initATot = sum $ coinValue <$> initAcc
-    initPS = if initATot >= goal initAcc then initAcc else []
-    initPTot = if initATot >= goal initAcc then initATot else 0
     -- The goal is the value we must reach (including the fee) for a certain
     -- amount of selected coins.
-    goal c = target + guessFee c
-    go acc aTot ps pTot = await >>= \case
+    goal :: Coin c => [c] -> Maybe BtcOutputType -> Word64
+    goal coins mChangeOutType = target + guessFee (maybe outTypes (: outTypes) mChangeOutType) (coinType <$> coins)
+    go acc aTot =
+      await >>= \case
         -- A coin is available in the stream
         Just coin -> do
-            let val = coinValue coin
-            -- We have reached the goal using this coin
-            if val + aTot >= goal (coin:acc)
-                -- If we want to continue searching for better solutions
-                then if continue
-                    -- This solution is the first one or
-                    -- This solution is better than the previous one
-                    then if pTot == 0 || val + aTot < pTot
-                        -- Continue searching for better solutions in the stream
-                        then go [] 0 (coin:acc) (val + aTot)
-                        -- Otherwise, we stop here and return the previous
-                        -- solution
-                        else return $ Just (ps, pTot - goal ps)
-                    -- Otherwise, return this solution
-                    else return $
-                        Just (coin : acc, val + aTot - goal (coin:acc))
-                -- We have not yet reached the goal. Add the coin to the
-                -- accumulator
-                else go (coin:acc) (val + aTot) ps pTot
-        -- We reached the end of the stream
-        Nothing ->
-            return $ if null ps
-                -- If no solution was found, return Nothing
-                then Nothing
-                -- If we have a solution, return it
-                else Just (ps, pTot - goal ps)
+          let val = coinValue coin
+          if val + aTot >= goal (coin : acc) Nothing
+            then -- We have reached the goal using this coin
+              let change = fromIntegral val + fromIntegral aTot - fromIntegral (goal (coin : acc) (Just changeOutType))
+               in if change >= getDustThresholdByOutType changeOutType
+                    then -- It makes sense to return the change
+                      return $ Just (coin : acc, Just $ fromIntegral change)
+                    else -- No change is needed
+                      return $ Just (coin : acc, Nothing)
+            else -- We have not yet reached the goal. Add the coin to the accumulator
+              go (coin : acc) (val + aTot)
+        -- We reached the end of the stream, no solution was found
+        Nothing -> return Nothing
+
+data TxCreationError
+  = InvalidAddress Text
+  | InvalidAmount Word64
+  deriving (Eq, Show)
 
 -- | Build a transaction by providing a list of outpoints as inputs
 -- and a list of 'ScriptOutput' and amounts as outputs.
-buildTx :: RbfEnabled -> [OutPoint] -> [(ScriptOutput, Word64)] -> Either String Tx
+buildTx :: RbfEnabled -> [OutPoint] -> [(ScriptOutput, Word64)] -> Either TxCreationError Tx
 buildTx rbfEnabled xs ys =
   mapM fo ys >>= \os -> return $ Tx 1 (map fi xs) os [] 0
   where
@@ -131,15 +191,15 @@ buildTx rbfEnabled xs ys =
     rbf = if rbfEnabled then maxBound - 2 else maxBound
     fo (o, v)
       | v <= 2100000000000000 = return $ TxOut v $ encodeOutputBS o
-      | otherwise = Left $ "buildTx: Invalid amount " ++ show v
+      | otherwise = Left $ InvalidAmount v
 
 -- | Build a transaction by providing a list of outpoints as inputs
 -- and a list of recipient addresses and amounts as outputs.
-buildAddrTx :: Network -> RbfEnabled -> [OutPoint] -> [(Text, Word64)] -> Either String Tx
+buildAddrTx :: Network -> RbfEnabled -> [OutPoint] -> [(Text, Word64)] -> Either TxCreationError Tx
 buildAddrTx net rbfEnabled xs ys = buildTx rbfEnabled xs =<< mapM f ys
   where
     f (s, v) =
-      maybe (Left ("buildAddrTx: Invalid address " <> T.unpack s)) Right $ do
+      maybe (Left $ InvalidAddress s) Right $ do
         a <- stringToAddr net s
         let o = addressToOutput a
         return (o, v)

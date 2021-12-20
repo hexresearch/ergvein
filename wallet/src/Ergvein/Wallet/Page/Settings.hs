@@ -39,6 +39,7 @@ data SubPageSettings
   | GoNetwork
   | GoMnemonicExport
   | GoDns
+  | GoTor
   | GoNodes
   | GoRbf
   | GoPassword
@@ -55,6 +56,7 @@ settingsPage = do
             , (GoUnits, STPSButDisplay)
             -- , (GoCurrencies, STPSButActiveCurrs)
             , (GoDns, STPSButDns)
+            , (GoTor, STPSButTor)
             , (GoNodes, STPSButNodes)
             , (GoRbf, STPSButRbf)
             , (GoPassword, STPSButSetPass)
@@ -72,6 +74,7 @@ settingsPage = do
             GoNodes           -> btcNodesPage
             GoRbf             -> rbfPage
             GoDns             -> dnsPage
+            GoTor             -> torPage
             GoPassword        -> changePasswordPage
             GoDelete          -> deleteWalletPage
         , retractablePrev = Just $ pure settingsPage

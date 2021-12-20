@@ -71,7 +71,7 @@ initIndexerConnection sname sa msgE = mdo
     , _socketConfClose  = leftmost [closeE, versionMismatchDE, currenciesMismatchDE, currenciesNotSyncedDE]
     , _socketConfProxy  = proxyD
     }
-  handshakeE <- performEvent $ ffor (socketConnected s) $ const $ mkVers
+  handshakeE <- performEvent $ ffor (socketConnected s) $ const mkVers
   let respE = _socketInbound s
   hsRespE <- fmap (fmapMaybe id) $ performFork $ ffor respE $ \case
     MReject (Reject _ VersionNotSupported _) -> do

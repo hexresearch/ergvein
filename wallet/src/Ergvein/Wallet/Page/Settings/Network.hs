@@ -8,6 +8,7 @@ module Ergvein.Wallet.Page.Settings.Network
 
 import Control.Lens
 import Data.Functor.Misc (Const2(..))
+import Data.Traversable (for)
 import Reflex.Dom
 import Reflex.ExternalRef
 import Text.Read
@@ -25,19 +26,27 @@ import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import qualified Data.Set as S
 
-data NavbarItem = ActivePage | DisabledPage | ParametersPage
-  deriving (Eq)
+data NavbarItem
+  = ActiveIndexers
+  | InactiveIndexers
+  deriving Eq
 
 instance LocalizedPrint NavbarItem where
   localizedShow l v = case l of
     English -> case v of
-      ActivePage      -> "Active indexers"
-      DisabledPage    -> "Reserved indexers"
-      ParametersPage  -> "Network parameters"
+      ActiveIndexers    -> "Active indexers"
+      InactiveIndexers  -> "Reserved indexers"
     Russian -> case v of
-      ActivePage      -> "Используемые индексеры"
-      DisabledPage    -> "Запасные индексеры"
-      ParametersPage  -> "Сетевые параметры"
+      ActiveIndexers     -> "Используемые индексаторы"
+      InactiveIndexers   -> "Неактивные индексаторы"
+
+navbarWidget :: MonadFrontBase t m => NavbarItem -> m (Dynamic t NavbarItem)
+navbarWidget initItem = divClass "navbar-2-cols" $ mdo
+  selD <- holdDyn initItem selE
+  selE <- fmap leftmost $ for [ActiveIndexers, InactiveIndexers] $ \i -> do
+    let attrD = (\ai -> "navbar-item" <> if i == ai then " active" else "") <$> selD
+    (<$) i <$> spanButton attrD i
+  pure selD
 
 data ParametersParseErrors = PPENDT | PPEInt
 
@@ -54,57 +63,17 @@ networkSettingsPage :: MonadFront t m => m ()
 networkSettingsPage = do
   title <- localized NSSTitle
   wrapper False title (Just $ pure networkSettingsPage ) $ do
-    navD <- navbarWidget ActivePage
+    navD <- navbarWidget ActiveIndexers
     void $ networkHoldDyn $ ffor navD $ \case
-      ActivePage      -> activePageWidget
-      DisabledPage    -> inactivePageWidget
-      ParametersPage  -> parametersPageWidget
+      ActiveIndexers   -> activePageWidget
+      InactiveIndexers -> inactivePageWidget
 
 networkSettingsPageUnauth :: MonadFrontBase t m => m ()
 networkSettingsPageUnauth = wrapperSimple False $ do
-  navD <- navbarWidget ActivePage
+  navD <- navbarWidget ActiveIndexers
   void $ networkHoldDyn $ ffor navD $ \case
-    ActivePage      -> activePageWidget
-    DisabledPage    -> inactivePageWidget
-    ParametersPage  -> parametersPageWidget
-
-parametersPageWidget :: MonadFrontBase t m => m ()
-parametersPageWidget = mdo
-  setD <- getSettingsD
-  valsD <- fmap join $
-    networkHoldDyn $ ffor setD $ \Settings{..} -> do
-      let dt0 :: Double = realToFrac settingsReqTimeout
-      dtD <- fmap2 realToFrac $ textFieldValidated NSSReqTimeout dt0 $
-        maybe (Left [PPENDT]) Right . readMaybe . T.unpack
-      actNumD <- textFieldValidated NSSActUrlNum settingsActUrlNum $
-        maybe (Left [PPEInt]) Right . readMaybe . T.unpack
-      rminD <- textFieldValidated NSSReqNumMin (fst settingsReqUrlNum) $
-        maybe (Left [PPEInt]) Right . readMaybe . T.unpack
-      rmaxD <- textFieldValidated NSSReqNumMax (snd settingsReqUrlNum) $
-        maybe (Left [PPEInt]) Right . readMaybe . T.unpack
-      pure $ (,,,) <$> dtD <*> actNumD <*> rminD <*> rmaxD
-  divClass "net-btns-2" $ do
-    saveE <- buttonClass "button button-outline" NSSSave
-    defE <- buttonClass "button button-outline" NSSRestoreDef
-    updE <- updateSettings $ flip pushAlways defE $ const $ do
-      stngs <- sampleDyn setD
-      pure $ stngs {
-            settingsReqTimeout = defaultIndexerTimeout
-          , settingsReqUrlNum  = defaultIndexersNum
-          , settingsActUrlNum  = defaultActUrlNum
-        }
-    updE' <- updateSettings $ flip pushAlways saveE $ const $ do
-      stngs <- sampleDyn setD
-      (dt, actNum, rmin, rmax) <- sampleDyn valsD
-      pure $ stngs {
-            settingsReqTimeout = dt
-          , settingsReqUrlNum  = (rmin, rmax)
-          , settingsActUrlNum  = actNum
-        }
-    showSuccessMsg $ STPSSuccess <$ (leftmost [updE, updE'])
-  pure ()
-  where
-    fmap2 = fmap . fmap
+    ActiveIndexers   -> activePageWidget
+    InactiveIndexers -> inactivePageWidget
 
 addUrlWidget :: forall t m . MonadFrontBase t m => Dynamic t Bool -> m (Event t ErgveinNodeAddr)
 addUrlWidget showD = fmap switchDyn $ networkHoldDyn $ ffor showD $ \b -> if not b then pure never else do
@@ -128,7 +97,7 @@ activePageWidget = mdo
   showD <- holdDyn False $ leftmost [False <$ hideE, tglE]
   let valsD = (,) <$> connsD <*> addrsD
   void $ networkHoldDyn $ ffor valsD $ \(conmap, urls) ->
-    flip traverse urls $ \sa -> renderActive sa refrE $ M.lookup sa conmap
+    for urls $ \sa -> renderActive sa refrE $ M.lookup sa conmap
   hideE <- activateURL =<< addUrlWidget showD
   (refrE, tglE) <- divClass "network-wrapper mt-3" $ divClass "net-btns-3" $ do
     refrE' <- buttonClass "button button-outline m-0" NSSRefresh
@@ -142,7 +111,7 @@ activePageWidget = mdo
 renderActive :: MonadFrontBase t m
   => ErgveinNodeAddr
   -> Event t ()
-  -> (Maybe (IndexerConnection t))
+  -> Maybe (IndexerConnection t)
   -> m ()
 renderActive nsa refrE mconn = mdo
   tglD <- holdDyn False tglE
@@ -165,8 +134,8 @@ renderActive nsa refrE mconn = mdo
       pure tglE'
     Just conn -> do
       let clsUnauthD = ffor (indexConIsUp conn) $ \up -> if up then onclass else offclass
-      let isUpD = ffor (indexConIsUp conn) $ \up -> up
-      let indexerHeightD = fmap (M.lookup BTC) $ indexConHeight conn
+      let isUpD = ffor (indexConIsUp conn) id
+      let indexerHeightD = M.lookup BTC <$> indexConHeight conn
       clsD <- fmap join $ liftAuth (pure clsUnauthD) $ do
         hD <- getCurrentHeight BTC
         pure $ do
@@ -186,7 +155,7 @@ renderActive nsa refrE mconn = mdo
           then descrOption NSSOffline
           else do
             descrOptionDyn $ NSSLatency <$> latD
-            let unauthHeight = descrOptionDyn $ (maybe NSSNoHeight NSSIndexerHeight) <$> indexerHeightD
+            let unauthHeight = descrOptionDyn $ maybe NSSNoHeight NSSIndexerHeight <$> indexerHeightD
             liftAuth unauthHeight $ do
               btcHeightD <- getCurrentHeight BTC
               descrOptionDyn $ do
@@ -211,7 +180,7 @@ inactivePageWidget = mdo
   addrsD <- externalRefDynamic =<< getInactiveAddrsRef
   showD <- holdDyn False $ leftmost [False <$ hideE, tglE]
   hideE <- deactivateURL =<< addUrlWidget showD
-  let addrsMapD = (M.fromList . fmap (,()) . S.toList) <$> addrsD
+  let addrsMapD = M.fromList . fmap (,()) . S.toList <$> addrsD
   void $ listWithKey addrsMapD $ \addr _ -> renderInactive pingAllE addr
   (pingAllE, tglE) <- divClass "network-wrapper mt-1" $ divClass "net-btns-2" $ do
     pingAllE' <- buttonClass "button button-outline m-0" NSSPingAll
@@ -262,14 +231,6 @@ renderInactive initPingE nsa = mdo
         tglBtn tglD
       descrOption NSSOffline
       pure tglE
-
-navbarWidget :: MonadFrontBase t m => NavbarItem -> m (Dynamic t NavbarItem)
-navbarWidget initItem = divClass "navbar-2-cols" $ mdo
-  selD <- holdDyn initItem selE
-  selE <- fmap leftmost $ flip traverse [ActivePage, DisabledPage] $ \i -> do
-    let attrD = (\ai -> "navbar-item" <> if i == ai then " active" else "") <$> selD
-    pure . (<$) i =<< spanButton attrD i
-  pure selD
 
 descrOption :: (MonadFrontBase t m, LocalizedPrint a) => a -> m ()
 descrOption = divClass "network-descr" . localizedText

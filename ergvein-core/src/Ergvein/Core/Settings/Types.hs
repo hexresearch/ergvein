@@ -150,8 +150,6 @@ data Settings = Settings {
 , settingsActiveAddrs       :: [Text]
 , settingsDeactivatedAddrs  :: [Text]
 , settingsArchivedAddrs     :: [Text]
-, settingsReqUrlNum         :: (Int, Int) -- ^ First is minimum required answers. Second is sufficient amount of answers from indexers.
-, settingsActUrlNum         :: Int
 , settingsPortfolio         :: Bool
 , settingsFiatCurr          :: Fiat
 , settingsShowFiatBalance   :: Bool
@@ -178,8 +176,6 @@ instance (PlatformNatives, FromJSON Language) => FromJSON Settings where
     settingsActiveAddrs       <- o .:  "activeAddrs"      .!= mempty
     settingsDeactivatedAddrs  <- o .:  "deactivatedAddrs" .!= mempty
     settingsArchivedAddrs     <- o .:  "archivedAddrs"    .!= mempty
-    settingsReqUrlNum         <- o .:? "reqUrlNum"        .!= defaultIndexersNum
-    settingsActUrlNum         <- o .:? "actUrlNum"        .!= 10
     settingsPortfolio         <- o .:? "portfolio"        .!= False
     settingsFiatCurr          <- o .:? "fiatCurr"         .!= USD
     settingsShowFiatBalance   <- o .:? "showFiatBalance"  .!= False
@@ -199,8 +195,6 @@ instance ToJSON Language => ToJSON Settings where
     , "activeAddrs"       .= toJSON settingsActiveAddrs
     , "deactivatedAddrs"  .= toJSON settingsDeactivatedAddrs
     , "archivedAddrs"     .= toJSON settingsArchivedAddrs
-    , "reqUrlNum"         .= toJSON settingsReqUrlNum
-    , "actUrlNum"         .= toJSON settingsActUrlNum
     , "portfolio"         .= toJSON settingsPortfolio
     , "fiatCurr"          .= toJSON settingsFiatCurr
     , "showFiatBalance"   .= toJSON settingsShowFiatBalance
@@ -219,8 +213,6 @@ defaultSettings deflang home =
       , settingsStoreDir          = pack storePath
       , settingsConfigPath        = pack configPath
       , settingsReqTimeout        = defaultIndexerTimeout
-      , settingsReqUrlNum         = defaultIndexersNum
-      , settingsActUrlNum         = defaultActUrlNum
       , settingsPortfolio         = False
       , settingsFiatCurr          = USD
       , settingsShowFiatBalance   = False

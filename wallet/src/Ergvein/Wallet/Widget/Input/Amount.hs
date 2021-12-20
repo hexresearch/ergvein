@@ -5,15 +5,13 @@ module Ergvein.Wallet.Widget.Input.Amount(
   ) where
 
 import Control.Monad.Except
-import Data.Maybe
 import Data.Word
 
-import Ergvein.Either
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
+import Ergvein.Wallet.Orphanage ()
 import Ergvein.Wallet.Settings
-import Ergvein.Wallet.Validate
 import Ergvein.Wallet.Widget.Balance
 import Sepulcas.Elements
 import Sepulcas.Text (Display(..))
@@ -40,28 +38,25 @@ unitsDropdown initialUnit allUnits = do
   let selD = _dropdown_value dp
   holdUniqDyn selD
 
--- | Input field with units. Converts everything to satoshis and returns the unit.
-sendAmountWidgetBtc :: (MonadFront t m) => Maybe (UnitBTC, Word64) -> Event t () -> m (Dynamic t (Maybe (UnitBTC, Word64)))
-sendAmountWidgetBtc minit submitE = divClass "amount-input" $ mdo
-  let errsD = fromMaybe [] <$> amountErrsD
-      isInvalidD = fmap (maybe "" (const "is-invalid")) amountErrsD
-  amountValD <- do
-    el "label" $ localizedText AmountString
-    divClass "row" $ mdo
-      textInputValueD <- divClass "column column-67" $ do
-        textInputValueD' <- do
-          txtInit <- do
-            units <- getSettingsUnitBtc
-            let unitInit = maybe units fst minit
-            pure $ maybe "" (\(_, amount) -> showMoneyUnit (Money BTC amount) unitInit) minit
-          divClassDyn isInvalidD $ textFieldAttrNoLabel (M.singleton "class" "mb-0") never never txtInit
-        when isAndroid (availableBalanceWidget BTC unitD)
-        pure textInputValueD'
-      unitD <- divClass "column column-33" $ do
-          units <- getSettingsUnitBtc
-          let unitInit = maybe units fst minit
-          unitsDropdown unitInit allUnitsBTC
-      pure $ zipDynWith (\u v -> fmap (u,) $ toEither $ validateAmount 0 u v) unitD textInputValueD
-  void $ divClass "form-field-errors" $ simpleList errsD displayError
-  amountErrsD <- holdDyn Nothing $ ffor (current amountValD `tag` submitE) eitherToMaybe'
-  pure $ eitherToMaybe <$> amountValD
+-- | Amount input field with units.
+sendAmountWidgetBtc :: (MonadFront t m, LocalizedPrint l)
+  => Maybe (Word64, UnitBTC)    -- ^ Inital unit and value
+  -> Event t Text               -- ^ Event that updates input value
+  -> Dynamic t [l] -- ^ Dynamic with errors
+  -> m (Dynamic t Text, Dynamic t UnitBTC, Event t ())
+sendAmountWidgetBtc minit setValE errsD = divClass "amount-input" $ do
+  units <- getSettingsUnitBtc
+  let unitInit = maybe units snd minit
+      initAmountTxt = maybe "" (\(amount, _) -> showMoneyUnit (Money BTC amount) unitInit) minit
+      inputConfig = def
+        & textInputConfig_initialValue .~ initAmountTxt
+        & textInputConfig_setValue .~ setValE
+  (amountD, btnEvents, unitD) <- labeledTextFieldWithBtnsAndSelector
+    AmountString
+    inputConfig
+    [localizedText SendAll]
+    (unitsDropdown unitInit allUnitsBTC)
+    errsD
+  let sendAllBtnE = head btnEvents
+  when isAndroid (availableBalanceWidget BTC unitD)
+  pure (amountD, unitD, sendAllBtnE)

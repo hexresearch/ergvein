@@ -15,6 +15,7 @@ data SendStrings
   | SendBtnSign
   | SendBtnSend
   | SendBtnBack
+  | SendAll
   | SSFee
   | SSTotal
   | SSConfirm
@@ -33,12 +34,14 @@ instance LocalizedPrint SendStrings where
       SendBtnSign -> "Sign tx"
       SendBtnSend -> "Send tx"
       SendBtnBack -> "Back"
+      SendAll -> "Max"
       SSFee -> "Fee"
       SSTotal -> "Total"
       SSConfirm -> "Confirm the transaction"
       SSPosted -> "Transaction posted"
       SSTxId -> "Transaction ID"
       SSRbf -> "Replace by fee"
+
     Russian -> case v of
       SendTitle c -> "Отправить " <> currencyName c
       SendAvailableBalance -> "Доступно"
@@ -48,6 +51,7 @@ instance LocalizedPrint SendStrings where
       SendBtnSign -> "Подписать транзакцию"
       SendBtnSend -> "Отправить транзакцию"
       SendBtnBack -> "Назад"
+      SendAll -> "Mакс"
       SSFee -> "Комиссия"
       SSTotal -> "Итого"
       SSConfirm -> "Подтвердите транзакцию"
@@ -61,18 +65,19 @@ data ConfirmationErrorMessage
   | CEMNoSolution
   | CEMSignFail
   | CEMTxBuildFail
+  deriving (Eq, Show)
 
 instance LocalizedPrint ConfirmationErrorMessage where
   localizedShow l v = case l of
     English -> case v of
       CEMEmptyUTXO    -> "Empty UTXO set"
       CEMNoChangeKey  -> "Failed to get an address for the change"
-      CEMNoSolution   -> "No solution found. Probably not enough money"
+      CEMNoSolution   -> "Insufficient funds"
       CEMSignFail     -> "Failed to sign the transaction"
       CEMTxBuildFail  -> "Failed to build a transaction"
     Russian -> case v of
       CEMEmptyUTXO    -> "Нет непотраченных выходов"
       CEMNoChangeKey  -> "Не смог получить адрес для сдачи"
-      CEMNoSolution   -> "Нет решения. Возможно недостаточно денег"
+      CEMNoSolution   -> "Недостаточно средств"
       CEMSignFail     -> "Не удалось подписать транзакцию"
       CEMTxBuildFail  -> "Не удалось создать транзакцию"

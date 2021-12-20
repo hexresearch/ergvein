@@ -135,7 +135,6 @@ library
     , iproute
     , lens
     , memory
-    , socket-manager
     , MonadRandom
     , mtl
     , network
@@ -149,6 +148,7 @@ library
     , safecopy
     , sepulcas-log
     , sepulcas-native
+    , socket-manager
     , socks
     , some
     , stm
@@ -196,6 +196,7 @@ test-suite ergvein-core-test
   hs-source-dirs:      test
   other-modules:
       Ergvein.Core.Node.Btc.HeadersTest
+      Ergvein.Core.Transaction.Builder.CoinSelectionTest
   ghc-options: -Wall -threaded -rtsopts -with-rtsopts=-N
   default-extensions:
     NumDecimals

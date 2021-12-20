@@ -7,6 +7,7 @@ module Ergvein.Wallet.Page.Send.Btc (
 
 import Control.Lens
 import Control.Monad.Except
+import Data.Either (fromLeft)
 import Data.Maybe
 import Data.Word
 
@@ -21,203 +22,228 @@ import Ergvein.Wallet.Navbar
 import Ergvein.Wallet.Navbar.Types
 import Ergvein.Wallet.Orphanage ()
 import Ergvein.Wallet.Page.Balances
+import Ergvein.Wallet.Page.TxInfo.Common
+import Ergvein.Wallet.Validate
 import Ergvein.Wallet.Widget.Input.Amount
 import Ergvein.Wallet.Widget.Input.Fee
 import Ergvein.Wallet.Widget.Input.Recipient
 import Ergvein.Wallet.Wrapper
-import Sepulcas.Alert
+import Sepulcas.Alert (showDangerMsg, handleDangerMsg)
 import Sepulcas.Elements
 import Sepulcas.Elements.Toggle
 import Sepulcas.Text (Display(..))
+import Sepulcas.Validate
 
 import Network.Haskoin.Network (Inv(..), InvVector(..), InvType(..), Message(..))
 
 import qualified Data.List as L
-import qualified Data.Text as T
-import qualified Network.Haskoin.Address as HA
+import qualified Data.Map.Strict as M
 import qualified Network.Haskoin.Transaction as HT
 
-sendPageBtc :: MonadFront t m => Maybe ((UnitBTC, Word64), (FeeMode, Word64), BtcAddress, RbfEnabled) -> m ()
-sendPageBtc mInit = mdo
+data UserInput = UserInput {
+    userInput'address :: BtcAddress
+  , userInput'amount :: (Word64, UnitBTC)
+  , userInput'fee :: (Word64, FeeMode)
+  , userInput'rbfEnabled :: RbfEnabled
+} deriving (Eq, Show)
+
+validateAmountHelper :: Reflex t => Dynamic t UnitBTC -> Word64 -> Text -> PushM t (Either [ValidationError] Word64)
+validateAmountHelper unitD threshold amount = do
+  unit <- sampleDyn unitD
+  pure $ toEither $ validateAmount threshold unit amount
+
+-- | Returns maximum available balance to send in satoshis.
+calcMaxAvailableAmount :: PubStorage -> Word64 -> BtcAddress -> Word64
+calcMaxAvailableAmount pubStorage feeRate recipient =
+  let utxos = filter (not . isSendingUtxo . btcUtxo'status) $ M.elems $ getBtcUtxos pubStorage
+      maxSpendableAmount = sum $ btcUtxo'amount <$> utxos
+      inTypes = btcScriptOutputToAddressType . btcUtxo'script <$> utxos
+      -- Since all the money is being sent, no change is needed.
+      outTypes = [btcAddrToBtcOutType recipient]
+      fee = guessTxFee feeRate outTypes inTypes
+  in if maxSpendableAmount > fee then maxSpendableAmount - fee else 0
+
+isSendingUtxo :: EgvUtxoStatus -> Bool
+isSendingUtxo (EUtxoSending _) = True
+isSendingUtxo _ = False
+
+mkAmountErrsDyn :: (MonadReflex t m, LocalizedPrint l)
+  => Event t () -- ^ Event that triggers validation
+  -> Event t [l]
+  -> Dynamic t Text -- ^ Dynamic with input text
+  -> (Text -> PushM t (Either [l] b)) -- ^ Validator
+  -> m (Dynamic t [l])
+mkAmountErrsDyn submitE sendAllErrsE inputD validator = holdDyn [] (leftmost [errsE, sendAllErrsE]) where
+  inputE = poke submitE $ const $ sampleDyn inputD
+  errsE = fromLeft [] <$> poke inputE validator
+
+sendPageBtc :: MonadFront t m
+  => Maybe UserInput
+  -> m ()
+sendPageBtc mInitInput = mdo
   walletName <- getWalletName
   title <- localized walletName
   let navbar = if isAndroid
         then blank
         else navbarWidget BTC thisWidget NavbarSend
-      thisWidget = Just $ sendPageBtc <$> retInfoD
-  retInfoD <- sendWidget mInit title navbar thisWidget
+      thisWidget = Just $ sendPageBtc <$> infoD
+  infoD <- wrapperNavbar False title thisWidget navbar $ divClass "send-page" $ mdo
+    settings <- getSettings
+    let mAmountInit = userInput'amount <$> mInitInput
+        mFeeInit = userInput'fee <$> mInitInput
+        mRecipientInit = userInput'address <$> mInitInput
+        mRbfInit = userInput'rbfEnabled <$> mInitInput
+        rbfFromSettings = btcSettings'sendRbfByDefault $ getBtcSettings settings
+        rbfInit' = fromMaybe rbfFromSettings mRbfInit
+    retInfoD <- formClass "mb-0" $ mdo
+      pubStorageD <- getPubStorageD
+      let
+        sendAllResultE = poke sendAllBtnE $ const $ do
+          pubStorage <- sampleDyn pubStorageD
+          recipientText <- sampleDyn recipientD
+          feeRateText <- sampleDyn feeRateD
+          let mRecipient = eitherToMaybe $ toEither $ validate recipientText
+              mFeeRate = eitherToMaybe $ toEither $ validateFeeRate BTC Nothing feeRateText
+          case (mRecipient, mFeeRate) of
+            (Just recipient, Just feeRate) -> do
+              pure $ Right $ calcMaxAvailableAmount pubStorage feeRate recipient
+            _  -> pure $ Left [SendAllErr]
+        setAmountSatE = fmapMaybe eitherToMaybe sendAllResultE
+        sendAllInsufficientFundsErrE = InsufficientFunds <$ ffilter (== 0) setAmountSatE
+        sendAllErrsE = fromLeft [] <$> sendAllResultE
+        setAmountE = poke (ffilter (/= 0) setAmountSatE) $ \amount -> do
+          u <- sampleDyn amountUnitD
+          pure $ showMoneyUnit (Money BTC amount) u
+      showDangerMsg sendAllInsufficientFundsErrE
+      -- A delay of 0.05 gives the dynamics time to update before validation
+      autoFeeModeE <- delay 0.05 $ void $ ffilter (/= FeeModeManual) $ updated feeModeD
+      setRecipientNextFrameE <- delay 0.05 setRecipientE
+      recipientErrsD <- mkErrsDyn (leftmost [submitE, setRecipientNextFrameE]) recipientD (pure . toEither . (validate :: Text -> Validation [ValidationError] BtcAddress))
+      amountErrsD <- mkAmountErrsDyn submitE sendAllErrsE amountD (validateAmountHelper amountUnitD 0)
+      feeRateErrsD <- mkErrsDyn (leftmost [submitE, autoFeeModeE]) feeRateD (pure . toEither . validateFeeRate BTC Nothing)
+      (recipientD, setRecipientE) <- recipientWidget BTC mRecipientInit recipientErrsD
+      (amountD, amountUnitD, sendAllBtnE) <- sendAmountWidgetBtc mAmountInit setAmountE amountErrsD
+      (feeRateD, feeModeD) <- feeSelectionWidgetBtc (FSRate BTC) mFeeInit feeRateErrsD
+      rbfEnabledD <- divClass "mb-2" $ do
+        label "" $ localizedText SSRbf
+        toggler $ pure rbfInit'
+      submitE <- outlineSubmitTextIconButtonClass "w-100 mb-0" SendBtnString "fas fa-paper-plane fa-lg"
+      let
+        userInputE = flip push submitE $ \_ -> do
+          recipientText <- sampleDyn recipientD
+          amountText <- sampleDyn amountD
+          unit <- sampleDyn amountUnitD
+          feeRateText <- sampleDyn feeRateD
+          feeMode <- sampleDyn feeModeD
+          rbfEnabled <- sampleDyn rbfEnabledD
+          let
+            eRecipient = toEither $ validate recipientText
+            eAmount = toEither $ validateAmount 0 unit amountText
+            eFeeRate = toEither $ validateFeeRate BTC Nothing feeRateText
+          case (eRecipient, eAmount, eFeeRate) of
+            (Right recipient, Right amount, Right feeRate) -> pure $ Just
+              UserInput {
+                userInput'address = recipient,
+                userInput'amount = (amount, unit),
+                userInput'fee = (feeRate, feeMode),
+                userInput'rbfEnabled = rbfEnabled
+              }
+            _ -> pure Nothing
+      eTxInfoE <- makeTx userInputE
+      txInfoE <- handleDangerMsg eTxInfoE
+      void $ nextWidget $ ffor txInfoE $ \(userInput, pick, totalFee, tx) -> Retractable {
+          retractableNext = confirmationPage userInput pick totalFee tx
+        , retractablePrev = Just $ pure $ sendPageBtc $ Just userInput
+        }
+      holdDyn mInitInput $ (\(userInput, _, _, _) -> Just userInput) <$> txInfoE
+    pure retInfoD
   pure ()
 
-sendWidget :: MonadFront t m
-  => Maybe ((UnitBTC, Word64), (FeeMode, Word64), BtcAddress, RbfEnabled)
-  -> Dynamic t Text
-  -> m a
-  -> Maybe (Dynamic t (m ()))
-  -> m (Dynamic t (Maybe ((UnitBTC, Word64), (FeeMode, Word64), BtcAddress, RbfEnabled)))
-sendWidget mInit title navbar thisWidget = wrapperNavbar False title thisWidget navbar $ divClass "send-page" $ mdo
-  settings <- getSettings
-  let amountInit = (\(x, _, _, _) -> x) <$> mInit
-      feeInit = (\(_, x, _, _) -> x) <$> mInit
-      recipientInit = (\(_, _, x, _) -> x) <$> mInit
-      rbfInit = (\(_, _, _, x) -> x) <$> mInit
-      rbfFromSettings = btcSettings'sendRbfByDefault $ getBtcSettings settings
-      rbfInit' = fromMaybe rbfFromSettings rbfInit
-  retInfoD <- formClass "mb-0" $ mdo
-    recipientD <- divClass "mb-1" $ recipientWidget BTC recipientInit submitE
-    amountD <- divClass "mb-1" $ sendAmountWidgetBtc amountInit submitE
-    feeD <- divClass "mb-1" $ feeSelectionWidgetBtc (FSRate BTC) feeInit Nothing submitE
-    rbfEnabledD <- divClass "mb-2" $ do
-      label "" $ localizedText SSRbf
-      toggler $ pure rbfInit'
-    submitE <- outlineSubmitTextIconButtonClass "w-100 mb-0" SendBtnString "fas fa-paper-plane fa-lg"
-    let goE = flip push submitE $ \_ -> do
-          mrecipient <- sampleDyn recipientD
-          mamount <- sampleDyn amountD
-          mfee <- sampleDyn feeD
-          rbfEnabled <- sampleDyn rbfEnabledD
-          pure $ (,,,) <$> mamount <*> mfee <*> mrecipient <*> Just rbfEnabled
-    void $ nextWidget $ ffor goE $ \v@(uam, (_, fee), addr, rbf) -> Retractable {
-        retractableNext = sendConfirmationWidget (uam, fee, addr, rbf)
-      , retractablePrev = Just $ pure $ sendPageBtc $ Just v
-      }
-    holdDyn mInit $ Just <$> goE
-  pure retInfoD
-
--- | Main confirmation & sign & send widget
-sendConfirmationWidget :: MonadFront t m => ((UnitBTC, Word64), Word64, BtcAddress, RbfEnabled) -> m ()
-sendConfirmationWidget v = do
-  walletName <- getWalletName
-  title <- localized walletName
-  let thisWidget = Just $ pure $ sendConfirmationWidget v
-  let navbar = if isAndroid
-        then blank
-        else navbarWidget BTC thisWidget NavbarSend
-  wrapperNavbar False title thisWidget navbar $ divClass "send-confirm-box" $ mdo
-    stxE <- makeTxWidget v
-    void $ networkHold (pure ()) $ ffor stxE $ \tx -> do
-      sendE <- getPostBuild
-      addedE <- addOutgoingTx "sendConfirmationWidget" $ TxBtc (BtcTx tx Nothing) <$ sendE
-      storedE <- btcMempoolTxInserter $ tx <$ addedE
-      void $ requestBroadcast $ ffor storedE $ const $
-        NodeReqBtc . MInv . Inv . pure . InvVector InvTx . HT.getTxHash . HT.txHash $ tx
-      goE <- delay 1 =<< outlineButton SendBtnBack
-      void $ nextWidget $ ffor goE $ const $ Retractable {
-            retractableNext = balancesPage
-          , retractablePrev = thisWidget
-        }
-
-btcAddrToBtcOutType :: BtcAddress -> BtcAddressType
-btcAddrToBtcOutType = \case
-  HA.PubKeyAddress _ -> BtcP2PKH
-  HA.ScriptAddress _ -> BtcP2SH
-  HA.WitnessPubKeyAddress _ -> BtcP2WPKH
-  HA.WitnessScriptAddress _ -> BtcP2WSH
-
-makeTxWidget :: MonadFront t m =>
-  ((UnitBTC, Word64), Word64, BtcAddress, RbfEnabled) ->
-  m (Event t HT.Tx)
-makeTxWidget ((unit, amount), fee, addr, rbfEnabled) = mdo
-  psD <- getPubStorageD
-  utxoKeyD <- holdUniqDyn $ do
-    ps <- psD
+makeTx :: MonadFront t m
+  => Event t UserInput
+  -> m (Event t (Either ConfirmationErrorMessage (UserInput, [UtxoPoint], Word64, HT.Tx)))
+makeTx userInputE = do
+  pubStorageD <- getPubStorageD
+  performFork $ ffor userInputE $ \userInput@UserInput{..} -> do
+    ps <- sampleDyn pubStorageD
     let utxo = ps ^? pubStorage'currencyPubStorages . at BTC . _Just . currencyPubStorage'meta . _PubStorageBtc . btcPubStorage'utxos
-        mkey = getLastUnusedKey Internal =<< pubStorageKeyStorage BTC ps
-    pure (utxo, mkey)
-  utxoKey0 <- Left <$> sampleDyn utxoKeyD -- Why we need this
-  stxE' <- eventToNextFrame stxE -- And this
-  valD <- foldDynMaybe mergeVals utxoKey0 $ leftmost [Left <$> updated utxoKeyD, Right <$> stxE']
-  stxE <- fmap switchDyn $ networkHoldDyn $ ffor valD $ \case
-    Left (Nothing, _) -> confirmationErrorWidget CEMEmptyUTXO
-    Left (_, Nothing) -> confirmationErrorWidget CEMNoChangeKey
-    Left (Just _, Just (_, changeKey)) -> do
-      ps <- sampleDyn psD
-      let recepientOutputType = btcAddrToBtcOutType addr
-          changeOutputType = BtcP2WPKH
-          outputTypes = [recepientOutputType, changeOutputType]
-          (confs, unconfs) = getBtcUtxoPointsParted ps
-          firstpick = chooseCoins amount fee outputTypes Nothing True $ L.sort confs
-          finalpick = either (const $ chooseCoins amount fee outputTypes Nothing True $ L.sort $ confs <> unconfs) Right firstpick
-      either' finalpick (const $ confirmationErrorWidget CEMNoSolution) $ \(pick, change) ->
-        txSignSendWidget addr unit amount fee changeKey change pick rbfEnabled
-    Right (tx, unit', amount', estFee, addr') -> do
-      confirmationInfoWidget (unit', amount') estFee rbfEnabled addr' (Just tx)
-      pure never
-  pure $ (\(tx, _, _, _, _) -> tx) <$> stxE
+        mChangeKey = getLastUnusedKey Internal =<< pubStorageKeyStorage BTC ps
+    case (utxo, mChangeKey) of
+      (Nothing, _) -> pure $ Left CEMEmptyUTXO
+      (_, Nothing) -> pure $ Left CEMNoChangeKey
+      (Just _, Just (_, changeKey)) -> do
+        let outputTypes = [btcAddrToBtcOutType userInput'address]
+            feeRate = fst userInput'fee
+            amount = fst userInput'amount
+            changeOutType = BtcP2WPKH
+            (confs, unconfs) = getBtcUtxoPointsParted ps
+            firstpick = chooseCoins amount feeRate outputTypes changeOutType Nothing $ L.sort confs
+            finalpick = either (const $ chooseCoins amount feeRate outputTypes changeOutType Nothing $ L.sort $ confs <> unconfs) Right firstpick
+        pure $ either' finalpick (const $ Left CEMNoSolution) $ \(pick, mChange) ->
+          let
+            keyBoxToTxt key = btcAddrToText $ xPubToBtcAddr $ extractXPubKeyFromEgv $ pubKeyBox'key key
+            outs = case mChange of
+              Nothing -> [(btcAddrToText userInput'address, amount)]
+              Just change -> [(btcAddrToText userInput'address, amount), (keyBoxToTxt changeKey, change)]
+            inputsAmount = sum $ btcUtxo'amount . upMeta <$> pick
+            outputsAmount = case mChange of
+              Nothing -> amount
+              Just change -> amount + change
+            totalFee = inputsAmount - outputsAmount
+            eTx = buildAddrTx btcNetwork userInput'rbfEnabled (upPoint <$> pick) outs
+          in either (const $ Left CEMTxBuildFail) (\tx -> Right (userInput, pick, totalFee, tx)) eTx
   where
     either' e l r = either l r e
-    -- Left -- utxo updates, Right -- stored tx
-    mergeVals newval origval = case (newval, origval) of
-      (Left a, Left _)    -> Just $ Left a
-      (Left _, Right _)   -> Nothing
-      (Right a, Left _)   -> Just $ Right a
-      (Right _, Right _)  -> Nothing
+
+mkrow :: (MonadFront t m, LocalizedPrint l) => l -> m b -> Bool -> m ()
+mkrow a mb wordBreak = el "div" $ do
+  elClass "span" "font-bold" $ do
+    localizedText a
+    text ": "
+  let wordBreakClass = if wordBreak then "word-break-all" else ""
+  void $ elClass "span" wordBreakClass mb
 
 -- | Simply displays the relevant information about a transaction
-confirmationInfoWidget :: MonadFront t m => (UnitBTC, Word64) -> Word64 -> RbfEnabled -> BtcAddress -> Maybe HT.Tx -> m ()
-confirmationInfoWidget (unit, amount) estFee rbfEnabled addr mTx = divClass "send-confirm-info ta-l mb-1" $ do
-  elClass "h4" "ta-c mb-1" $ localizedText $
-    if isJust mTx then SSPosted else SSConfirm
-  mkrow AmountString (text $ showMoneyUnit (mkMoney amount) unit <> " " <> display unit) False
-  mkrow RecipientString (text $ btcAddrToText addr) True
-  mkrow SSFee (text $ showt estFee <> " " <> display BtcSat) False
-  mkrow SSRbf (localizedText $ FSRbf rbfEnabled) False
-  mkrow SSTotal (text $ showMoneyUnit (mkMoney $ amount + estFee) unit <> " " <> display unit) False
-  case mTx of
-    Nothing -> pure ()
-    Just tx -> mkrow SSTxId (makeTxIdLink $ HT.txHashToHex . HT.txHash $ tx) True
-  where
-    cur = BTC
-    mkMoney = Money cur
-
-    mkrow :: (MonadFront t m, LocalizedPrint l) => l -> m b -> Bool -> m ()
-    mkrow a mb wordBreak = divClass "" $ do
-      elClass "span" "font-bold" $ do
-        localizedText a
-        text ": "
-      let wordBreakClass = if wordBreak then "word-break-all" else ""
-      void $ elClass "span" wordBreakClass mb
-
-    makeTxIdLink :: MonadFront t m => Text -> m ()
-    makeTxIdLink txIdText = do
-      settings <- getSettings
-      let urlPrefixes = btcSettings'explorerUrls $ getBtcSettings settings
-          urlPrefix = if isTestnet then testnetUrl urlPrefixes else mainnetUrl urlPrefixes
-      hyperlink "link" txIdText (urlPrefix <> "/tx/" <> txIdText)
-
--- | A handy patch to display various errors
-confirmationErrorWidget :: MonadFront t m => ConfirmationErrorMessage -> m (Event t a)
-confirmationErrorWidget cem = do
-  el "h4" $ localizedText cem
-  void $ retract =<< outlineButton SendBtnBack
-  pure never
-
--- | This widget builds & signs the transaction
-txSignSendWidget :: MonadFront t m
-  => BtcAddress     -- ^ The recipient
-  -> UnitBTC        -- ^ BTC Unit to send
-  -> Word64         -- ^ Amount of BTC in the units
-  -> Word64         -- ^ Fee rate in sat/vbyte
-  -> EgvPubKeyBox   -- ^ Keybox to send the change to
-  -> Word64         -- ^ Change
-  -> [UtxoPoint]    -- ^ List of utxo points used as inputs
-  -> RbfEnabled     -- ^ Explicit opt-in RBF signalling
-  -> m (Event t (HT.Tx, UnitBTC, Word64, Word64, BtcAddress)) -- ^ Return the Tx + all relevant information for display
-txSignSendWidget addr unit amount _ changeKey change pick rbfEnabled = mdo
-  let keyTxt = btcAddrToText $ xPubToBtcAddr $ extractXPubKeyFromEgv $ pubKeyBox'key changeKey
-      outs = [(btcAddrToText addr, amount), (keyTxt, change)]
-      etx = buildAddrTx btcNetwork rbfEnabled (upPoint <$> pick) outs
-      inputsAmount = sum $ btcUtxo'amount . upMeta <$> pick
-      outputsAmount = amount + change
-      estFee = inputsAmount - outputsAmount
-  confirmationInfoWidget (unit, amount) estFee rbfEnabled addr Nothing
-  showSignD <- holdDyn True . (False <$) =<< eventToNextFrame etxE
-  etxE <- either' etx (const $ confirmationErrorWidget CEMTxBuildFail >> pure never) $ \tx -> do
-    fmap switchDyn $ networkHoldDyn $ ffor showSignD $ \b -> if not b then pure never else do
-      signE <- outlineButton SendBtnSign
-      etxE' <- fmap (fmapMaybe id) $ withWallet $ signTxWithWallet tx pick <$ signE
-      void $ networkHold (pure ()) $ ffor etxE' $ either (const $ void $ confirmationErrorWidget CEMSignFail) (const $ pure ())
-      handleDangerMsg $ either (Left . T.pack) Right <$> etxE'
-  fmap switchDyn $ networkHold (pure never) $ ffor etxE $ \tx -> do
-    sendE <- el "div" $ outlineButton SendBtnSend
-    pure $ (tx, unit, amount, estFee, addr) <$ sendE
-  where either' e l r = either l r e
+confirmationPage :: MonadFront t m => UserInput -> [UtxoPoint] -> Word64 -> HT.Tx -> m ()
+confirmationPage userInput@UserInput{..} pick totalFee tx = do
+  title <- localized SSConfirm
+  let thisWidget = Just $ pure $ confirmationPage userInput pick totalFee tx
+  void $ wrapper False title thisWidget $ divClass "ta-l" $ mdo
+    let amount = fst userInput'amount
+        unit = snd userInput'amount
+    mkrow AmountString (text $ showMoneyUnit (Money BTC amount) unit <> " " <> display unit) False
+    mkrow RecipientString (text $ btcAddrToText userInput'address) True
+    mkrow SSFee (text $ showt totalFee <> " " <> display BtcSat) False
+    mkrow SSRbf (localizedText $ FSRbf userInput'rbfEnabled) False
+    mkrow SSTotal (text $ showMoneyUnit (Money BTC $ amount + totalFee) unit <> " " <> display unit) False
+    -- Sign transaction
+    showSignBtnD <- holdDyn True (False <$ signBtnE)
+    signBtnE <- networkHoldDynE $ ffor showSignBtnD $ \showSignBtn ->
+      if not showSignBtn
+        then pure never
+        else divClass "mt-1" $ outlineButton SendBtnSign
+    eSignedTxE <- fmap (fmapMaybe id) $ withWallet $ signTxWithWallet tx pick <$ signBtnE
+    signedTxE <- handleDangerMsg $ either (const $ Left CEMSignFail) Right <$> eSignedTxE
+    networkHold_ (pure ()) $ ffor signedTxE $ \signedTx -> mdo
+      -- Send transaction
+      showSendBtnD <- holdDyn True (False <$ sendBtnE)
+      sendBtnE <- networkHoldDynE $ ffor showSendBtnD $ \showSendBtn ->
+        if not showSendBtn
+          then pure never
+          else divClass "mt-1" $ outlineButton SendBtnSend
+      addedE <- addOutgoingTx "confirmationPage" $ (TxBtc (BtcTx signedTx Nothing)) <$ sendBtnE
+      storedE <- btcMempoolTxInserter $ signedTx <$ addedE
+      broadcastedE <- requestBroadcast $ ffor storedE $ const $
+        NodeReqBtc . MInv . Inv . pure . InvVector InvTx . HT.getTxHash . HT.txHash $ signedTx
+      -- Display transaction id and back button when transaction is sent
+      showBackBtnD <- holdDyn False (True <$ broadcastedE)
+      void $ networkHoldDynE $ ffor showBackBtnD $ \showBackBtn ->
+        if not showBackBtn
+          then pure never
+          else mdo
+            mkrow SSTxId (makeTxIdLink $ HT.txHashToHex . HT.txHash $ signedTx) True
+            goE <- divClass "mt-1" $ outlineButton SendBtnBack
+            nextWidget $ ffor goE $ const $ Retractable {
+                  retractableNext = balancesPage
+                , retractablePrev = thisWidget
+              }
