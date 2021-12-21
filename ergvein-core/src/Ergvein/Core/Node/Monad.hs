@@ -71,13 +71,13 @@ getNodeConnectionsD = externalRefDynamic =<< getNodeConnRef
 -- | Get nodes by currency. Basically useless, but who knows
 getNodesByCurrencyD :: MonadNode t m => Currency -> m (Dynamic t (Map SockAddr (NodeConn t)))
 getNodesByCurrencyD cur =
-  (fmap . fmap) (fromMaybe (M.empty) . getAllConnByCurrency cur) getNodeConnectionsD
+  (fmap . fmap) (fromMaybe M.empty . getAllConnByCurrency cur) getNodeConnectionsD
 {-# INLINE getNodesByCurrencyD #-}
 
 -- | Get Btc nodes
 getBtcNodesD :: MonadNode t m => m (Dynamic t (Map SockAddr (NodeBtc t)))
 getBtcNodesD =
-  (fmap . fmap) (fromMaybe (M.empty) . DM.lookup BtcTag) getNodeConnectionsD
+  (fmap . fmap) (fromMaybe M.empty . DM.lookup BtcTag) getNodeConnectionsD
 {-# INLINE getBtcNodesD #-}
 
 -- | Send a request to a specific URL
@@ -102,7 +102,7 @@ broadcastNodeMessage cur reqE = do
   nodeReqFire <- getNodeReqFire
   nodeConnRef <- getNodeConnRef
   performFork_ $ ffor reqE $ \msg -> do
-    reqs <- fmap ((<$) msg . fromMaybe (M.empty) . getAllConnByCurrency cur) $ readExternalRef nodeConnRef
+    reqs <- (<$) msg . fromMaybe M.empty . getAllConnByCurrency cur <$> readExternalRef nodeConnRef
     liftIO . nodeReqFire $ M.singleton cur reqs
 {-# INLINE broadcastNodeMessage #-}
 
@@ -123,7 +123,7 @@ requestBroadcast reqE = do
   nodeConnRef <- getNodeConnRef
   performFork $ ffor reqE $ \req -> do
     let cur = getNodeReqCurrency req
-    reqs <- fmap ((<$) (NodeMsgReq req) . fromMaybe (M.empty) . getAllConnByCurrency cur) $ readExternalRef nodeConnRef
+    reqs <- (<$) (NodeMsgReq req) . fromMaybe M.empty . getAllConnByCurrency cur <$> readExternalRef nodeConnRef
     liftIO . nodeReqFire $ M.singleton cur reqs
 
 -- | Send message to random crypto node
@@ -133,7 +133,7 @@ sendRandomNode reqE = do
   nodeConnRef <- getNodeConnRef
   performFork $ ffor reqE $ \req -> do
     let cur = getNodeReqCurrency req
-    nodes <- fmap (maybe [] M.toList . getAllConnByCurrency cur) $ readExternalRef nodeConnRef
+    nodes <- maybe [] M.toList . getAllConnByCurrency cur <$> readExternalRef nodeConnRef
     mnode <- randomElem nodes
     for_ mnode $ \(addr, _) ->
       liftIO . nodeReqFire . M.singleton cur . M.singleton addr . NodeMsgReq $ req

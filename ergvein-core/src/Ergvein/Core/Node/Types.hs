@@ -112,4 +112,4 @@ type ConnMap t = DMap (CurrencyTag t) (Map SockAddr)
 
 getAllConnByCurrency :: Currency -> ConnMap t -> Maybe (Map SockAddr (NodeConn t))
 getAllConnByCurrency cur cm = case cur of
-  BTC  -> (fmap . fmap) NodeConnBtc $ DM.lookup BtcTag cm
+  BTC  -> fmap NodeConnBtc <$> DM.lookup BtcTag cm
