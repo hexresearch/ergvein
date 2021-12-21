@@ -44,10 +44,12 @@ addHeader t bh tree@HeadersTree{..} = case getBestBlock of
       M.lookup bestHash headersNodes
     getParentBlock = M.lookup (prevBlock bh) headersNodes
     theBest = case headersBest of
-        Just curBestHash -> case M.lookup curBestHash headersNodes of
-          Just curBest | nodeWork curBest > headerWork bh -> Just curBestHash
-          _ -> Just $ headerHash bh
+      Just curBestHash -> case M.lookup curBestHash headersNodes of
+        Just curBest -> case M.lookup (prevBlock bh) headersNodes of
+          Just bhParent | nodeWork curBest < nodeWork bhParent + headerWork bh -> Just $ headerHash bh
+          _ -> Just curBestHash
         _ -> Just $ headerHash bh
+      _ -> Just $ headerHash bh
     insertRoot = do
       let hash = headerHash bh
           node = BlockNode bh (headersStartHeight+1) (headerWork bh) hash
