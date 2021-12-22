@@ -35,7 +35,7 @@ addHeader t bh tree@HeadersTree{..} = case getBestBlock of
       pure HeadersTree {
           headersStartHeight = headersStartHeight
         , headersNodes = M.insert (headerHash bh) newNode headersNodes
-        , headersBest = theBest
+        , headersBest = Just theBest
         }
   where
     t' = round . utcTimeToPOSIXSeconds $ t :: Timestamp
@@ -43,20 +43,21 @@ addHeader t bh tree@HeadersTree{..} = case getBestBlock of
       bestHash <- headersBest
       M.lookup bestHash headersNodes
     getParentBlock = M.lookup (prevBlock bh) headersNodes
-    theBest = case headersBest of
-      Just curBestHash -> case M.lookup curBestHash headersNodes of
-        Just curBest -> case M.lookup (prevBlock bh) headersNodes of
-          Just bhParent | nodeWork curBest < nodeWork bhParent + headerWork bh -> Just $ headerHash bh
-          _ -> Just curBestHash
-        _ -> Just $ headerHash bh
-      _ -> Just $ headerHash bh
+    theBest = fromMaybe (headerHash bh) $ do
+      curBestHash <- headersBest
+      curBest <- M.lookup curBestHash headersNodes
+      pure $ fromMaybe curBestHash $ do
+        bhParent <- M.lookup (prevBlock bh) headersNodes
+        pure $ if nodeWork curBest < nodeWork bhParent + headerWork bh
+          then headerHash bh
+          else curBestHash
     insertRoot = do
       let hash = headerHash bh
           node = BlockNode bh (headersStartHeight+1) (headerWork bh) hash
       pure HeadersTree {
           headersStartHeight = headersStartHeight
         , headersNodes = M.insert hash node headersNodes
-        , headersBest = theBest
+        , headersBest = Just theBest
         }
 
 collectParents :: Int -> BlockNode -> HeadersTree -> [BlockNode]
