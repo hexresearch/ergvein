@@ -36,6 +36,15 @@ data CoinSelectionError
   These functions have been modified to support the fee rate specified in satoshi per virtual byte.
 -}
 
+-- | When checking coins for a match with the target,
+-- we assume that the coin may exceed the target by the tolerance value.
+-- Specified in satoshi.
+tolerance :: Word64
+tolerance = 100
+
+valueMatchesGoal :: Word64 -> Word64 -> Bool
+valueMatchesGoal value goal = value >= goal && value <= goal + tolerance
+
 -- | Coin selection algorithm for transactions. This
 -- function returns the selected coins together with the amount of change to
 -- send back to yourself, taking the fee into account.
@@ -60,26 +69,27 @@ chooseCoins ::
 chooseCoins target feeRate outTypes changeOutType mFixedCoins coins =
   case mFixedCoins of
     Nothing ->
-      let tolerance = 100
-          coinMatchesTarget :: Coin c => c -> Bool
-          coinMatchesTarget c =
-            let goal = target + guessTxFee feeRate outTypes [coinType c]
-                val = coinValue c
-            in val >= goal && val <= goal + tolerance
-          allCoinsLessThanTarget = filter (\coin -> coinValue coin < target) coins
-          sumOfallCoinsLessThanTarget = sum $ coinValue <$> allCoinsLessThanTarget
-       in case L.sortOn coinValue $ L.filter coinMatchesTarget coins of
-            -- If any of coins matches the target, it will be used.
-            (coin:xs) -> Right ([coin], Nothing)
-            [] ->
-              if
-                let goal = target + guessTxFee feeRate outTypes (coinType <$> allCoinsLessThanTarget)
-                in sumOfallCoinsLessThanTarget >= goal && sumOfallCoinsLessThanTarget <= goal + tolerance
-                then -- If the sum of all coins less than the target happens to match the target, they will be used.
-                  Right (allCoinsLessThanTarget, Nothing)
-                else -- Otherwise, the FIFO approach is used.
-                  runIdentity . runConduit $
-                    sourceList coins .| chooseCoinsSink target feeRate outTypes changeOutType Nothing
+      let
+        coinMatchesTarget :: Coin c => c -> Bool
+        coinMatchesTarget c =
+          let goal = target + guessTxFee feeRate outTypes [coinType c]
+              value = coinValue c
+          in valueMatchesGoal value goal
+        allCoinsLessThanTarget = filter (\coin -> coinValue coin < target) coins
+        sumOfallCoinsLessThanTarget = sum $ coinValue <$> allCoinsLessThanTarget
+      in
+        case L.sortOn coinValue $ L.filter coinMatchesTarget coins of
+          -- If any of coins matches the target, it will be used.
+          (coin:xs) -> Right ([coin], Nothing)
+          [] ->
+            if
+              let goal = target + guessTxFee feeRate outTypes (coinType <$> allCoinsLessThanTarget)
+              in valueMatchesGoal sumOfallCoinsLessThanTarget goal
+              then -- If the sum of all coins less than the target happens to match the target, they will be used.
+                Right (allCoinsLessThanTarget, Nothing)
+              else -- Otherwise, the FIFO approach is used.
+                runIdentity . runConduit $
+                  sourceList coins .| chooseCoinsSink target feeRate outTypes changeOutType Nothing
     Just fixedCoins ->
       let fixedCoinsTypes = coinType <$> fixedCoins
           goalWithoutChange = target + guessTxFee feeRate outTypes fixedCoinsTypes
@@ -95,19 +105,26 @@ chooseCoins target feeRate outTypes changeOutType mFixedCoins coins =
             else -- Fixed coins are not enough to fund the transaction, trying to find additional coins
               let unfixedCoins = coins \\ fixedCoins
                   coinPlusFixedMatchesTarget :: Coin c => c -> Bool
-                  coinPlusFixedMatchesTarget c = coinValue c + fixedCoinsValue == target + guessTxFee feeRate outTypes (coinType c : fixedCoinsTypes)
+                  coinPlusFixedMatchesTarget c =
+                    let goal = target + guessTxFee feeRate outTypes (coinType c : fixedCoinsTypes)
+                        value = coinValue c + fixedCoinsValue
+                    in valueMatchesGoal value goal
                   allCoinsLessThanTarget = filter (\coin -> coinValue coin < target - fixedCoinsValue) unfixedCoins
                   sumOfallCoinsLessThanTargetMinusFixed = sum $ coinValue <$> allCoinsLessThanTarget
                in case L.find coinPlusFixedMatchesTarget unfixedCoins of
                     -- If any of coins plus fixed coins match the target, it will be used.
                     Just coin -> Right (coin : fixedCoins, Nothing)
                     Nothing ->
-                      if sumOfallCoinsLessThanTargetMinusFixed + fixedCoinsValue == target + guessTxFee feeRate outTypes ((coinType <$> allCoinsLessThanTarget) ++ fixedCoinsTypes)
-                        then -- If the sum of all coins smaller than the target plus fixed coins happen to match the target, they will be used.
-                          Right (fixedCoins ++ allCoinsLessThanTarget, Nothing)
-                        else -- Otherwise, the FIFO approach is used.
-                          runIdentity . runConduit $
-                            sourceList unfixedCoins .| chooseCoinsSink target feeRate outTypes changeOutType (Just fixedCoins)
+                      let
+                        goal = target + guessTxFee feeRate outTypes ((coinType <$> allCoinsLessThanTarget) ++ fixedCoinsTypes)
+                        value = sumOfallCoinsLessThanTargetMinusFixed + fixedCoinsValue
+                      in
+                        if valueMatchesGoal value goal
+                          then -- If the sum of all coins smaller than the target plus fixed coins happen to match the target, they will be used.
+                            Right (fixedCoins ++ allCoinsLessThanTarget, Nothing)
+                          else -- Otherwise, the FIFO approach is used.
+                            runIdentity . runConduit $
+                              sourceList unfixedCoins .| chooseCoinsSink target feeRate outTypes changeOutType (Just fixedCoins)
 
 -- | Coin selection algorithm for transactions. This
 -- function returns the selected coins together with the amount of change to
