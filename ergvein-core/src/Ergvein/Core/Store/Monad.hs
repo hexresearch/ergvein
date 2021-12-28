@@ -122,7 +122,7 @@ instance MonadIO m => HasTxStorage (ReaderT (Map TxId EgvTx) m) where
 getPubStorageCurD :: MonadStorage t m => Currency -> m (Dynamic t (Maybe CurrencyPubStorage))
 getPubStorageCurD cur = do
   d <- getPubStorageD
-  pure $ ffor d $ \v -> v ^? pubStorage'currencyPubStorages . at cur . _Just
+  pure $ ffor d $ \v -> v ^? pubStorage'currencyPubStorages . ix cur
 
 getPubStorageBtcD :: MonadStorage t m => m (Dynamic t (Maybe BtcPubStorage))
 getPubStorageBtcD = do
@@ -164,18 +164,18 @@ insertTxsUtxoInPubKeystore :: MonadStorage t m
 insertTxsUtxoInPubKeystore caller cur reqE = do
   valD <- holdDyn (error "insertTxsUtxoInPubKeystore: impossible") reqE
   updE <- modifyPubStorage clr $ ffor reqE $ \(vec, (o,i)) ps ->
-    if (V.null vec && M.null o && null i) then Nothing else let
-      txmap = M.unions $ V.toList $ snd $ V.unzip vec
-      ps1 = modifyCurrStorage cur (currencyPubStorage'transactions %~ M.union txmap) ps
-      ps2 = case cur of
-        BTC -> updateBtcUtxoSet (o,i) ps1 
-      
-      upd ps' (ScanKeyBox{..}, txm) = fromMaybe ps' $
-        let txs = M.elems txm
-        in updateKeyBoxWith cur scanBox'purpose scanBox'index
-              (\kb -> kb {pubKeyBox'txs = S.union (pubKeyBox'txs kb) $ S.fromList (fmap egvTxId txs)}) ps'
-      ps3 = V.foldl' upd ps2 vec
-      in Just ps3
+    if V.null vec && M.null o && null i then Nothing else let
+    txmap = M.unions $ V.toList $ snd $ V.unzip vec
+    ps1 = modifyCurrStorage cur (currencyPubStorage'transactions %~ M.union txmap) ps
+    ps2 = case cur of
+      BTC -> updateBtcUtxoSet (o,i) ps1
+
+    upd ps' (ScanKeyBox{..}, txm) = fromMaybe ps' $
+      let txs = M.elems txm
+      in updateKeyBoxWith cur scanBox'purpose scanBox'index
+            (\kb -> kb {pubKeyBox'txs = S.union (pubKeyBox'txs kb) $ S.fromList (fmap egvTxId txs)}) ps'
+    ps3 = V.foldl' upd ps2 vec
+    in Just ps3
   pure $ tag (current valD) updE
   where clr = caller <> ":" <> "insertTxsUtxoInPubKeystore"
 
@@ -192,19 +192,19 @@ insertManyTxsUtxoInPubKeystore caller cur reqE = do
   where
     clr = caller <> ":" <> "insertManyTxsUtxoInPubKeystore"
     inserter ps (vec, (o,i)) =
-      if (V.null vec && M.null o && null i) then ps else let
-        txmap = M.unions $ V.toList $ snd $ V.unzip vec
-        -- Flip is important here as we want avoid readding transactions into storage. See #1018
-        ps1 = modifyCurrStorage cur (currencyPubStorage'transactions %~ flip M.union txmap) ps
-        ps2 = case cur of
-          BTC -> updateBtcUtxoSet (o,i) ps1 
-          
-        upd ps' (ScanKeyBox{..}, txm) = fromMaybe ps' $
-          let txs = M.elems txm
-          in updateKeyBoxWith cur scanBox'purpose scanBox'index
-                (\kb -> kb { pubKeyBox'txs = S.union (S.fromList (fmap egvTxId txs)) $ pubKeyBox'txs kb }) ps'
-        ps3 = V.foldl' upd ps2 vec
-        in ps3
+      if V.null vec && M.null o && null i then ps else let
+      txmap = M.unions $ V.toList $ snd $ V.unzip vec
+      -- Flip is important here as we want avoid readding transactions into storage. See #1018
+      ps1 = modifyCurrStorage cur (currencyPubStorage'transactions %~ flip M.union txmap) ps
+      ps2 = case cur of
+        BTC -> updateBtcUtxoSet (o,i) ps1
+
+      upd ps' (ScanKeyBox{..}, txm) = fromMaybe ps' $
+        let txs = M.elems txm
+        in updateKeyBoxWith cur scanBox'purpose scanBox'index
+              (\kb -> kb { pubKeyBox'txs = S.union (S.fromList (fmap egvTxId txs)) $ pubKeyBox'txs kb }) ps'
+      ps3 = V.foldl' upd ps2 vec
+      in ps3
 
 -- | Removes RBF transactions from storage and updates transaction replacements info.
 -- Note: that this process has two stages. This is the first stage.
@@ -222,9 +222,9 @@ removeRbfTxsFromStorage1 caller txsToReplaceE = modifyPubStorage clr $ ffor txsT
     then Nothing
     else Just $ let
       -- Removing txs from btcPubStorage'transactions
-      ps11 = modifyCurrStorageBtc (\btcPs -> btcPs & btcPubStorage'transactions %~ (flip M.withoutKeys $ replacedTxIds)) ps
+      ps11 = modifyCurrStorageBtc (\btcPs -> btcPs & btcPubStorage'transactions %~ (`M.withoutKeys` replacedTxIds)) ps
       -- Removing utxos from btcPubStorage'utxos
-      ps12 = modifyCurrStorageBtc (\btcPs -> btcPs & btcPubStorage'utxos %~ (M.filterWithKey (filterOutPoints replacedTxIds))) ps11
+      ps12 = modifyCurrStorageBtc (\btcPs -> btcPs & btcPubStorage'utxos %~ M.filterWithKey (filterOutPoints replacedTxIds)) ps11
       -- Removing txids from EgvPubKeyBoxes in currencyPubStorage'pubKeystore
       ps13 = modifyCurrStorage BTC (\cps -> cps & currencyPubStorage'pubKeystore %~ removeTxIdsFromEgvKeyBoxes (S.map BtcTxHash replacedTxIds)) ps12
       -- Updating btcPubStorage'replacedTxs
@@ -257,7 +257,7 @@ updatePossiblyReplacedTxsStorage possiblyReplacingTxId replacedTxIds possiblyRep
     -- Remove all keys that are members of possiblyReplacedTxIds
     possiblyReplacedTxsMap' = M.filterWithKey (\k _ -> not $ k `S.member` possiblyReplacedTxIds) possiblyReplacedTxsMap
     -- Collect values of removed keys into one set
-    txIdsReplacedByFilteredTxIds = S.unions $ S.map (flip (M.findWithDefault S.empty) $ possiblyReplacedTxsMap) possiblyReplacedTxIds
+    txIdsReplacedByFilteredTxIds = S.unions $ S.map (flip (M.findWithDefault S.empty) possiblyReplacedTxsMap) possiblyReplacedTxIds
     -- Combine resulting set with possiblyReplacedTxIds
     updatedPossiblyReplacedTxIds = S.union possiblyReplacedTxIds txIdsReplacedByFilteredTxIds
     -- Insert possibly replacing tx with possibly replaced txs into map
@@ -286,17 +286,17 @@ removeRbfTxsFromStorage2 caller txsToReplaceE = modifyPubStorage clr $ ffor txsT
     else Just $ let
       keysToRemoveFromPossiblyReplacedTxs = S.map removeRbfTxsInfo'keyToRemoveFromPossiblyReplacedTxs removeRbfTxsInfoSet
       txIdsToRemove = S.unions $ S.map removeRbfTxsInfo'replacedTxs removeRbfTxsInfoSet
-      replacedTxsMap = M.fromList $ (\(RemoveRbfTxsInfo _ b c) -> (b, c)) <$> (S.toList removeRbfTxsInfoSet)
+      replacedTxsMap = M.fromList $ (\(RemoveRbfTxsInfo _ b c) -> (b, c)) <$> S.toList removeRbfTxsInfoSet
       -- Removing txs from btcPubStorage'transactions
-      ps11 = modifyCurrStorageBtc (\btcPs -> btcPs & btcPubStorage'transactions %~ (flip M.withoutKeys $ txIdsToRemove)) ps
+      ps11 = modifyCurrStorageBtc (\btcPs -> btcPs & btcPubStorage'transactions %~ (`M.withoutKeys` txIdsToRemove)) ps
       -- Removing utxos from btcPubStorage'utxos
-      ps12 = modifyCurrStorageBtc (\btcPs -> btcPs & btcPubStorage'utxos %~ (M.filterWithKey (filterOutPoints txIdsToRemove))) ps11
+      ps12 = modifyCurrStorageBtc (\btcPs -> btcPs & btcPubStorage'utxos %~ M.filterWithKey (filterOutPoints txIdsToRemove)) ps11
       -- Removing txids from EgvPubKeyBoxes form currencyPubStorage'pubKeystore
       ps13 = modifyCurrStorage BTC (\cps -> cps & currencyPubStorage'pubKeystore %~ removeTxIdsFromEgvKeyBoxes (S.map BtcTxHash txIdsToRemove)) ps12
       -- Updating btcPubStorage'replacedTxs
-      ps14 = modifyCurrStorageBtc (\btcPs -> btcPs & btcPubStorage'replacedTxs %~ (M.union replacedTxsMap)) ps13
+      ps14 = modifyCurrStorageBtc (\btcPs -> btcPs & btcPubStorage'replacedTxs %~ M.union replacedTxsMap) ps13
       -- Removing replaced tx ids from btcPubStorage'possiblyReplacedTxs
-      ps15 = modifyCurrStorageBtc (\btcPs -> btcPs & btcPubStorage'possiblyReplacedTxs %~ (flip M.withoutKeys $ keysToRemoveFromPossiblyReplacedTxs)) ps14
+      ps15 = modifyCurrStorageBtc (\btcPs -> btcPs & btcPubStorage'possiblyReplacedTxs %~ (`M.withoutKeys` keysToRemoveFromPossiblyReplacedTxs)) ps14
       in ps15
   where
     clr = caller <> ":" <> "removeRbfTxsFromStorage2"
@@ -315,7 +315,7 @@ txListToMap :: [EgvTx] -> Map TxId EgvTx
 txListToMap txList = M.fromList $ (\tx -> (egvTxId tx, tx)) <$> txList
 
 updateBtcUtxoSet :: BtcUtxoUpdate -> PubStorage -> PubStorage
-updateBtcUtxoSet upds@(o,i) ps = if (M.null o && null i) then ps else
+updateBtcUtxoSet upds@(o,i) ps = if M.null o && null i then ps else
   modifyCurrStorageBtc (btcPubStorage'utxos %~ updateBtcUtxoSetPure upds) ps
 
 updateKeyBoxWith :: Currency -> KeyPurpose -> Int -> (EgvPubKeyBox -> EgvPubKeyBox) -> PubStorage -> Maybe PubStorage
@@ -370,7 +370,7 @@ storeBlockHeadersE caller _ reqE = do
             then Nothing
             else Just $ M.fromList $ fmap (\b -> (HB.headerHash $ HB.blockHeader $ b, HB.blockHeader b)) blks
     in ffor mmap $ \m -> modifyCurrStorageBtc (btcPubStorage'headers %~ M.union m) ps
-  pure $ attachWithMaybe (\a _ -> a) (current reqD) storedE
+  pure $ attachWithMaybe const (current reqD) storedE
   where clr = caller <> ":" <> "storeBlockHeadersE"
 
 setScannedHeightE :: MonadStorage t m => Currency -> Event t BlockHeight -> m (Event t ())
@@ -385,15 +385,14 @@ getScannedHeightD :: MonadStorage t m => Currency -> m (Dynamic t BlockHeight)
 getScannedHeightD cur = do
   psD <- getPubStorageD
   pure $ ffor psD $ \ps ->
-    fromMaybe 0 $ ps ^. pubStorage'currencyPubStorages . at cur & (fmap _currencyPubStorage'scannedHeight)
+    maybe 0 _currencyPubStorage'scannedHeight (ps ^. pubStorage'currencyPubStorages . at cur)
 
 getScannedHeight :: MonadStorage t m => Currency -> m BlockHeight
 getScannedHeight cur = do
   ps <- getPubStorage
-  pure $ fromMaybe 0 $ ps
+  pure $ maybe 0 _currencyPubStorage'scannedHeight (ps
     ^. pubStorage'currencyPubStorages
-    . at cur
-    & (fmap _currencyPubStorage'scannedHeight)
+    . at cur)
 
 
 -- ===========================================================================
@@ -403,7 +402,7 @@ getScannedHeight cur = do
 getBtcBlockHashByTxHash :: HasPubStorage m => HT.TxHash -> m (Maybe HB.BlockHash)
 getBtcBlockHashByTxHash bth = do
   ps <- askPubStorage
-  pure $ join $ ps ^. btcPubStorage . currencyPubStorage'transactions . at th & fmap getEgvTxMeta & fmap etxMetaHash . join
+  pure $ etxMetaHash =<< (getEgvTxMeta =<< (ps ^. btcPubStorage . currencyPubStorage'transactions . at th))
   where th = hkTxHashToEgv bth
 
 getTxStorage :: HasPubStorage m => Currency -> m (Map TxId EgvTx)
@@ -425,13 +424,11 @@ getTxHeight (TxBtc tx) = (etxMetaHeight <=< getBtcTxMeta) tx
 
 getConfirmedTxs :: HasTxStorage m => m (Map TxId EgvTx)
 getConfirmedTxs = do
-  txs <- askTxStorage
-  pure $ M.filter (isJust . getTxHeight) txs
+  M.filter (isJust . getTxHeight) <$> askTxStorage
 
 getUnconfirmedTxs :: HasTxStorage m => m (Map TxId EgvTx)
 getUnconfirmedTxs = do
-  txs <- askTxStorage
-  pure $ M.filter (isNothing . getTxHeight) txs
+  M.filter (isNothing . getTxHeight) <$> askTxStorage
 
 -- Orphans
 

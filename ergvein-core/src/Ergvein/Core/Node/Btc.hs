@@ -79,7 +79,7 @@ initBtcNode doLog sa msgE = do
     s <- fmap switchSocket $ networkHold (pure noSocket) $ ffor peerE $ \peer -> do
       socket SocketConf {
           _socketConfPeer   = peer
-        , _socketConfSend   = fmap (runPut . putMessage net) $ leftmost [reqE, handshakeE, hsRespE]
+        , _socketConfSend   = runPut . putMessage net <$> leftmost [reqE, handshakeE, hsRespE]
         , _socketConfPeeker = peekMessage net sa
         , _socketConfClose  = closeE
         , _socketConfProxy  = proxyD

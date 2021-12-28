@@ -59,7 +59,7 @@ data NodeConnection t cur = NodeConnection {
 , nodeconExtra      :: !(NodeSpecific cur)
 , nodeconIsUp       :: !(Dynamic t Bool)
 , nodeconDoLog      :: !Bool
-, nodeconHeight     :: !(Dynamic t (Maybe Word32)) -- ^ Note: This field is used to track the progress of the height search. It is only updated once during node initialization.
+, nodeconHeight     :: !(Dynamic t (Maybe Word32))
 }
 
 data NodeStatus = NodeStatus {
@@ -112,4 +112,4 @@ type ConnMap t = DMap (CurrencyTag t) (Map SockAddr)
 
 getAllConnByCurrency :: Currency -> ConnMap t -> Maybe (Map SockAddr (NodeConn t))
 getAllConnByCurrency cur cm = case cur of
-  BTC  -> (fmap . fmap) NodeConnBtc $ DM.lookup BtcTag cm
+  BTC  -> fmap NodeConnBtc <$> DM.lookup BtcTag cm

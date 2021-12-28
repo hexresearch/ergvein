@@ -251,7 +251,7 @@ broadcastIndexerMessage reqE = do
 requestIndexerWhenOpen :: MonadClient t m => IndexerConnection t -> Message -> m (Event t ())
 requestIndexerWhenOpen IndexerConnection{..} msg = do
   fire  <- getIndexReqFire
-  initE <- fmap (gate (current indexConIsUp)) $ getPostBuild
+  initE <- gate (current indexConIsUp) <$> getPostBuild
   let reqE = leftmost [initE, indexConOpensE]
   performEvent $ ffor reqE $ const $
     liftIO $ fire $ M.singleton indexConName $ IndexerMsg msg
@@ -261,7 +261,7 @@ requestSpecificIndexer saMsgE = do
   connsRef <- getActiveConnsRef
   fireReq  <- getIndexReqFire
   mrespE <- performFork $ ffor saMsgE $ \(sa, req) -> do
-    mcon <- fmap (M.lookup sa) $ readExternalRef connsRef
+    mcon <- M.lookup sa <$> readExternalRef connsRef
     case mcon of
       Nothing -> pure Nothing
       Just con -> do
@@ -274,32 +274,32 @@ indexerPingerWidget :: MonadClient t m
   -> Event t ()                     -- Manual refresh event
   -> m (Dynamic t NominalDiffTime)  -- Dynamic with the latency. Starting value 0
 indexerPingerWidget addr refrE = do
-  connmD  <- holdUniqDynBy eq =<< pure . fmap (M.lookup addr) =<< externalRefDynamic =<< getActiveConnsRef
+  connmD  <- holdUniqDynBy eq . fmap (M.lookup addr) =<< (externalRefDynamic =<< getActiveConnsRef)
   fmap join $ networkHoldDyn $ ffor connmD $ \case
     Nothing -> pure $ pure 0
     Just conn -> indexerConnPingerWidget conn refrE
   where
     eq :: Maybe (IndexerConnection t) -> Maybe (IndexerConnection t) -> Bool
-    eq = (==) `on` (fmap indexConAddr)
+    eq = (==) `on` fmap indexConAddr
 
 indexerConnPingerWidget :: MonadClient t m
   => IndexerConnection t -> Event t () -> m (Dynamic t NominalDiffTime)
 indexerConnPingerWidget IndexerConnection{..} refrE = do
   buildE <- getPostBuild
   fireReq <- getIndexReqFire
-  te     <- fmap void $ tickLossyFromPostBuildTime 10
+  te     <- void <$> tickLossyFromPostBuildTime 10
   let tickE = leftmost [te, buildE, refrE]
   pingE <- performFork $ ffor tickE $ const $ liftIO $ do
     p <- randomIO
     t <- getCurrentTime
-    fireReq $ M.singleton indexConName $ (IndexerMsg $ MPing p)
+    fireReq $ M.singleton indexConName $ IndexerMsg $ MPing p
     pure (p,t)
   pingD <- holdDyn Nothing $ Just <$> pingE
   pongE <- performFork $ ffor indexConRespE $ \case
     MPong p -> do
-      t <- liftIO $ getCurrentTime
+      t <- liftIO getCurrentTime
       mpt <- sampleDyn pingD
-      pure $ join $ ffor mpt $ \(p',t') -> if (p == p') then Just (diffUTCTime t t') else Nothing
+      pure $ join $ ffor mpt $ \(p',t') -> if p == p' then Just (diffUTCTime t t') else Nothing
     _ -> pure Nothing
   holdDyn 0 $ fmapMaybe id pongE
 
@@ -310,29 +310,29 @@ indexersAverageLatNumWidget :: forall t m . MonadClient t m => Event t () -> m (
 indexersAverageLatNumWidget refrE = do
   connsD  <- externalRefDynamic =<< getActiveConnsRef
   fireReq <- getIndexReqFire
-  te      <- fmap void $ tickLossyFromPostBuildTime 10
+  te      <- void <$> tickLossyFromPostBuildTime 10
   buildE <- getPostBuild
   let tickE = leftmost [te, buildE, refrE]
   pingE <- performFork $ ffor tickE $ const $ do
     conns <- sampleDyn connsD
-    p <- liftIO $ randomIO
-    t <- liftIO $ getCurrentTime
-    liftIO $ fireReq $ (IndexerMsg $ MPing p) <$ conns
+    p <- liftIO randomIO
+    t <- liftIO getCurrentTime
+    liftIO $ fireReq $ IndexerMsg (MPing p) <$ conns
     pure (p,t)
   pingD <- holdDyn Nothing $ Just <$> pingE
   pongsD <- list connsD $ \connD -> do
     let respE = switchDyn $ indexConRespE <$> connD
     pongE <- performFork $ ffor respE $ \case
       MPong p -> do
-        t <- liftIO $ getCurrentTime
+        t <- liftIO getCurrentTime
         mpt <- sampleDyn pingD
-        pure $ join $ ffor mpt $ \(p',t') -> if (p == p') then Just (diffUTCTime t t') else Nothing
+        pure $ join $ ffor mpt $ \(p',t') -> if p == p' then Just (diffUTCTime t t') else Nothing
       _ -> pure Nothing
     holdDyn 0 $ fmapMaybe id pongE
   pure $ ffor (joinDynThroughMap pongsD) $ \pongmap -> let
     len = M.size pongmap
     pongs = sum $ M.elems pongmap
-    avg = if len == 0 then 0 else pongs / (fromIntegral $ len)
+    avg = if len == 0 then 0 else pongs / fromIntegral len
     in (len, avg)
 
 -- | Watch after status updates and save it to separate map in env to display it when connection id down
