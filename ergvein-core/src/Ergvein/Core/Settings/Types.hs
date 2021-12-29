@@ -71,7 +71,7 @@ instance FromJSON ExplorerUrls where
     pure ExplorerUrls{..}
 
 btcDefaultExplorerUrls :: ExplorerUrls
-btcDefaultExplorerUrls = ExplorerUrls "https://www.blockchain.com/btc-testnet" "https://www.blockchain.com/btc"
+btcDefaultExplorerUrls = ExplorerUrls "https://mempool.space/testnet" "https://mempool.space"
 
 data SocksConf = SocksConf {
   socksConfAddr :: !IP
