@@ -127,8 +127,8 @@ prepareTxData e = do
 chooseCoinsRbf :: Word64 -> Word64 -> [BtcOutputType] -> BtcOutputType -> [UtxoPoint] -> [UtxoPoint] -> [UtxoPoint] -> Either CoinSelectionError ([UtxoPoint], Maybe Word64)
 chooseCoinsRbf amount newFeeRate outputTypes changeOutType fixedUtxo confirmedUtxo unconfirmedUtxo =
   let
-    firstpick = chooseCoins amount newFeeRate outputTypes changeOutType (Just fixedUtxo) $ L.sort confirmedUtxo
-    finalpick = either (const $ chooseCoins amount newFeeRate outputTypes changeOutType (Just fixedUtxo) $ L.sort $ confirmedUtxo <> unconfirmedUtxo) Right firstpick
+    firstpick = chooseCoins amount newFeeRate outputTypes changeOutType fixedUtxo $ L.sort confirmedUtxo
+    finalpick = either (const $ chooseCoins amount newFeeRate outputTypes changeOutType fixedUtxo $ L.sort $ confirmedUtxo <> unconfirmedUtxo) Right firstpick
   in
     finalpick
 

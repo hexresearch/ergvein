@@ -3,7 +3,7 @@ module Ergvein.Core.Transaction.Builder.CoinSelectionTest where
 import Data.Word (Word64)
 import Test.Tasty.Hspec (shouldBe)
 
-import Ergvein.Core.Transaction.Builder.Btc (chooseCoins, CoinSelectionError(..))
+import Ergvein.Core.Transaction.Builder.Btc (chooseCoins, tolerance, CoinSelectionError(..))
 import Ergvein.Core.Transaction.Fee.Btc (BtcOutputType, guessTxFee, getDustThresholdByOutType)
 import Ergvein.Types.Address (BtcAddressType(..))
 import Ergvein.Types.Utxo.Btc (Coin (..))
@@ -24,13 +24,13 @@ data TestCase = TestCase
     testCaseFeeRate :: Word64,
     testCaseRecipientOutTypes :: [BtcOutputType],
     testCaseChangeOutType :: BtcOutputType,
-    testCaseMFixedCoins :: Maybe [TestCoin],
+    testCaseFixedCoins :: [TestCoin],
     testCaseExpectedResult :: Either CoinSelectionError ([TestCoin], Maybe Word64)
   }
 
 checkTestCase :: TestCase -> IO ()
 checkTestCase TestCase {..} = do
-  chooseCoins testCaseTarget testCaseFeeRate testCaseRecipientOutTypes testCaseChangeOutType testCaseMFixedCoins testCaseCoins `shouldBe` testCaseExpectedResult
+  chooseCoins testCaseTarget testCaseFeeRate testCaseRecipientOutTypes testCaseChangeOutType testCaseFixedCoins testCaseCoins `shouldBe` testCaseExpectedResult
 
 unit_insufficientFunds1 :: IO ()
 unit_insufficientFunds1 = do
@@ -41,7 +41,7 @@ unit_insufficientFunds1 = do
             testCaseFeeRate = 1,
             testCaseRecipientOutTypes = [BtcP2WPKH],
             testCaseChangeOutType = BtcP2WPKH,
-            testCaseMFixedCoins = Nothing,
+            testCaseFixedCoins = [],
             testCaseExpectedResult = Left InsufficientFunds
           }
   checkTestCase testCase
@@ -60,7 +60,28 @@ unit_insufficientFunds2 = do
             testCaseFeeRate = 1,
             testCaseRecipientOutTypes = [BtcP2WPKH],
             testCaseChangeOutType = BtcP2WPKH,
-            testCaseMFixedCoins = Nothing,
+            testCaseFixedCoins = [],
+            testCaseExpectedResult = Left InsufficientFunds
+          }
+  checkTestCase testCase
+
+unit_insufficientFunds3 :: IO ()
+unit_insufficientFunds3 = do
+  let
+    coin = TestCoin 1000 BtcP2WPKH
+    target = coinValue coin - txFee + 1
+    feeRate = 1
+    recipientOutTypes = [BtcP2WPKH]
+    changeOutType = BtcP2WPKH
+    txFee = fromIntegral $ guessTxFee feeRate recipientOutTypes [coinType coin]
+    testCase =
+        TestCase
+          { testCaseCoins = [coin],
+            testCaseTarget = target,
+            testCaseFeeRate = feeRate,
+            testCaseRecipientOutTypes = recipientOutTypes,
+            testCaseChangeOutType = changeOutType,
+            testCaseFixedCoins = [],
             testCaseExpectedResult = Left InsufficientFunds
           }
   checkTestCase testCase
@@ -74,7 +95,7 @@ unit_insufficientFundsAfterFees = do
             testCaseFeeRate = 1,
             testCaseRecipientOutTypes = [BtcP2WPKH],
             testCaseChangeOutType = BtcP2WPKH,
-            testCaseMFixedCoins = Nothing,
+            testCaseFixedCoins = [],
             testCaseExpectedResult = Left InsufficientFunds
           }
   checkTestCase testCase
@@ -93,7 +114,7 @@ unit_zeroTarget = do
             testCaseFeeRate = 1,
             testCaseRecipientOutTypes = [BtcP2WPKH],
             testCaseChangeOutType = BtcP2WPKH,
-            testCaseMFixedCoins = Nothing,
+            testCaseFixedCoins = [],
             testCaseExpectedResult = Left TargetMustBePositive
           }
   checkTestCase testCase
@@ -127,7 +148,7 @@ unit_success = do
           testCaseFeeRate = feeRate,
           testCaseRecipientOutTypes = recipientOutTypes,
           testCaseChangeOutType = changeOutType,
-          testCaseMFixedCoins = Nothing,
+          testCaseFixedCoins = [],
           testCaseExpectedResult = Right (solution, Just change)
         }
   checkTestCase testCase
@@ -148,7 +169,7 @@ unit_doesNotMakeDustChange = do
           testCaseFeeRate = feeRate,
           testCaseRecipientOutTypes = recipientOutTypes,
           testCaseChangeOutType = changeOutType,
-          testCaseMFixedCoins = Nothing,
+          testCaseFixedCoins = [],
           testCaseExpectedResult = Right (solution, Nothing)
         }
   checkTestCase testCase
@@ -170,7 +191,7 @@ unit_makesSlightlyLargerThanDustChange = do
         testCaseFeeRate = feeRate,
         testCaseRecipientOutTypes = recipientOutTypes,
         testCaseChangeOutType = changeOutType,
-        testCaseMFixedCoins = Nothing,
+        testCaseFixedCoins = [],
         testCaseExpectedResult = Right (solution, Just change)
       }
   checkTestCase testCase
@@ -197,7 +218,7 @@ unit_sweepWallet = do
         testCaseFeeRate = feeRate,
         testCaseRecipientOutTypes = recipientOutTypes,
         testCaseChangeOutType = changeOutType,
-        testCaseMFixedCoins = Nothing,
+        testCaseFixedCoins = [],
         testCaseExpectedResult = Right (solution, Nothing)
       }
   checkTestCase testCase
@@ -223,7 +244,7 @@ unit_сoinMatchesTarget = do
         testCaseFeeRate = feeRate,
         testCaseRecipientOutTypes = recipientOutTypes,
         testCaseChangeOutType = changeOutType,
-        testCaseMFixedCoins = Nothing,
+        testCaseFixedCoins = [],
         testCaseExpectedResult = Right (solution, Nothing)
       }
   checkTestCase testCase
@@ -249,7 +270,7 @@ unit_sumOfAllCoinsLessThanTargetMatchesTarget = do
         testCaseFeeRate = feeRate,
         testCaseRecipientOutTypes = recipientOutTypes,
         testCaseChangeOutType = changeOutType,
-        testCaseMFixedCoins = Nothing,
+        testCaseFixedCoins = [],
         testCaseExpectedResult = Right (solution, Nothing)
       }
   checkTestCase testCase
@@ -258,7 +279,7 @@ unit_tolerance_сoinMatchesTarget :: IO ()
 unit_tolerance_сoinMatchesTarget = do
   let
     changeOutType = BtcP2WPKH
-    target = sum (coinValue <$> solution) - txFee - 10
+    target = sum (coinValue <$> solution) - txFee - tolerance
     feeRate = 1
     recipientOutTypes = [BtcP2WPKH]
     solution = [TestCoin 3000 BtcP2WPKH]
@@ -276,8 +297,39 @@ unit_tolerance_сoinMatchesTarget = do
         testCaseFeeRate = feeRate,
         testCaseRecipientOutTypes = recipientOutTypes,
         testCaseChangeOutType = changeOutType,
-        testCaseMFixedCoins = Nothing,
+        testCaseFixedCoins = [],
         testCaseExpectedResult = Right (solution, Nothing)
+      }
+  checkTestCase testCase
+
+unit_tolerance_сoinDoesNotMatchTarget :: IO ()
+unit_tolerance_сoinDoesNotMatchTarget = do
+  let
+    changeOutType = BtcP2WPKH
+    target = 4000 - txFeeWtihoutChange - tolerance - 1
+    feeRate = 1
+    recipientOutTypes = [BtcP2WPKH]
+    solution = [TestCoin 3000 BtcP2WPKH, TestCoin 2000 BtcP2WPKH, TestCoin 1000 BtcP2WPKH]
+    txFeeWtihoutChange = fromIntegral $ guessTxFee feeRate recipientOutTypes [BtcP2WPKH]
+    txFeeWtihChange = fromIntegral $ guessTxFee feeRate (changeOutType : recipientOutTypes) (coinType <$> solution)
+    change =
+      sum (coinValue <$> solution)
+        - target
+        - txFeeWtihChange
+    testCase =
+      TestCase
+      { testCaseCoins =
+        [ TestCoin 1000 BtcP2WPKH,
+          TestCoin 2000 BtcP2WPKH,
+          TestCoin 3000 BtcP2WPKH,
+          TestCoin 4000 BtcP2WPKH
+        ],
+        testCaseTarget = target,
+        testCaseFeeRate = feeRate,
+        testCaseRecipientOutTypes = recipientOutTypes,
+        testCaseChangeOutType = changeOutType,
+        testCaseFixedCoins = [],
+        testCaseExpectedResult = Right (solution, Just change)
       }
   checkTestCase testCase
 
@@ -303,7 +355,7 @@ unit_fixedCoins_noAdditionalInputRequired = do
         testCaseFeeRate = feeRate,
         testCaseRecipientOutTypes = recipientOutTypes,
         testCaseChangeOutType = changeOutType,
-        testCaseMFixedCoins = Just fixedCoins,
+        testCaseFixedCoins = fixedCoins,
         testCaseExpectedResult = Right (solution, Just change)
       }
   checkTestCase testCase
@@ -330,7 +382,7 @@ unit_fixedCoins_additionalInputRequired = do
         testCaseFeeRate = feeRate,
         testCaseRecipientOutTypes = recipientOutTypes,
         testCaseChangeOutType = changeOutType,
-        testCaseMFixedCoins = Just fixedCoins,
+        testCaseFixedCoins = fixedCoins,
         testCaseExpectedResult = Right (solution, Just change)
       }
   checkTestCase testCase
@@ -357,7 +409,7 @@ unit_fixedCoins_сoinMatchesTarget = do
         testCaseFeeRate = feeRate,
         testCaseRecipientOutTypes = recipientOutTypes,
         testCaseChangeOutType = changeOutType,
-        testCaseMFixedCoins = Just fixedCoins,
+        testCaseFixedCoins = fixedCoins,
         testCaseExpectedResult = Right (solution, Nothing)
       }
   checkTestCase testCase
@@ -384,7 +436,7 @@ unit_fixedCoins_sumOfAllCoinsLessThanTargetMatchesTarget = do
         testCaseFeeRate = feeRate,
         testCaseRecipientOutTypes = recipientOutTypes,
         testCaseChangeOutType = changeOutType,
-        testCaseMFixedCoins = Just fixedCoins,
+        testCaseFixedCoins = fixedCoins,
         testCaseExpectedResult = Right (solution, Nothing)
       }
   checkTestCase testCase

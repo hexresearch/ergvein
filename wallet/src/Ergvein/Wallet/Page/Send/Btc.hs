@@ -177,8 +177,8 @@ makeTx userInputE = do
             amount = fst userInput'amount
             changeOutType = BtcP2WPKH
             (confs, unconfs) = getBtcUtxoPointsParted ps
-            firstpick = chooseCoins amount feeRate outputTypes changeOutType Nothing $ L.sort confs
-            finalpick = either (const $ chooseCoins amount feeRate outputTypes changeOutType Nothing $ L.sort $ confs <> unconfs) Right firstpick
+            firstpick = chooseCoins amount feeRate outputTypes changeOutType [] $ L.sort confs
+            finalpick = either (const $ chooseCoins amount feeRate outputTypes changeOutType [] $ L.sort $ confs <> unconfs) Right firstpick
         pure $ either' finalpick (const $ Left CEMNoSolution) $ \(pick, mChange) ->
           let
             keyBoxToTxt key = btcAddrToText $ xPubToBtcAddr $ extractXPubKeyFromEgv $ pubKeyBox'key key
