@@ -4,6 +4,7 @@ module Ergvein.Core.Transaction.Builder.Btc
     chooseCoins,
     buildTx,
     buildAddrTx,
+    tolerance,
   )
 where
 
@@ -61,70 +62,48 @@ chooseCoins ::
   -- | coins that should persist in the solution.
   -- Note: fixed coins may or may not be included in the list of coins to choose from
   -- they will still be removed from the list later
-  Maybe [c] ->
+  [c] ->
   -- | list of ordered coins to choose from
   [c] ->
   -- | coin selection and change
   Either CoinSelectionError ([c], Maybe Word64)
-chooseCoins target feeRate outTypes changeOutType mFixedCoins coins =
-  case mFixedCoins of
-    Nothing ->
-      let
-        coinMatchesTarget :: Coin c => c -> Bool
-        coinMatchesTarget c =
-          let goal = target + guessTxFee feeRate outTypes [coinType c]
-              value = coinValue c
-          in valueMatchesGoal value goal
-        allCoinsLessThanTarget = filter (\coin -> coinValue coin < target) coins
-        sumOfallCoinsLessThanTarget = sum $ coinValue <$> allCoinsLessThanTarget
-      in
-        case L.sortOn coinValue $ L.filter coinMatchesTarget coins of
-          -- If any of coins matches the target, it will be used.
-          (coin:xs) -> Right ([coin], Nothing)
-          [] ->
-            if
-              let goal = target + guessTxFee feeRate outTypes (coinType <$> allCoinsLessThanTarget)
-              in valueMatchesGoal sumOfallCoinsLessThanTarget goal
-              then -- If the sum of all coins less than the target happens to match the target, they will be used.
-                Right (allCoinsLessThanTarget, Nothing)
-              else -- Otherwise, the FIFO approach is used.
-                runIdentity . runConduit $
-                  sourceList coins .| chooseCoinsSink target feeRate outTypes changeOutType Nothing
-    Just fixedCoins ->
-      let fixedCoinsTypes = coinType <$> fixedCoins
-          goalWithoutChange = target + guessTxFee feeRate outTypes fixedCoinsTypes
-          goalWithChange = target + guessTxFee feeRate (changeOutType : outTypes) fixedCoinsTypes
-          fixedCoinsValue = sum $ coinValue <$> fixedCoins
-       in if fixedCoinsValue >= goalWithoutChange
-            then -- Fixed coins are enough to fund the transaction
-              let mChange =
-                    if fixedCoinsValue - goalWithChange >= fromIntegral (getDustThresholdByOutType changeOutType)
-                      then Just $ fixedCoinsValue - goalWithChange
-                      else Nothing
-               in Right (fixedCoins, mChange)
-            else -- Fixed coins are not enough to fund the transaction, trying to find additional coins
-              let unfixedCoins = coins \\ fixedCoins
-                  coinPlusFixedMatchesTarget :: Coin c => c -> Bool
-                  coinPlusFixedMatchesTarget c =
-                    let goal = target + guessTxFee feeRate outTypes (coinType c : fixedCoinsTypes)
-                        value = coinValue c + fixedCoinsValue
-                    in valueMatchesGoal value goal
-                  allCoinsLessThanTarget = filter (\coin -> coinValue coin < target - fixedCoinsValue) unfixedCoins
-                  sumOfallCoinsLessThanTargetMinusFixed = sum $ coinValue <$> allCoinsLessThanTarget
-               in case L.find coinPlusFixedMatchesTarget unfixedCoins of
-                    -- If any of coins plus fixed coins match the target, it will be used.
-                    Just coin -> Right (coin : fixedCoins, Nothing)
-                    Nothing ->
-                      let
-                        goal = target + guessTxFee feeRate outTypes ((coinType <$> allCoinsLessThanTarget) ++ fixedCoinsTypes)
-                        value = sumOfallCoinsLessThanTargetMinusFixed + fixedCoinsValue
-                      in
-                        if valueMatchesGoal value goal
-                          then -- If the sum of all coins smaller than the target plus fixed coins happen to match the target, they will be used.
-                            Right (fixedCoins ++ allCoinsLessThanTarget, Nothing)
-                          else -- Otherwise, the FIFO approach is used.
-                            runIdentity . runConduit $
-                              sourceList unfixedCoins .| chooseCoinsSink target feeRate outTypes changeOutType (Just fixedCoins)
+chooseCoins target feeRate outTypes changeOutType fixedCoins coins =
+  let
+    fixedCoinsTypes = coinType <$> fixedCoins
+    goalWithoutChange = target + guessTxFee feeRate outTypes fixedCoinsTypes
+    goalWithChange = target + guessTxFee feeRate (changeOutType : outTypes) fixedCoinsTypes
+    fixedCoinsValue = sum $ coinValue <$> fixedCoins
+  in
+    if fixedCoinsValue >= goalWithoutChange
+      then -- Fixed coins are enough to fund the transaction
+        let
+          mChange = if fromIntegral fixedCoinsValue - fromIntegral goalWithChange >= getDustThresholdByOutType changeOutType
+            then Just $ fixedCoinsValue - goalWithChange
+            else Nothing
+        in Right (fixedCoins, mChange)
+      else -- Fixed coins are not enough to fund the transaction, trying to find additional coins
+        let unfixedCoins = coins \\ fixedCoins
+            coinPlusFixedMatchesTarget :: Coin c => c -> Bool
+            coinPlusFixedMatchesTarget c =
+              let goal = target + guessTxFee feeRate outTypes (coinType c : fixedCoinsTypes)
+                  value = coinValue c + fixedCoinsValue
+              in valueMatchesGoal value goal
+          in case L.sortOn coinValue $ L.filter coinPlusFixedMatchesTarget unfixedCoins of
+              -- If any of coins plus fixed coins match the target, it will be used.
+              (coin:_) -> Right (coin : fixedCoins, Nothing)
+              [] ->
+                let
+                  allCoinsLessThanTargetMinusFixed = filter (\coin -> coinValue coin < target - fixedCoinsValue) unfixedCoins
+                  sumOfAllCoinsLessThanTargetMinusFixed = sum $ coinValue <$> allCoinsLessThanTargetMinusFixed
+                  goal = target + guessTxFee feeRate outTypes ((coinType <$> allCoinsLessThanTargetMinusFixed) ++ fixedCoinsTypes)
+                  value = sumOfAllCoinsLessThanTargetMinusFixed + fixedCoinsValue
+                in
+                  if valueMatchesGoal value goal
+                    then -- If the sum of all coins smaller than the target plus fixed coins happen to match the target, they will be used.
+                      Right (fixedCoins ++ allCoinsLessThanTargetMinusFixed, Nothing)
+                    else -- Otherwise, the FIFO approach is used.
+                      runIdentity . runConduit $
+                        sourceList unfixedCoins .| chooseCoinsSink target feeRate outTypes changeOutType fixedCoins
 
 -- | Coin selection algorithm for transactions. This
 -- function returns the selected coins together with the amount of change to
@@ -141,13 +120,13 @@ chooseCoinsSink ::
   -- | change output type
   BtcOutputType ->
   -- | fixed coins that should persist in the solution
-  Maybe [c] ->
+  [c] ->
   -- | coin selection and change
   ConduitT c Void m (Either CoinSelectionError ([c], Maybe Word64))
-chooseCoinsSink target feeRate outTypes changeOutType mFixedCoins
+chooseCoinsSink target feeRate outTypes changeOutType fixedCoins
   | target > 0 =
     maybeToEither InsufficientFunds
-      <$> greedyAddSink target (guessTxFee feeRate) outTypes changeOutType mFixedCoins
+      <$> greedyAddSink target (guessTxFee feeRate) outTypes changeOutType fixedCoins
   | otherwise = return $ Left TargetMustBePositive
 
 -- | Select coins greedily by starting from an empty solution. The algorithm will return
@@ -163,13 +142,13 @@ greedyAddSink ::
   -- | change output type
   BtcOutputType ->
   -- | coins that should persist in the solution
-  Maybe [c] ->
+  [c] ->
   -- | coin selection and change
   ConduitT c Void m (Maybe ([c], Maybe Word64))
-greedyAddSink target guessFee outTypes changeOutType mFixedCoins =
+greedyAddSink target guessFee outTypes changeOutType fixedCoins =
   go initAcc initATot
   where
-    initAcc = fromMaybe [] mFixedCoins
+    initAcc = fixedCoins
     initATot = sum $ coinValue <$> initAcc
     -- The goal is the value we must reach (including the fee) for a certain
     -- amount of selected coins.
