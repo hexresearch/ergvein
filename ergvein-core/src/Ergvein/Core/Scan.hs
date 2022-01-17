@@ -8,7 +8,8 @@ import Control.Lens
 import Control.Monad.IO.Class
 import Control.Monad.Reader
 import Data.ByteString (ByteString)
-import Data.Foldable (traverse_)
+import Data.Foldable (traverse_, for_)
+import Data.Traversable (for)
 import Data.List
 import Data.Map (Map)
 import Data.Maybe
@@ -61,14 +62,14 @@ scannerBtc = void $ workflow checkScannedHeight
     -- then we need to set scannedHeight to the current blockchain height.
     checkScannedHeight :: Workflow t m ()
     checkScannedHeight = Workflow $ do
-      isRestored <- fmap _pubStorage'restoring $ getPubStorage
+      isRestored <- fmap _pubStorage'restoring getPubStorage
       scannedHeight <- getScannedHeight BTC
       buildE <- getPostBuild
       scannedHeightE <- do
         mStartHeightD <- getNodeHeightBtc
-        let gotHeightE = fmapMaybe (\mH -> maybe Nothing (Just . fromIntegral) mH) $ updated mStartHeightD
+        let gotHeightE = fmapMaybe (fmap fromIntegral) $ updated mStartHeightD
         setScannedHeightE BTC gotHeightE
-      let goE = if (not isRestored && scannedHeight == 0)
+      let goE = if not isRestored && scannedHeight == 0
             then scannedHeightE
             else buildE
       pure ((), checkRestored <$ goE)
@@ -90,13 +91,13 @@ scannerBtc = void $ workflow checkScannedHeight
       logWrite "[scannerBtc][listenHeight]: Start"
       heightD <- getCurrentHeight BTC
       filterD <- getScannedHeightD BTC
-      fhE <- updatedWithInit $ ((,) . fromIntegral) <$> heightD <*> filterD
+      fhE <- updatedWithInit $ (,) . fromIntegral <$> heightD <*> filterD
       reqE <- networkHoldE (pure never) $ ffor fhE $ \(h,f) -> if h >= f
         then do
           buildE <- getPostBuild
           te <- tickLossyFromPostBuildTime filterReqDelay
           let n = fromIntegral $ if f == h then 1 else h - f
-          pure $ (f, n) <$ (leftmost [buildE, void te])
+          pure $ (f, n) <$ leftmost [buildE, void te]
         else pure never
       filtersE <- getFilters BTC reqE
       pure ((), prepareBatch <$> filtersE)
@@ -108,16 +109,16 @@ scannerBtc = void $ workflow checkScannedHeight
       logWrite $ "[scannerBtc][prepareBatch]: Got a new batch of size " <> showt (length fs)
       fh <- getScannedHeight BTC
       let filts = zip [fh, fh+1 ..] fs
-      batch <- fmap catMaybes $ flip traverse filts $ \(h, (bh, bs)) -> do
+      batch <- fmap catMaybes $ for filts $ \(h, (bh, bs)) -> do
         efilt <- decodeBtcAddrFilter bs
         case efilt of
           Left err -> do
-            logWrite $ "BTC filter decoding error: " <> (T.pack err)
+            logWrite $ "BTC filter decoding error: " <> T.pack err
             pure Nothing
           Right filt -> pure $ Just (h, bh, filt)
       psD <- getPubStorageD
       buildE <- getPostBuild
-      void $ updateWalletStatusNormal BTC $ (const $ WalletStatusNormal'newFilters $ length fs) <$ buildE
+      void $ updateWalletStatusNormal BTC $ const (WalletStatusNormal'newFilters $ length fs) <$ buildE
       nextE <- delay 0.1 $ ffor (current psD `tag` buildE) $ \ps -> let
         ext = repackKeys External $ pubStorageKeys BTC External ps
         int = repackKeys Internal $ pubStorageKeys BTC Internal ps
@@ -135,7 +136,7 @@ scannerBtc = void $ workflow checkScannedHeight
       let addrs = V.toList $ mkAddr <$> keys
       buildE <- delay 0.1 =<< getPostBuild
       hashesE <- performFork $ ffor buildE $ const $ liftIO $ fmap catMaybes $
-        flip traverse batch $ \(h, bh, filt) -> do
+        for batch $ \(h, bh, filt) -> do
           let bhash = egvBlockHashToHk bh
           res <- applyBtcFilterMany bhash filt addrs
           pure $ if res then Just (bhash, fromIntegral h) else Nothing
@@ -147,7 +148,7 @@ scannerBtc = void $ workflow checkScannedHeight
         logWrite $ "[scannerBtc][scanBatchKeys]: Scan done. Got " <> showt (V.length ks) <> " extra keys"
       let (nullE, extraE) = splitFilter V.null keysE
       goListenE <- setScannedHeightE BTC $ nextHeight <$ nullE
-      let nextE = leftmost [listenHeight <$ goListenE, (scanBatchKeys nextHeight batch) <$> extraE]
+      let nextE = leftmost [listenHeight <$ goListenE, scanBatchKeys nextHeight batch <$> extraE]
       pure ((), nextE)
 
 repackKeys :: KeyPurpose -> V.Vector EgvXPubKey -> V.Vector ScanKeyBox
@@ -157,10 +158,10 @@ repackKeys kp = V.imap $ \i k -> ScanKeyBox k kp i
 -- Return event that fires 'True' if we found any transaction and fires 'False' if not.
 scanBtcBlocks :: (MonadWallet t m, MonadNode t m) => Vector ScanKeyBox -> Event t [(HB.BlockHash, HB.BlockHeight)] -> m (Event t Bool)
 scanBtcBlocks keys hashesE = do
-  performEvent_ $ ffor hashesE $ \hs -> flip traverse_ hs $ \(_,a) -> logWrite $ showt a
+  performEvent_ $ ffor hashesE $ \hs -> for_ hs $ \(_,a) -> logWrite $ showt a
   let noScanE = fforMaybe hashesE $ \bls -> if null bls then Just () else Nothing
   heightMapD <- holdDyn M.empty $ M.fromList <$> hashesE
-  let rhashesE = fmap (nub . fst . unzip) $ hashesE
+  let rhashesE = fmap (nub . map fst) hashesE
   _ <- logEvent "Blocks requested: " rhashesE
   blocksE <- requestBlocksBtc rhashesE
   storedBlocksE <- storeBlockHeadersE "scanBtcBlocks" BTC blocksE
@@ -169,9 +170,9 @@ scanBtcBlocks keys hashesE = do
   performEvent_ $ ffor txsUpdsE $ \(upds, _) -> logWrite $ "Transactions got: " <> showt (mconcat . V.toList . fmap snd $ upds)
   storeUpdated1E <- insertTxsUtxoInPubKeystore "scanBtcBlocks" BTC txsUpdsE
   updD <- holdDyn (error "impossible: scanBtcBlocks") storeUpdated1E
-  outUpdE <- removeOutgoingTxs "scanBtcBlocks" BTC $ (M.elems . M.unions . V.toList . snd . V.unzip . fst) <$> storeUpdated1E
+  outUpdE <- removeOutgoingTxs "scanBtcBlocks" BTC $ M.elems . M.unions . V.toList . snd . V.unzip . fst <$> storeUpdated1E
   let storeUpdated2E = tag (current updD) outUpdE
-  pure $ leftmost [(V.any (not . M.null . snd)) . fst <$> storeUpdated2E, False <$ noScanE]
+  pure $ leftmost [V.any (not . M.null . snd) . fst <$> storeUpdated2E, False <$ noScanE]
 
 -- | Extract transactions that correspond to given address.
 getAddressesTxs :: MonadWallet t m
@@ -180,7 +181,7 @@ getAddressesTxs :: MonadWallet t m
 getAddressesTxs e = do
   psD <- getPubStorageD
   performFork $ ffor (current psD `attach` e) $ \(ps, (addrs, heights, blocks)) -> liftIO $ flip runReaderT ps $ do
-    (vec, b) <- fmap V.unzip $ traverse (getAddrTxsFromBlocks heights blocks) addrs
+    (vec, b) <- V.unzip <$> traverse (getAddrTxsFromBlocks heights blocks) addrs
     let (outs, ins) = V.unzip b
     let upds :: BtcUtxoUpdate = (M.unions $ V.toList outs, mconcat $ V.toList ins)
     pure (vec, upds)
@@ -235,10 +236,10 @@ getAddrTxsFromBlocks :: (HasPubStorage m, PlatformNatives)
   -> m ((ScanKeyBox, M.Map TxId EgvTx), BtcUtxoUpdate)
 getAddrTxsFromBlocks heights blocks box = do
   let txsMap = foldl M.union mempty $ makeTxsMap heights <$> blocks
-  (txMaps, uts) <- fmap unzip $ traverse (getAddrTxsFromBlock box heights txsMap) blocks
+  (txMaps, uts) <- unzip <$> traverse (getAddrTxsFromBlock box heights txsMap) blocks
   let (outs,ins) = unzip uts
   let upds = (M.unions outs, mconcat ins)
-  pure $ ((box, M.unions txMaps), upds)
+  pure ((box, M.unions txMaps), upds)
 
 getAddrTxsFromBlock :: (HasPubStorage m, PlatformNatives)
   => ScanKeyBox
@@ -271,8 +272,8 @@ refreshBtcKeys goE = do
   psD <- getPubStorageD
   ksVecE <- performFork $ ffor goE $ const $ do
     ps <- sampleDyn psD
-    let masterPubKey = maybe (error "No BTC master key!") id $ pubStoragePubMaster BTC ps
-    let ks = maybe (error "No BTC key storage!") id $ pubStorageKeyStorage BTC ps
+    let masterPubKey = fromMaybe (error "No BTC master key!") $ pubStoragePubMaster BTC ps
+    let ks = fromMaybe (error "No BTC key storage!") $ pubStorageKeyStorage BTC ps
 
     let eN = V.length $ pubStorageKeys BTC External ps
         eU = maybe 0 fst $ pubStorageLastUnusedKey BTC External ps

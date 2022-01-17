@@ -150,7 +150,7 @@ btcMempoolTxInserter txE = do
         Just checkAddrTxResult -> do
           utxoUpdates <- getUtxoUpdates Nothing keys tx
           pure $ Just (checkAddrTxResult, utxoUpdates)
-  insertedE <- insertTxsUtxoInPubKeystore "btcMempoolTxInserter" BTC $ helper <$> (fmapMaybe id valsE)
+  insertedE <- insertTxsUtxoInPubKeystore "btcMempoolTxInserter" BTC $ helper <$> fmapMaybe id valsE
   pure $ void insertedE
   where
     helper :: ((V.Vector ScanKeyBox, EgvTx), BtcUtxoUpdate) -> (V.Vector (ScanKeyBox, M.Map TxId EgvTx), BtcUtxoUpdate)

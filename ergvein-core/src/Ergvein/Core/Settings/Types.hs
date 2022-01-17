@@ -60,8 +60,8 @@ data ExplorerUrls = ExplorerUrls {
 
 instance ToJSON ExplorerUrls where
   toJSON ExplorerUrls{..} = object [
-      "testnetUrl"  .= toJSON testnetUrl
-    , "mainnetUrl"  .= toJSON mainnetUrl
+      "testnetUrl" .= toJSON testnetUrl
+    , "mainnetUrl" .= toJSON mainnetUrl
    ]
 
 instance FromJSON ExplorerUrls where

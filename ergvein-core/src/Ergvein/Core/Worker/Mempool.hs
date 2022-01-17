@@ -3,38 +3,44 @@ module Ergvein.Core.Worker.Mempool
     btcMempoolWorker
   ) where
 
+import Control.Lens
 import Control.Monad.Random
 import Control.Monad.Reader
-import Control.Lens
+import Data.Maybe (catMaybes, Maybe (Nothing), isJust)
+import Data.Serialize
+import Data.Text (Text)
+import Data.Traversable (for)
 import Ergvein.Core.Node.Btc ()
+import Ergvein.Core.Node.Manage (checkAddrMempoolTx)
 import Ergvein.Core.Node.Monad
 import Ergvein.Core.Node.Types
 import Ergvein.Core.Store.Monad
+import Ergvein.Core.Store.Util
+import Ergvein.Core.Transaction
+import Ergvein.Core.Wallet.Monad
+import Ergvein.Filters.Btc.Mutable
+import Ergvein.Index.Protocol.Types hiding (CurrencyCode(..))
+import Ergvein.Node.Constants
 import Ergvein.Text
+import Ergvein.Types
 import Ergvein.Types.Storage
+import Ergvein.Types.Utxo.Btc
 import Network.Haskoin.Network hiding (Message(..))
 import Network.Socket (SockAddr)
 import Reflex
-import Reflex.Workflow
+import Reflex.ExternalRef
 import Reflex.Flunky
 import Reflex.Fork
-import Reflex.ExternalRef
+import Reflex.Workflow
 import Sepulcas.Native
-import Ergvein.Core.Wallet.Monad
-import Ergvein.Index.Protocol.Types hiding (CurrencyCode(..))
-import Ergvein.Types
-import Data.Serialize
-import Data.Text (Text)
-import Data.Maybe (catMaybes)
-import Ergvein.Filters.Btc.Mutable
-import Ergvein.Core.Node.Manage (checkAddrMempoolTx)
-import Ergvein.Core.Transaction
-import Ergvein.Types.Utxo.Btc
-import Ergvein.Node.Constants
 
+import qualified Data.List as L
 import qualified Data.Map.Strict as M
+import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Vector as V
+
+import qualified Network.Haskoin.Transaction as HT
 
 maxFiltersRepeat :: Int
 maxFiltersRepeat = 3
@@ -72,7 +78,7 @@ btcMempoolWorkerConn IndexerConnection{..} = void $ workflow waitRestore
     waitRestore :: Workflow t m ()
     waitRestore = Workflow $ do
       workLog "Started"
-      nextE <- updatedWithInit =<< (fmap . fmap) _pubStorage'restoring getPubStorageD
+      nextE <- updatedWithInit . fmap _pubStorage'restoring =<< getPubStorageD
       pure ((), waitIndexerUp <$ nextE)
     waitIndexerUp :: Workflow t m ()
     waitIndexerUp = Workflow $ do
@@ -99,11 +105,11 @@ btcMempoolWorkerConn IndexerConnection{..} = void $ workflow waitRestore
       let keys = getPublicKeys $ ps ^. btcPubStorage . currencyPubStorage'pubKeystore
       let mkAddr k = addressToScriptBS . xPubToBtcAddr . extractXPubKeyFromEgv $ scanBox'key k
       let addrs = V.toList $ mkAddr <$> keys
-      prefixes <- fmap catMaybes $ flip traverse (M.toList filtTree) $ \(pref, MempoolFilter bs) -> do
+      prefixes <- fmap catMaybes $ for (M.toList filtTree) $ \(pref, MempoolFilter bs) -> do
         efilt <- decodeBtcAddrFilter bs
         case efilt of
           Left err -> do
-            workLog $ "BTC filter decoding error. [Prefix: " <> showt pref <> "]: " <> (T.pack err)
+            workLog $ "BTC filter decoding error. [Prefix: " <> showt pref <> "]: " <> T.pack err
             pure Nothing
           Right filt -> do
             match <- applyBtcPrefixFilterMany pref filt addrs
@@ -122,7 +128,6 @@ btcMempoolWorkerConn IndexerConnection{..} = void $ workflow waitRestore
       let btcps = ps ^. btcPubStorage
           keys = getPublicKeys $ btcps ^. currencyPubStorage'pubKeystore
           txStore = btcps ^. currencyPubStorage'transactions
-
       buildE <- getPostBuild
       fire <- getIndexReqFire
       performEvent $ ffor buildE $ const $
@@ -131,7 +136,7 @@ btcMempoolWorkerConn IndexerConnection{..} = void $ workflow waitRestore
             MMempoolChunk (MempoolChunk pref txs) -> Just (pref, txs)
             _ -> Nothing
       valsE <- performFork $ ffor mempE $ \(pref, txs) -> do
-        val <- fmap catMaybes $ flip traverse (V.toList txs) $ \txbs -> case decode txbs of
+        fmap catMaybes $ for (V.toList txs) $ \txbs -> case decode txbs of
           Left err -> do
             logWrite $ "[btcMempoolWorker]<" <> indexConName <> ">: " <> "Error decoding tx"
             pure Nothing
