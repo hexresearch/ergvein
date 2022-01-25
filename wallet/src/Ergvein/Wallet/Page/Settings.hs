@@ -13,6 +13,7 @@ import Data.List
 import Data.Traversable (for)
 import Reflex.Dom
 
+import Ergvein.Wallet.Debug
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
@@ -34,16 +35,17 @@ import qualified Data.Text as T
 
 data SubPageSettings
   = GoLanguage
-  -- | GoCurrencies
-  | GoUnits
   | GoNetwork
-  | GoMnemonicExport
+  | GoDisplay
+  -- | GoCurrencies
   | GoDns
   | GoTor
   | GoNodes
   | GoRbf
   | GoPassword
+  | GoMnemonicExport
   | GoDelete
+  | GoDebug
 
 settingsPage :: MonadFront t m => m ()
 settingsPage = do
@@ -53,30 +55,32 @@ settingsPage = do
       let btns = [
               (GoLanguage, STPSButLanguage)
             , (GoNetwork, STPSButNetwork)
-            , (GoUnits, STPSButDisplay)
+            , (GoDisplay, STPSButDisplay)
             -- , (GoCurrencies, STPSButActiveCurrs)
             , (GoDns, STPSButDns)
             , (GoTor, STPSButTor)
             , (GoNodes, STPSButNodes)
             , (GoRbf, STPSButRbf)
             , (GoPassword, STPSButSetPass)
-            , (GoDelete, STPSButDeleteWallet)
             , (GoMnemonicExport, STPSButMnemonicExport)
+            , (GoDelete, STPSButDeleteWallet)
+            , (GoDebug, STPSButDebug)
             ]
       goE <- fmap leftmost $ for btns $ \(v,l) -> (v <$) <$> outlineButton l
       void $ nextWidget $ ffor goE $ \spg -> Retractable {
           retractableNext = case spg of
             GoLanguage        -> languagePage
-            -- GoCurrencies      -> currenciesPage
             GoNetwork         -> networkSettingsPage
-            GoUnits           -> unitsPage
-            GoMnemonicExport  -> mnemonicExportPage
-            GoNodes           -> btcNodesPage
-            GoRbf             -> rbfPage
+            GoDisplay         -> unitsPage
+            -- GoCurrencies      -> currenciesPage
             GoDns             -> dnsPage
             GoTor             -> torPage
+            GoNodes           -> btcNodesPage
+            GoRbf             -> rbfPage
             GoPassword        -> changePasswordPage
+            GoMnemonicExport  -> mnemonicExportPage
             GoDelete          -> deleteWalletPage
+            GoDebug           -> debugPage
         , retractablePrev = Just $ pure settingsPage
         }
 

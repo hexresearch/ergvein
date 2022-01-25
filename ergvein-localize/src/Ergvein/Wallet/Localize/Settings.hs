@@ -23,6 +23,7 @@ data SettingsPageStrings =
   | STPSButDisplay
   | STPSButPortfolio
   | STPSButMnemonicExport
+  | STPSButDebug
   | STPSButDns
   | STPSButTor
   | STPSButNodes
@@ -79,6 +80,7 @@ instance LocalizedPrint SettingsPageStrings where
       STPSButMnemonicExport   -> "Export mnemonic phrase"
       STPSButDeleteWallet     -> "Delete wallet"
       STPSButRbf              -> "Replace by fee"
+      STPSButDebug            -> "Debug"
       STPSEnableRbfByDefault  -> "Send RBF enabled transactions by default:"
       STPSSelectLanguage      -> "Select language:"
       STPSTorStatus           -> "Current status"
@@ -119,13 +121,14 @@ instance LocalizedPrint SettingsPageStrings where
       STPSButMnemonicExport   -> "Экспортировать мнемоническую фразу"
       STPSButDeleteWallet     -> "Удалить кошелёк"
       STPSButRbf              -> "Replace by fee"
+      STPSButDebug            -> "Debug"
       STPSEnableRbfByDefault  -> "Отправлять RBF транзакции по умолчанию:"
       STPSSelectLanguage      -> "Выберите язык:"
       STPSTorStatus           -> "Статус подключения"
-      STPSTorEnable          -> "Подключить"
-      STPSTorDisable       -> "Отключить"
-      STPSTorEnabled        -> "Подключено:"
-      STPSTorDisabled     -> "Отключено"
+      STPSTorEnable           -> "Подключить"
+      STPSTorDisable          -> "Отключить"
+      STPSTorEnabled          -> "Подключено:"
+      STPSTorDisabled         -> "Отключено"
       STPSUseTor              -> "Проксировать через Tor"
       STPSSetsProxy           -> "Настройки прокси SOCKS"
       STPSProxyIpField        -> "Адрес прокси"
