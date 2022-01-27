@@ -10,9 +10,6 @@ module Ergvein.Core.Store.Monad(
   , getPubStorageBtcD
   , addTxToPubStorage
   , addTxMapToPubStorage
-  , removeRbfTxsFromStorage1
-  , removeRbfTxsFromStorage2
-  , RemoveRbfTxsInfo(..)
   , setLabelToExtPubKey
   , setFlagToExtPubKey
   , updateBtcUtxoSet
@@ -43,10 +40,10 @@ import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.IO.Unlift
 import Control.Monad.Reader
+import Crypto.Random.Types (MonadRandom)
 import Data.Functor (void)
 import Data.Map (Map)
 import Data.Maybe (fromMaybe, isJust, isNothing)
-import Data.Set (Set)
 import Data.Text (Text)
 import Ergvein.Crypto
 import Ergvein.Types.Currency
@@ -57,7 +54,6 @@ import Ergvein.Types.Storage.Currency.Public.Btc
 import Ergvein.Types.Transaction
 import Ergvein.Types.Utxo.Btc
 import Ergvein.Types.WalletInfo
-import Crypto.Random.Types (MonadRandom)
 import Reflex
 import Sepulcas.Native
 
@@ -206,111 +202,6 @@ insertManyTxsUtxoInPubKeystore caller cur reqE = do
       ps3 = V.foldl' upd ps2 vec
       in ps3
 
--- | Removes RBF transactions from storage and updates transaction replacements info.
--- Note: that this process has two stages. This is the first stage.
--- At first stage we remove those RBF transactions for which
--- a transaction with the highest fee (a.k.a. replacing transaction) was found succesfully.
--- This stage is performed when we receive tx from mempool or when we bump tx fee form this wallet.
--- The second stage is performed when one of txs stored in currencyPubStorage'possiblyReplacedTxs is confirmed.
--- Information about which transactions were repaced is stored in currencyPubStorage'replacedTxs.
--- Since we are not always able to identify the transactions with the highest fee in a sequence of RBF transactions,
--- we also keep information about which of these transactions should be deleted when one of them is confirmed.
--- This information is stored in currencyPubStorage'possiblyReplacedTxs.
-removeRbfTxsFromStorage1 :: MonadStorage t m => Text -> Event t (BtcTxId, Set BtcTxId, Set BtcTxId) -> m (Event t ())
-removeRbfTxsFromStorage1 caller txsToReplaceE = modifyPubStorage clr $ ffor txsToReplaceE $ \(replacingTxId, replacedTxIds, possiblyReplacedTxIds) ps ->
-  if L.null replacedTxIds && L.null possiblyReplacedTxIds
-    then Nothing
-    else Just $ let
-      -- Removing txs from btcPubStorage'transactions
-      ps11 = modifyCurrStorageBtc (\btcPs -> btcPs & btcPubStorage'transactions %~ (`M.withoutKeys` replacedTxIds)) ps
-      -- Removing utxos from btcPubStorage'utxos
-      ps12 = modifyCurrStorageBtc (\btcPs -> btcPs & btcPubStorage'utxos %~ M.filterWithKey (filterOutPoints replacedTxIds)) ps11
-      -- Removing txids from EgvPubKeyBoxes in currencyPubStorage'pubKeystore
-      ps13 = modifyCurrStorage BTC (\cps -> cps & currencyPubStorage'pubKeystore %~ removeTxIdsFromEgvKeyBoxes (S.map BtcTxHash replacedTxIds)) ps12
-      -- Updating btcPubStorage'replacedTxs
-      ps14 = modifyCurrStorageBtc (updateReplacedTxsStorage replacingTxId replacedTxIds) ps13
-      -- Updating btcPubStorage'possiblyReplacedTxs
-      ps15 = modifyCurrStorageBtc (updatePossiblyReplacedTxsStorage replacingTxId replacedTxIds possiblyReplacedTxIds) ps14
-      in ps15
-  where
-    clr = caller <> ":" <> "removeRbfTxsFromStorage1"
-
-updateReplacedTxsStorage :: BtcTxId -> Set BtcTxId -> BtcPubStorage -> BtcPubStorage
-updateReplacedTxsStorage replacingTxId replacedTxIds btcPs =
-  let
-    replacedTxsMap = btcPs ^. btcPubStorage'replacedTxs
-    -- Remove all replacedTxsMap keys that are members of replacedTxIds
-    replacedTxsMap' = M.filterWithKey (\k _ -> not $ k `S.member` replacedTxIds) replacedTxsMap
-    -- Collect values of removed replacedTxsMap keys into one set
-    txIdsReplacedByFilteredTxIds = S.unions $ S.map (flip (M.findWithDefault S.empty) $ replacedTxsMap) replacedTxIds
-    -- Combine into one set
-    updatedReplacedTxIds = S.unions [replacedTxIds, txIdsReplacedByFilteredTxIds]
-    -- Insert replacing tx with replaced txs into map
-    updatedReplacedTxs = M.insertWith S.union replacingTxId updatedReplacedTxIds replacedTxsMap'
-    updatedBtcPs = btcPs & btcPubStorage'replacedTxs .~ updatedReplacedTxs
-  in updatedBtcPs
-
-updatePossiblyReplacedTxsStorage :: BtcTxId -> Set BtcTxId -> Set BtcTxId -> BtcPubStorage -> BtcPubStorage
-updatePossiblyReplacedTxsStorage possiblyReplacingTxId replacedTxIds possiblyReplacedTxIds btcPs =
-  let
-    possiblyReplacedTxsMap = btcPs ^. btcPubStorage'possiblyReplacedTxs
-    -- Remove all keys that are members of possiblyReplacedTxIds
-    possiblyReplacedTxsMap' = M.filterWithKey (\k _ -> not $ k `S.member` possiblyReplacedTxIds) possiblyReplacedTxsMap
-    -- Collect values of removed keys into one set
-    txIdsReplacedByFilteredTxIds = S.unions $ S.map (flip (M.findWithDefault S.empty) possiblyReplacedTxsMap) possiblyReplacedTxIds
-    -- Combine resulting set with possiblyReplacedTxIds
-    updatedPossiblyReplacedTxIds = S.union possiblyReplacedTxIds txIdsReplacedByFilteredTxIds
-    -- Insert possibly replacing tx with possibly replaced txs into map
-    possiblyReplacedTxsMap'' = M.insertWith S.union possiblyReplacingTxId updatedPossiblyReplacedTxIds possiblyReplacedTxsMap'
-    -- If some txs from btcPubStorage'possiblyReplacedTxs have been replaced by replacingTxId
-    -- then we need to delete the corresponding group
-    updatedPossiblyReplacedTxs  = M.filterWithKey (\k v -> (not $ k `S.member` replacedTxIds) && (S.null $ S.intersection v replacedTxIds)) possiblyReplacedTxsMap''
-    updatedBtcPs = btcPs & btcPubStorage'possiblyReplacedTxs .~ updatedPossiblyReplacedTxs
-  in updatedBtcPs
-
-data RemoveRbfTxsInfo = RemoveRbfTxsInfo {
-    removeRbfTxsInfo'keyToRemoveFromPossiblyReplacedTxs :: !BtcTxId -- ^ Map key that should be removed from currencyPubStorage'possiblyReplacedTxs.
-  , removeRbfTxsInfo'replacingTx :: !BtcTxId -- ^ Tx that replaces txs in removeRbfTxsInfo'replacedTxs.
-  , removeRbfTxsInfo'replacedTxs :: !(Set BtcTxId) -- ^ Set of txs that was replaced and should be removed from storage.
-  } deriving (Eq, Show, Ord)
-
--- | Removes RBF transactions from storage and updates transaction replacements info.
--- Note: that this process has two stages. This is the second stage.
--- At second stage we remove those RBF transactions for which transaction with the highest fee (a.k.a. replacing transaction) wasn't found
--- before one of them was confirmed.
--- The first stage is performed when we receive tx form mempool.
-removeRbfTxsFromStorage2 :: MonadStorage t m => Text -> Event t (Set RemoveRbfTxsInfo) -> m (Event t ())
-removeRbfTxsFromStorage2 caller txsToReplaceE = modifyPubStorage clr $ ffor txsToReplaceE $ \removeRbfTxsInfoSet ps ->
-  if S.null removeRbfTxsInfoSet
-    then Nothing
-    else Just $ let
-      keysToRemoveFromPossiblyReplacedTxs = S.map removeRbfTxsInfo'keyToRemoveFromPossiblyReplacedTxs removeRbfTxsInfoSet
-      txIdsToRemove = S.unions $ S.map removeRbfTxsInfo'replacedTxs removeRbfTxsInfoSet
-      replacedTxsMap = M.fromList $ (\(RemoveRbfTxsInfo _ b c) -> (b, c)) <$> S.toList removeRbfTxsInfoSet
-      -- Removing txs from btcPubStorage'transactions
-      ps11 = modifyCurrStorageBtc (\btcPs -> btcPs & btcPubStorage'transactions %~ (`M.withoutKeys` txIdsToRemove)) ps
-      -- Removing utxos from btcPubStorage'utxos
-      ps12 = modifyCurrStorageBtc (\btcPs -> btcPs & btcPubStorage'utxos %~ M.filterWithKey (filterOutPoints txIdsToRemove)) ps11
-      -- Removing txids from EgvPubKeyBoxes form currencyPubStorage'pubKeystore
-      ps13 = modifyCurrStorage BTC (\cps -> cps & currencyPubStorage'pubKeystore %~ removeTxIdsFromEgvKeyBoxes (S.map BtcTxHash txIdsToRemove)) ps12
-      -- Updating btcPubStorage'replacedTxs
-      ps14 = modifyCurrStorageBtc (\btcPs -> btcPs & btcPubStorage'replacedTxs %~ M.union replacedTxsMap) ps13
-      -- Removing replaced tx ids from btcPubStorage'possiblyReplacedTxs
-      ps15 = modifyCurrStorageBtc (\btcPs -> btcPs & btcPubStorage'possiblyReplacedTxs %~ (`M.withoutKeys` keysToRemoveFromPossiblyReplacedTxs)) ps14
-      in ps15
-  where
-    clr = caller <> ":" <> "removeRbfTxsFromStorage2"
-
-filterOutPoints :: Set BtcTxId -> HT.OutPoint -> BtcUtxoMeta -> Bool
-filterOutPoints txIdSet outPoint _ = not $ S.member (HT.outPointHash outPoint) txIdSet
-
-removeTxIdsFromEgvKeyBoxes :: Set TxId -> PubKeystore -> PubKeystore
-removeTxIdsFromEgvKeyBoxes txIdsSet PubKeystore{..} =
-  let updatedPubKeystore'external = fmap removeTxIdsFromKeybox pubKeystore'external
-      updatedPubKeystore'internal = fmap removeTxIdsFromKeybox pubKeystore'internal
-      removeTxIdsFromKeybox (EgvPubKeyBox k txs m) = EgvPubKeyBox k (S.difference txs txIdsSet) m
-  in PubKeystore pubKeystore'master updatedPubKeystore'external updatedPubKeystore'internal
-
 txListToMap :: [EgvTx] -> Map TxId EgvTx
 txListToMap txList = M.fromList $ (\tx -> (egvTxId tx, tx)) <$> txList
 
@@ -368,7 +259,7 @@ storeBlockHeadersE caller _ reqE = do
   storedE <- modifyPubStorage clr $ ffor reqE $ \blks ps -> let
     mmap = if null blks
             then Nothing
-            else Just $ M.fromList $ fmap (\b -> (HB.headerHash $ HB.blockHeader $ b, HB.blockHeader b)) blks
+            else Just $ M.fromList $ fmap (\b -> (HB.headerHash $ HB.blockHeader b, HB.blockHeader b)) blks
     in ffor mmap $ \m -> modifyCurrStorageBtc (btcPubStorage'headers %~ M.union m) ps
   pure $ attachWithMaybe const (current reqD) storedE
   where clr = caller <> ":" <> "storeBlockHeadersE"
@@ -394,7 +285,6 @@ getScannedHeight cur = do
     ^. pubStorage'currencyPubStorages
     . at cur)
 
-
 -- ===========================================================================
 --           HasPubStorage helpers
 -- ===========================================================================
@@ -417,7 +307,7 @@ getTxById tid = fmap (M.lookup tid) askTxStorage
 getBlockHeaderByHash :: HasPubStorage m => HB.BlockHash -> m (Maybe HB.BlockHeader)
 getBlockHeaderByHash bh = do
   ps <- askPubStorage
-  pure $ ps ^? pubStorage'currencyPubStorages . at BTC . _Just . currencyPubStorage'meta . _PubStorageBtc . btcPubStorage'headers . at bh . _Just
+  pure $ ps ^? pubStorage'currencyPubStorages . at BTC . _Just . currencyPubStorage'meta . _PubStorageBtc . btcPubStorage'headers . ix bh
 
 getTxHeight :: EgvTx -> Maybe BlockHeight
 getTxHeight (TxBtc tx) = (etxMetaHeight <=< getBtcTxMeta) tx

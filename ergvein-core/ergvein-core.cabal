@@ -84,6 +84,7 @@ library
     Ergvein.Core.Store.Crypto
     Ergvein.Core.Store.Env
     Ergvein.Core.Store.Monad
+    Ergvein.Core.Store.Rbf
     Ergvein.Core.Store.Util
     Ergvein.Core.Store.WalletInfo
     Ergvein.Core.TimeZone

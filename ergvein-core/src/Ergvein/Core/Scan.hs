@@ -141,7 +141,7 @@ scannerBtc = void $ workflow checkScannedHeight
           res <- applyBtcFilterMany bhash filt addrs
           pure $ if res then Just (bhash, fromIntegral h) else Nothing
       scanE <- scanBtcBlocks keys hashesE
-      removedReplacedE <- removeTxsReplacedByFee =<< delay 1 (void scanE)
+      removedReplacedE <- removeTxsReplacedByConfirmedTx =<< delay 1 (void scanE)
       keysE <- refreshBtcKeys removedReplacedE
       void $ updateWalletStatusNormal BTC $ const WalletStatusNormal'synced <$ keysE
       performEvent_ $ ffor keysE $ \ks ->
@@ -185,37 +185,6 @@ getAddressesTxs e = do
     let (outs, ins) = V.unzip b
     let upds :: BtcUtxoUpdate = (M.unions $ V.toList outs, mconcat $ V.toList ins)
     pure (vec, upds)
-
--- | Finds all txs that should be replaced and removes them from storage.
--- Also stores information about transaction replacements in the storage.
--- Stage 2. See removeRbfTxsFromStorage2.
-removeTxsReplacedByFee :: MonadWallet t m => Event t () -> m (Event t ())
-removeTxsReplacedByFee goE = do
-  pubStorageD <- getPubStorageD
-  replacedTxsE <- performFork $ ffor (tagPromptlyDyn pubStorageD goE) $ \ps -> do
-    let btcps = ps ^. btcPubStorage
-        txStore = btcps ^. currencyPubStorage'transactions
-        possiblyReplacedTxs = btcps ^. currencyPubStorage'meta . _PubStorageBtc . btcPubStorage'possiblyReplacedTxs
-    liftIO $ flip runReaderT txStore $ do
-      confirmedTxIds <- M.keysSet <$> getConfirmedTxs
-      let confirmedBtcTxIds = S.map (fromJust . toBtcTxHash) confirmedTxIds
-      pure $ getTxsToRemove confirmedBtcTxIds possiblyReplacedTxs
-  removedE <- removeRbfTxsFromStorage2 "removedReplacedTxs" replacedTxsE
-  pure removedE
-
-getTxsToRemove ::
-  Set BtcTxId ->
-  Map BtcTxId (Set BtcTxId) ->
-  Set RemoveRbfTxsInfo
-getTxsToRemove confirmedTxIds possiblyReplacedTxs =
-  M.foldrWithKey' helper S.empty possiblyReplacedTxs
-  where
-    helper :: BtcTxId -> Set BtcTxId -> Set RemoveRbfTxsInfo -> Set RemoveRbfTxsInfo
-    helper possiblyReplacingTx possiblyReplacedTxs' acc
-      | possiblyReplacingTx `S.member` confirmedTxIds = S.insert (RemoveRbfTxsInfo possiblyReplacingTx possiblyReplacingTx possiblyReplacedTxs') acc
-      | not $ S.null intersection = S.insert (RemoveRbfTxsInfo possiblyReplacingTx (S.findMin intersection) (S.insert possiblyReplacingTx (S.delete (S.findMin intersection) possiblyReplacedTxs'))) acc
-      | otherwise = acc
-      where intersection = possiblyReplacedTxs' `S.intersection` confirmedTxIds -- This intersection must contain only one element, because possiblyReplacedTxs are conflicting and no more than one tx may be valid
 
 makeTxsMap :: M.Map HB.BlockHash HB.BlockHeight -> HB.Block -> Map TxHash EgvTx
 makeTxsMap heights block = M.fromList . fmap (\tx -> (mkTxId tx, TxBtc $ BtcTx tx meta)) $ txs

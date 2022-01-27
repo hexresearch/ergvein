@@ -138,7 +138,7 @@ randomOne vals = case vals of
 btcMempoolTxInserter :: MonadWallet t m => Event t HT.Tx -> m (Event t ())
 btcMempoolTxInserter txE = do
   pubStorageD <- getPubStorageD
-  txE' <- removeTxsReplacedByFee "btcMempoolTxInserter" txE
+  txE' <- removeTxsReplacedByUnconfirmedTx "btcMempoolTxInserter" txE
   valsE <- performFork $ ffor (current pubStorageD `attach` txE') $ \(ps, tx) -> do
     let btcps = ps ^. btcPubStorage
         keys = getPublicKeys $ btcps ^. currencyPubStorage'pubKeystore
@@ -155,46 +155,6 @@ btcMempoolTxInserter txE = do
   where
     helper :: ((V.Vector ScanKeyBox, EgvTx), BtcUtxoUpdate) -> (V.Vector (ScanKeyBox, M.Map TxId EgvTx), BtcUtxoUpdate)
     helper ((vec, tx), utxoUpd) = ((, M.fromList [(egvTxId tx, tx)]) <$> vec, utxoUpd)
-
--- | Finds all txs that should be replaced by given tx and removes them from storage.
--- Also stores information about transaction replacements in the storage.
--- Stage 1. See removeRbfTxsFromStorage1.
-removeTxsReplacedByFee :: MonadStorage t m =>
-  Text ->
-  Event t BtcTxRaw ->
-  m (Event t BtcTxRaw)
-removeTxsReplacedByFee caller replacingTxE = do
-  replacingTxD <- holdDyn Nothing (Just <$> replacingTxE)
-  pubStorageD <- getPubStorageD
-  replacedTxsE <- performFork $ ffor (current pubStorageD `attach` replacingTxE) $ \(ps, replacingTx) -> do
-    let btcps = ps ^. btcPubStorage
-        txStore = btcps ^. currencyPubStorage'transactions
-        possiblyReplacedTxStore = fromMaybe M.empty $ btcps ^? currencyPubStorage'meta . _PubStorageBtc . btcPubStorage'possiblyReplacedTxs
-    liftIO $ flip runReaderT txStore $ do
-      unconfirmedTxs <- getUnconfirmedTxs
-      let unconfirmedBtcTxs = getBtcTx . fromJust . toTxBtc <$> unconfirmedTxs
-          replacingBtcTxId = HT.txHash replacingTx
-          replacingTxId = BtcTxHash replacingBtcTxId
-          otherUnconfirmedTxs = M.elems $ M.delete replacingTxId unconfirmedBtcTxs
-      directlyReplacedTxs <- filterM (fmap (== Just True) . replacesByFee replacingTx) otherUnconfirmedTxs
-      directlyReplacedTxsChilds <- L.concat <$> traverse getChildTxs directlyReplacedTxs
-      possiblyReplacedTxs <- filterM (fmap (== Nothing) . replacesByFee replacingTx) otherUnconfirmedTxs
-      possiblyReplacedTxsChilds <- L.concat <$> traverse getChildTxs possiblyReplacedTxs
-      -- Also remove all txs that are in the same group in btcPubStorage'possiblyReplacedTxs
-      -- with replaced txs.
-      let possiblyReplacedTxsGroups = uncurry S.insert <$> M.toList possiblyReplacedTxStore
-
-          -- Gets txs that should be replaced form btcPubStorage'possiblyReplacedTxs if provided tx has been replaced
-          getTxsFromGroups :: [S.Set BtcTxId] -> BtcTxId -> S.Set BtcTxId
-          getTxsFromGroups txGroups tx = S.unions $ (\txGroup -> if S.member tx txGroup then S.delete tx txGroup else S.empty) <$> txGroups
-
-          indirectlyReplacedTxs = S.toList $ S.unions $ getTxsFromGroups possiblyReplacedTxsGroups <$> (HT.txHash <$> directlyReplacedTxs)
-          replacedTxIds = S.fromList $ (HT.txHash <$> (directlyReplacedTxs ++ directlyReplacedTxsChilds)) ++ indirectlyReplacedTxs
-          possiblyReplacedTxIds = S.fromList $ HT.txHash <$> (possiblyReplacedTxs ++ possiblyReplacedTxsChilds)
-      pure (replacingBtcTxId, replacedTxIds, possiblyReplacedTxIds)
-  removedE <- removeRbfTxsFromStorage1 clr replacedTxsE
-  pure $ fmapMaybe id (tagPromptlyDyn replacingTxD removedE)
-  where clr = caller <> ":" <> "removeTxsReplacedByFee"
 
 -- | Checks tx with checkAddrTx against provided keys and returns that tx in EgvTx format with matched keys vector.
 -- Returns Nothing if no key has been matched

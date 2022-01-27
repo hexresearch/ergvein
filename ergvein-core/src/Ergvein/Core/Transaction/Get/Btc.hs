@@ -110,6 +110,7 @@ getAndFilterBlocks heightD btcAddrsD timeZone txs store settings = do
           txParentsConfirmations = (fmap . fmap) getTxConfirmations parentTxs
           hasUnconfirmedParents = fmap (elem 0) txParentsConfirmations -- This might be inefficient, better to calculate this only for unconfirmed txs
           explorerUrls = btcSettings'explorerUrls $ getBtcSettings settings
+          -- we do not display transfers that are neither refill nor withdrawal
           rawTxsL = L.filter (\(a,_) -> isJust a) $ L.zip bInOut $ txListRaw bl blh txs txsRefList hasUnconfirmedParents outsStatuses spentOuts conflictingTxs replacedTxs ((fmap . fmap . fmap) BtcTxHash possiblyReplacedTxs)
           prepTxs = L.sortOn txView'time $ prepareTxView allBtcAddrs hght timeZone explorerUrls <$> rawTxsL
       pure $ L.reverse $ addWalletState prepTxs
