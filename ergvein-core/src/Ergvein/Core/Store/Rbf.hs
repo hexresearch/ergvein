@@ -27,19 +27,12 @@ import qualified Data.Set                           as S
 import qualified Network.Haskoin.Transaction        as HT
 import qualified Data.List as L
 
--- | Removes RBF transactions from storage and updates transaction replacements info.
--- Note: that this process has two stages. This is the first stage.
--- At first stage we remove those RBF transactions for which
--- a transaction with the highest fee (a.k.a. replacing transaction) was found succesfully.
--- This stage is performed when we receive tx from mempool or when we bump tx fee form this wallet.
--- The second stage is performed when one of txs stored in currencyPubStorage'possiblyReplacedTxs is confirmed.
+-- | Finds all txs that should be replaced by given unconfirmed tx and removes them from storage.
+-- Also stores information about transaction replacements in the storage.
 -- Information about which transactions were replaced is stored in currencyPubStorage'replacedTxs.
 -- Since we are not always able to identify the transactions with the highest fee in a sequence of RBF transactions,
 -- we also keep information about which of these transactions should be deleted when one of them is confirmed.
 -- This information is stored in currencyPubStorage'possiblyReplacedTxs.
--- | Finds all txs that should be replaced by given tx and removes them from storage.
--- Also stores information about transaction replacements in the storage.
--- Stage 1. See removeRbfTxsFromStorage1.
 removeTxsReplacedByUnconfirmedTx :: MonadStorage t m =>
   Text ->
   Event t BtcTxRaw ->
@@ -77,9 +70,6 @@ removeTxsReplacedByUnconfirmedTx caller replacingTxE = do
   pure $ fmapMaybe id (tagPromptlyDyn replacingTxD removedE)
   where clr = caller <> ":" <> "removeTxsReplacedByFee"
 
-
--- removeRbfTxsFromStorage1 :: MonadStorage t m => Text -> Event t (BtcTxId, Set BtcTxId, Set BtcTxId) -> m (Event t ())
--- removeRbfTxsFromStorage1 caller txsToReplaceE = modifyPubStorage (caller <> ":" <> "removeRbfTxsFromStorage1") $ someFunc <$> txsToReplaceE 
 removeRbfTxsFromStorage1 :: (BtcTxId, Set BtcTxId, Set BtcTxId) -> PubStorage -> Maybe PubStorage
 removeRbfTxsFromStorage1 (replacingTxId, replacedTxIds, possiblyReplacedTxIds) ps =
   if L.null replacedTxIds && L.null possiblyReplacedTxIds
@@ -104,7 +94,7 @@ updateReplacedTxsStorage replacingTxId replacedTxIds btcPs =
     -- Remove all replacedTxsMap keys that are members of replacedTxIds
     replacedTxsMap' = M.filterWithKey (\k _ -> not $ k `S.member` replacedTxIds) replacedTxsMap
     -- Collect values of removed replacedTxsMap keys into one set
-    txIdsReplacedByFilteredTxIds = S.unions $ S.map (flip (M.findWithDefault S.empty) $ replacedTxsMap) replacedTxIds
+    txIdsReplacedByFilteredTxIds = S.unions $ S.map (flip (M.findWithDefault S.empty) replacedTxsMap) replacedTxIds
     -- Combine into one set
     updatedReplacedTxIds = S.unions [replacedTxIds, txIdsReplacedByFilteredTxIds]
     -- Insert replacing tx with replaced txs into map
@@ -136,9 +126,8 @@ data RemoveRbfTxsInfo = RemoveRbfTxsInfo {
   , removeRbfTxsInfo'replacedTxs :: !(Set BtcTxId) -- ^ Set of txs that was replaced and should be removed from storage.
   } deriving (Eq, Show, Ord)
 
--- | Finds all txs that should be replaced and removes them from storage.
+-- | Finds all txs that should be replaced by given confirmed tx and removes them from storage.
 -- Also stores information about transaction replacements in the storage.
--- Stage 2. See removeRbfTxsFromStorage2.
 removeTxsReplacedByConfirmedTx :: MonadStorage t m => Event t () -> m (Event t ())
 removeTxsReplacedByConfirmedTx goE = do
   pubStorageD <- getPubStorageD
@@ -165,14 +154,6 @@ removeTxsReplacedByConfirmedTx goE = do
         | otherwise = acc
         where intersection = possiblyReplacedTxs' `S.intersection` confirmedTxIds -- This intersection must contain only one element, because possiblyReplacedTxs are conflicting and no more than one tx may be valid
 
--- | Removes RBF transactions from storage and updates transaction replacements info.
--- Note: that this process has two stages. This is the second stage.
--- At second stage we remove those RBF transactions for which transaction with the highest fee (a.k.a. replacing transaction) wasn't found
--- before one of them was confirmed.
--- The first stage is performed when we receive tx form mempool.
--- removeRbfTxsFromStorage2 :: MonadStorage t m => Text -> Event t (Set RemoveRbfTxsInfo) -> m (Event t ())
--- removeRbfTxsFromStorage2 caller txsToReplaceE = \removeRbfTxsInfoSet ps ->
--- removeRbfTxsFromStorage2 :: (BtcTxId, Set BtcTxId, Set BtcTxId) -> PubStorage -> Maybe PubStorage
 removeRbfTxsFromStorage2 :: Set RemoveRbfTxsInfo -> PubStorage -> Maybe PubStorage
 removeRbfTxsFromStorage2 removeRbfTxsInfoSet ps =
   if S.null removeRbfTxsInfoSet

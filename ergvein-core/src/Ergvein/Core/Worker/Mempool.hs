@@ -150,7 +150,6 @@ btcMempoolWorkerConn IndexerConnection{..} = void $ workflow waitRestore
                 Just checkAddrTxResult -> do
                   utxoUpdates <- getUtxoUpdates Nothing keys tx
                   pure $ Just $ helper (checkAddrTxResult, utxoUpdates)
-        pure val
       insertedE <- insertManyTxsUtxoInPubKeystore "btcMempoolTxInserter" BTC $ ffilter (not . null) valsE
       let noValsE = ffilter null valsE
       let nextE = leftmost [noValsE, insertedE]
