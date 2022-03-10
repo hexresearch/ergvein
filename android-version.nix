@@ -1,5 +1,5 @@
 # CI tracks the file and publish testing versions if the code is changed.
 {
-  code = "26";
+  code = "27";
   name = "Alpha";
 }

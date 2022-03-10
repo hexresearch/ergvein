@@ -97,7 +97,7 @@ let
     android.ergvein-wallet = {
       executableName = "ergvein";
       applicationId = "org.ergvein.wallet";
-      displayName = "Ergvein wallet";
+      displayName = "Cypra wallet";
       resources = ./wallet/static/res;
       assets = ./wallet/static/assets;
       iconPath = "@drawable/ic_launcher";
