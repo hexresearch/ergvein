@@ -87,7 +87,7 @@ library
         file-embed >=0.0 && <0.1,
         ghcjs-dom,
         jsaddle,
-        lens >=4.16 && <4.18,
+        lens >=4.16 && <5.2,
         MonadRandom,
         mtl >=2.2 && <2.3,
         parsec,

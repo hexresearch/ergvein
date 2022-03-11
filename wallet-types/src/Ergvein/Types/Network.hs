@@ -10,9 +10,9 @@ module Ergvein.Types.Network (
   , getCurrencyIndex
   ) where
 
-import Data.Flat
 import Ergvein.Crypto.Keys
 import Ergvein.Types.Currency
+import Flat
 import Network.Haskoin.Constants
 
 type BtcNetwork = Network
@@ -25,8 +25,8 @@ data EgvNetwork
 -- | Get network correspondent to a given tag
 getCurrencyNetwork :: Currency -> EgvNetwork
 getCurrencyNetwork t = case t of
-  BTC -> EgvBtcNetwork btcTest 
-  
+  BTC -> EgvBtcNetwork btcTest
+
 getCurrencyIndex :: Currency -> KeyIndex
 getCurrencyIndex = const 1
 {-# INLINE getCurrencyIndex #-}

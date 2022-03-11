@@ -1,3 +1,8 @@
+0.1.10.0
+=======
+
+* Adapt for `reflex-dom-core-0.7`. Remove `HasJSContext`.
+
 0.1.9.0
 =======
 

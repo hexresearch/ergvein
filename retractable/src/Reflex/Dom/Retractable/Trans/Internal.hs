@@ -54,7 +54,7 @@ newRetractEnv = do
 
 -- | Plug-in implementation of `MonadRetract`.
 newtype RetractT t m a = RetractT { unRetractT :: ReaderT (RetractEnv t m) m a }
-  deriving (Functor, Applicative, Monad, Generic, MonadFix, MonadRef, HasJSContext, HasDocument)
+  deriving (Functor, Applicative, Monad, Generic, MonadFix, MonadRef, HasDocument)
 
 deriving instance PostBuild t m => PostBuild t (RetractT t m)
 deriving instance NotReady t m => NotReady t (RetractT t m)

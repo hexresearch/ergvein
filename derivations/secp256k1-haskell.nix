@@ -16,14 +16,19 @@ mkDerivation {
     base base16-bytestring bytestring cereal deepseq entropy hashable
     QuickCheck string-conversions
   ];
-  libraryPkgconfigDepends = [ secp256k1Sys ];
+  # libraryPkgconfigDepends = [ secp256k1Sys ];
+  librarySystemDepends = [ secp256k1Sys ];
   libraryToolDepends = [ hpack ];
   testHaskellDepends = [
     base base16-bytestring bytestring cereal deepseq entropy hashable
     hspec HUnit mtl QuickCheck string-conversions
   ];
   testToolDepends = [ hspec-discover ];
-  prePatch = "hpack";
+  prePatch = ''
+    hpack
+    sed -i 's/pkgconfig-depends/extra-libraries/g' secp256k1-haskell.cabal
+    sed -i 's/libsecp256k1/secp256k1/g' secp256k1-haskell.cabal
+  '';
   homepage = "http://github.com/haskoin/secp256k1-haskell#readme";
   description = "Bindings for secp256k1 library from Bitcoin Core";
   license = stdenv.lib.licenses.publicDomain;
