@@ -105,6 +105,7 @@ in (self: super: let
     bytestring-trie = self.callPackage ./derivations/bytestring-trie.nix {};
     clay = self.callPackage ./derivations/clay.nix {};
     criterion = lib.dontCheck super.criterion;
+    http-media = lib.dontCheck super.http-media;
     cryptonite = self.callPackage ./derivations/cryptonite.nix {};
     flat = lib.dontCheck (super.flat);
     haskey = self.callPackage ./derivations/haskey.nix {};
@@ -126,8 +127,12 @@ in (self: super: let
     x509-android = super.callCabal2nixWithOptions "x509-android" ./x509-android walletOpts {};
     x509-validation = lib.dontCheck super.x509-validation;
     zlib = self.callPackage ./derivations/zlib.nix {};
-    pandoc = self.callPackage ./derivations/pandoc.nix {};
-    pandoc-types = self.callPackage ./derivations/pandoc-types.nix {};
+    pandoc = lib.dontCheck (lib.doJailbreak (self.callPackage ./derivations/pandoc.nix {}));
+    pandoc-types = lib.doJailbreak (self.callPackage ./derivations/pandoc-types.nix {});
+    servant = lib.dontCheck (lib.doJailbreak super.servant);
+    servant-client-core = lib.dontCheck (lib.doJailbreak super.servant-client-core);
+    servant-client = lib.dontCheck (lib.doJailbreak super.servant-client);
+    servant-server = lib.dontCheck (lib.doJailbreak super.servant-server);
     texmath = self.callPackage ./derivations/texmath.nix {};
     HsYAML = self.callPackage ./derivations/HsYAML.nix {};
     doctemplates = self.callPackage ./derivations/doctemplates.nix {};
@@ -135,8 +140,9 @@ in (self: super: let
     hslua = self.callPackage ./derivations/hslua.nix {};
     skylighting = self.callPackage ./derivations/skylighting.nix {};
     skylighting-core = self.callPackage ./derivations/skylighting-core.nix {};
-    pandoc-citeproc = self.callPackage ./derivations/pandoc-citeproc.nix {};
+    pandoc-citeproc = lib.doJailbreak (self.callPackage ./derivations/pandoc-citeproc.nix {});
     hpack = self.callPackage ./derivations/hpack.nix {};
     dns = self.callPackage ./derivations/dns.nix {};
+    hakyll = lib.dontCheck (lib.doJailbreak (self.callPackage ./derivations/hakyll.nix {}));
   }
 )

@@ -11,6 +11,7 @@ mkDerivation {
     aeson base bytestring containers deepseq ghc-prim QuickCheck syb
     transformers
   ];
+  doCheck = false;
   testHaskellDepends = [
     aeson base bytestring containers HUnit QuickCheck string-qq syb
     test-framework test-framework-hunit test-framework-quickcheck2
