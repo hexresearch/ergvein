@@ -18,9 +18,9 @@ defNodePort isTestnet = if isTestnet then 18667 else 8667
 defNodes :: Bool -> [ErgveinNodeAddr]
 defNodes isTestnet = if isTestnet
   then ["64.227.120.8"]
-  else [ "ergvein-indexermainnet1.hxr.team"
-       , "ergvein-indexermainnet2.hxr.team"
-       , "ergvein-indexermainnet3.hxr.team"
+  else [ "77.120.161.245"
+       , "79.143.71.51"
+       , "79.143.71.52"
        , "indexer.ergvein.net" -- OwO
        ]
 
