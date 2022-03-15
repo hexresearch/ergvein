@@ -45,9 +45,9 @@ networkPageWidget cur refrE = do
   -- lineOption $ lineOptionNoEdit NPSSyncStatus servCurInfoD NPSSyncDescr
   void $ lineOption $ networkHoldDyn $ ffor conmapD $ \cm -> case cur of
     BTC  -> btcNetworkWidget $ maybe [] M.elems $ DM.lookup BtcTag cm
-  void $ nextWidget $ ffor listE $ \с -> Retractable {
-      retractableNext = serversInfoPage с
-    , retractablePrev = Just (pure $ networkPage (Just с))
+  void $ nextWidget $ ffor listE $ \c -> Retractable {
+      retractableNext = serversInfoPage c
+    , retractablePrev = Just (pure $ networkPage (Just c))
     }
   pure ()
 
