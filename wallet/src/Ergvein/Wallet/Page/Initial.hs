@@ -31,6 +31,9 @@ data OpenLastWallet = OpenLastWalletOn | OpenLastWalletOff
 
 initialPage :: MonadFrontBase t m => OpenLastWallet -> m ()
 initialPage openLastWallet = do
+  -- | Clear FLAG_KEEP_SCREEN_ON in case we end up on this page
+  -- because we went "back" from restore page, where this flag is set 
+  runOnMainThreadM androidClearScreenFlag
   logWrite "Initial page rendering"
   ss <- listStorages
   if null ss then noWalletsPage else hasWalletsPage openLastWallet ss

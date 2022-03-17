@@ -29,9 +29,9 @@ import Ergvein.Types.Storage
 import Ergvein.Types.Transaction
 import Reflex.Flunky
 import Reflex.Fork
+import Reflex.Main.Thread
 import Reflex.Workflow
 import Sepulcas.Native
-
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import qualified Data.Vector as V
@@ -40,7 +40,7 @@ import qualified Data.Vector as V
 filtersRetryTimeout :: NominalDiffTime
 filtersRetryTimeout = 10
 
-restore :: forall t m . (MonadWallet t m, HasStatusEnv t m, HasNodeEnv t m, HasWalletEnv t m, HasStoreEnv t m) => m () -> m (Event t ())
+restore :: forall t m . (MonadHasMain m, MonadWallet t m, HasStatusEnv t m, HasNodeEnv t m, HasWalletEnv t m, HasStoreEnv t m) => m () -> m (Event t ())
 restore renderRestorePage = do
   renderRestorePage
   workflowD <- workflow nodeConnection
@@ -51,6 +51,8 @@ restore renderRestorePage = do
     filtersBatchSize = 300
 
     nodeConnection = Workflow $ do
+      -- | Prevent the screen from turning off
+      runOnMainThreadM androidSetScreenFlag
       logWrite "Stage 1. Waiting connection to at least one bitcoin node"
       buildE <- getPostBuild
       let status = def & walletStatusRestore'stage .~ RestoreStage'connectingToBtcNodes
@@ -166,6 +168,8 @@ restore renderRestorePage = do
     -- Stage 5: finalize the restore
     finishScanning :: Workflow t m Bool
     finishScanning = Workflow $ do
+      -- | Allow the screen to turn off again
+      runOnMainThreadM androidClearScreenFlag
       logWrite "Stage 5. Finalize restore"
       buildE <- getPostBuild
       setE <- updateWalletStatusNormal BTC $ const WalletStatusNormal'synced <$ buildE

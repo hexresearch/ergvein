@@ -115,3 +115,11 @@ class PlatformNatives where
 
   -- | Detect dns servers. Used for Android
   androidDetectDns :: MonadIO m => m [String]
+
+  -- | Set `FLAG_KEEP_SCREEN_ON` to prevent the screen from locking
+  -- Android only
+  androidSetScreenFlag :: MonadIO m => m ()
+
+  -- | Clear `FLAG_KEEP_SCREEN_ON`
+  -- Android only
+  androidClearScreenFlag :: MonadIO m => m ()
