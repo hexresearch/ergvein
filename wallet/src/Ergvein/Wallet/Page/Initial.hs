@@ -31,6 +31,9 @@ data OpenLastWallet = OpenLastWalletOn | OpenLastWalletOff
 
 initialPage :: MonadFrontBase t m => OpenLastWallet -> m ()
 initialPage openLastWallet = do
+  -- | Clear FLAG_KEEP_SCREEN_ON in case we end up on this page
+  -- because we went "back" from restore page, where this flag is set 
+  runOnMainThreadM androidClearScreenFlag
   logWrite "Initial page rendering"
   ss <- listStorages
   if null ss then noWalletsPage else hasWalletsPage openLastWallet ss
@@ -44,18 +47,6 @@ createRestore = do
   let items = [(GoCreate, IPSCreate), (GoRestore, IPSRestore), (GoSettings, IPSSettings)]
   goE <- fmap leftmost $ for items $ \(act, lbl) ->
     (act <$) <$> outlineButton lbl
-
-  tE <- outlineButton ("Set" :: Text)
-  tE' <- performEvent $ ffor tE $ const $ androidSetScreenFlag
-  cE <- outlineButton ("Clear" :: Text)
-  cE' <- performEvent $ ffor cE $ const $ androidClearScreenFlag
-
-  tglD <- holdDyn False $ leftmost [True <$ tE', False <$ cE']
-  networkHoldDyn $ ffor tglD $ \case
-    False -> el "div" $ text "Clear"
-    True -> el "div" $ text "Set"
-
-
   void $ nextWidget $ ffor goE $ \go -> Retractable {
       retractableNext = case go of
         GoCreate -> backupPage
