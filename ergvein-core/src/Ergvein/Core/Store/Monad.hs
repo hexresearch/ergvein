@@ -34,6 +34,7 @@ module Ergvein.Core.Store.Monad(
   , getConfirmedTxs
   , getUnconfirmedTxs
   , setSeedBackupRequired
+  , setRestoreStartHeightE
   ) where
 
 import Control.Concurrent.MVar
@@ -376,6 +377,10 @@ storeBlockHeadersE caller _ reqE = do
 setScannedHeightE :: MonadStorage t m => Currency -> Event t BlockHeight -> m (Event t ())
 setScannedHeightE cur he = modifyPubStorage "setScannedHeightE" $ ffor he $ \h ->
   Just . modifyCurrStorage cur (currencyPubStorage'scannedHeight .~ h)
+
+setRestoreStartHeightE :: MonadStorage t m => Event t BlockHeight -> m (Event t ())
+setRestoreStartHeightE he = modifyPubStorage "setRestoreStartHeightE" $ ffor he $ \h ps ->
+  Just $ modifyCurrStorageBtc (btcPubStorage'restoreStartHeight ?~ h) ps
 
 setSeedBackupRequired :: MonadStorage t m => Event t Bool -> m (Event t ())
 setSeedBackupRequired e = modifyPubStorage "setSeedBackupRequired" $ ffor e $ \seedBackupRequired ps ->

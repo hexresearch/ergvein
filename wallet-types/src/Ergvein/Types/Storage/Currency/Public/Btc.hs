@@ -12,6 +12,7 @@ module Ergvein.Types.Storage.Currency.Public.Btc
   , btcPubStorage'headerSeq
   , btcPubStorage'replacedTxs
   , btcPubStorage'possiblyReplacedTxs
+  , btcPubStorage'restoreStartHeight
   ) where
 
 import Control.Lens
@@ -47,6 +48,40 @@ instance SafeCopy BtcPubStorage_V1 where
     put _btcPubStorageV1'headerSeq
   getCopy = contain $ BtcPubStorage_V1 <$> safeGet <*> safeGet <*> get <*> get <*> get
 
+data BtcPubStorage_V2 = BtcPubStorage_V2 {
+    _btcPubStorageV2'transactions        :: !(Map BtcTxId BtcTx)
+  , _btcPubStorageV2'utxos               :: !BtcUtxoSet
+  , _btcPubStorageV2'headers             :: !(Map HB.BlockHash HB.BlockHeader)
+  , _btcPubStorageV2'outgoing            :: !(Set BtcTxId)
+  , _btcPubStorageV2'headerSeq           :: !(Word32, Vector (HB.BlockHeight, HB.BlockHash))
+  , _btcPubStorageV2'replacedTxs         :: !(Map BtcTxId (S.Set BtcTxId)) -- ^ Stores history of tx replacements by fee.
+  , _btcPubStorageV2'possiblyReplacedTxs :: !(Map BtcTxId (S.Set BtcTxId))
+    -- ^ Stores sequences of unconfirmed RBF transactions,
+    -- for which we cannot determine the tx with highest fee (replacing transaction).
+    -- Map keys are the most recent transactions received by the wallet,
+    -- so we assume they have the highest fees and will replace others.
+    -- Note: Map values does not contain replacing tx.
+    -- TODO: probably it is better to use Set (TxId, (S.Set TxId)) instead of
+    -- M.Map TxId (S.Set TxId) here.
+  } deriving (Eq, Show, Read)
+
+instance SafeCopy BtcPubStorage_V2 where
+  version = 2
+  putCopy BtcPubStorage_V2{..} = contain $ do
+    safePut _btcPubStorageV2'transactions
+    safePut _btcPubStorageV2'utxos
+    put _btcPubStorageV2'headers
+    put _btcPubStorageV2'outgoing
+    put _btcPubStorageV2'headerSeq
+    put _btcPubStorageV2'replacedTxs
+    put _btcPubStorageV2'possiblyReplacedTxs
+  getCopy = contain $ BtcPubStorage_V2 <$> safeGet <*> safeGet <*> get <*> get <*> get <*> get <*> get
+  kind = extension
+
+instance Migrate BtcPubStorage_V2 where
+  type MigrateFrom BtcPubStorage_V2 = BtcPubStorage_V1
+  migrate (BtcPubStorage_V1 a b c d e) = BtcPubStorage_V2 a b c d e M.empty M.empty
+
 data BtcPubStorage = BtcPubStorage {
     _btcPubStorage'transactions        :: !(Map BtcTxId BtcTx)
   , _btcPubStorage'utxos               :: !BtcUtxoSet
@@ -62,10 +97,11 @@ data BtcPubStorage = BtcPubStorage {
     -- Note: Map values does not contain replacing tx.
     -- TODO: probably it is better to use Set (TxId, (S.Set TxId)) instead of
     -- M.Map TxId (S.Set TxId) here.
+  , _btcPubStorage'restoreStartHeight :: !(Maybe Word64)
   } deriving (Eq, Show, Read)
 
 instance SafeCopy BtcPubStorage where
-  version = 2
+  version = 3
   putCopy BtcPubStorage{..} = contain $ do
     safePut _btcPubStorage'transactions
     safePut _btcPubStorage'utxos
@@ -74,12 +110,13 @@ instance SafeCopy BtcPubStorage where
     put _btcPubStorage'headerSeq
     put _btcPubStorage'replacedTxs
     put _btcPubStorage'possiblyReplacedTxs
-  getCopy = contain $ BtcPubStorage <$> safeGet <*> safeGet <*> get <*> get <*> get <*> get <*> get
+    put _btcPubStorage'restoreStartHeight
+  getCopy = contain $ BtcPubStorage <$> safeGet <*> safeGet <*> get <*> get <*> get <*> get <*> get <*> get
   kind = extension
 
 instance Migrate BtcPubStorage where
-  type MigrateFrom BtcPubStorage = BtcPubStorage_V1
-  migrate (BtcPubStorage_V1 a b c d e) = BtcPubStorage a b c d e M.empty M.empty
+  type MigrateFrom BtcPubStorage = BtcPubStorage_V2
+  migrate (BtcPubStorage_V2 a b c d e f g) = BtcPubStorage a b c d e f g Nothing
 
 -- This instances is required only for the current version
 makeLenses ''BtcPubStorage

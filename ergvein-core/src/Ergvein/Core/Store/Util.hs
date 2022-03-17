@@ -29,6 +29,7 @@ module Ergvein.Core.Store.Util(
   , getBtcUtxoPoints
   , getBtcUtxoPointsParted
   , getBtcTxs
+  , getRestoreStartHeight
   ) where
 
 import Control.Lens
@@ -45,6 +46,7 @@ import Data.SafeCopy
 import Data.Serialize
 import Data.Text (Text)
 import Data.Text.Encoding
+import Data.Word
 import Ergvein.Core.Platform
 import Ergvein.Core.Store.Constants
 import Ergvein.Crypto
@@ -54,7 +56,7 @@ import Ergvein.Types.Currency
 import Ergvein.Types.Derive
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
-import Ergvein.Types.Storage.Currency.Public.Btc (BtcPubStorage(..), btcPubStorage'utxos, btcPubStorage'transactions)
+import Ergvein.Types.Storage.Currency.Public.Btc
 import Ergvein.Types.Transaction as ETT
 import Ergvein.Types.Utxo.Btc
 import Ergvein.Types.Utxo.Status
@@ -129,6 +131,7 @@ createCurrencyPubStorage mpath rootPrvKey startingHeight c = CurrencyPubStorage 
       , _btcPubStorage'headerSeq           = btcCheckpoints
       , _btcPubStorage'replacedTxs         = M.empty
       , _btcPubStorage'possiblyReplacedTxs = M.empty
+      , _btcPubStorage'restoreStartHeight  = Nothing
       }
   }
   where
@@ -449,6 +452,9 @@ getBtcUtxoPointsParted pubStorage = partitionBtcUtxos $ M.toList $ getBtcUtxos p
 
 getBtcTxs :: PubStorage -> [BtcTx]
 getBtcTxs pubStorage = M.elems $ pubStorage ^. btcPubStorage . currencyPubStorage'meta . _PubStorageBtc . btcPubStorage'transactions
+
+getRestoreStartHeight :: PubStorage -> Maybe Word64
+getRestoreStartHeight pubStorage = pubStorage ^. btcPubStorage . currencyPubStorage'meta . _PubStorageBtc . btcPubStorage'restoreStartHeight
 
 partitionBtcUtxos :: [(HT.OutPoint, BtcUtxoMeta)] -> ([UtxoPoint], [UtxoPoint])
 partitionBtcUtxos = foo ([], []) $ \(cs, ucs) (opoint, meta@BtcUtxoMeta{..}) ->

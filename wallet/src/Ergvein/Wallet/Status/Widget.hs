@@ -75,10 +75,12 @@ restoreStatusWidget cur = do
       restoreProgressD = _walletStatusRestore'progress . _walletStatus'restore <$> statD
   h3 $ localizedText RPSInProgress
   par $ localizedDynText restoreStageD
-  h3 $ localizedDynText $ showPercents <$> restoreProgressD
+  void $ networkHoldDyn $ ffor restoreProgressD $ \case
+    Nothing -> pure ()
+    Just progressPercentage -> h3 $ text $ showPercents progressPercentage
 
-showPercents :: Maybe Double -> Text
-showPercents = maybe "0.00%" (\p -> T.pack (showFFloat (Just 2) p "") <> "%")
+showPercents :: Double -> Text
+showPercents percentage = T.pack (showFFloat (Just 2) percentage "") <> "%"
 
 -- TODO: add some more useful info
 restoreStatusDebugWidget :: MonadFront t m => Currency -> m ()
