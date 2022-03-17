@@ -115,3 +115,7 @@ class PlatformNatives where
 
   -- | Detect dns servers. Used for Android
   androidDetectDns :: MonadIO m => m [String]
+
+
+  androidSetScreenFlag :: MonadIO m => m ()
+  androidClearScreenFlag :: MonadIO m => m ()

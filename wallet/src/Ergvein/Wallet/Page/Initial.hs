@@ -44,6 +44,18 @@ createRestore = do
   let items = [(GoCreate, IPSCreate), (GoRestore, IPSRestore), (GoSettings, IPSSettings)]
   goE <- fmap leftmost $ for items $ \(act, lbl) ->
     (act <$) <$> outlineButton lbl
+
+  tE <- outlineButton ("Set" :: Text)
+  tE' <- performEvent $ ffor tE $ const $ androidSetScreenFlag
+  cE <- outlineButton ("Clear" :: Text)
+  cE' <- performEvent $ ffor cE $ const $ androidClearScreenFlag
+
+  tglD <- holdDyn False $ leftmost [True <$ tE', False <$ cE']
+  networkHoldDyn $ ffor tglD $ \case
+    False -> el "div" $ text "Clear"
+    True -> el "div" $ text "Set"
+
+
   void $ nextWidget $ ffor goE $ \go -> Retractable {
       retractableNext = case go of
         GoCreate -> backupPage

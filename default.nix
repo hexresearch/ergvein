@@ -136,6 +136,7 @@ let
       '';
       permissions = ''
       <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+      <uses-permission android:name="android.permission.WAKE_LOCK" />
       '';
     };
 
