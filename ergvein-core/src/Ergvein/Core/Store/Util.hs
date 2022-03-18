@@ -132,6 +132,7 @@ createCurrencyPubStorage mpath rootPrvKey startingHeight c = CurrencyPubStorage 
       , _btcPubStorage'replacedTxs         = M.empty
       , _btcPubStorage'possiblyReplacedTxs = M.empty
       , _btcPubStorage'restoreStartHeight  = Nothing
+      , _btcPubStorage'preferredNodes      = S.fromList $ (defBtcAddrs False)
       }
   }
   where

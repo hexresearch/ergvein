@@ -4,6 +4,7 @@
 module Ergvein.Types.Storage.Currency.Public.Btc
   (
     BtcPubStorage(..)
+  , defBtcAddrs
   -- * Export lenses
   , btcPubStorage'transactions
   , btcPubStorage'utxos
@@ -13,6 +14,7 @@ module Ergvein.Types.Storage.Currency.Public.Btc
   , btcPubStorage'replacedTxs
   , btcPubStorage'possiblyReplacedTxs
   , btcPubStorage'restoreStartHeight
+  , btcPubStorage'preferredNodes
   ) where
 
 import Control.Lens
