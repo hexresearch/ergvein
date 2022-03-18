@@ -83,7 +83,7 @@ selectWalletsPage ss = wrapperSimple True $ divClass "initial-page-options" $ do
 loadWalletPage :: MonadFrontBase t m => WalletName -> m ()
 loadWalletPage name = do
   -- We could use `wrapperSimple True` here, but to draw the pin code widget to full screen, we need to use this
-  wrapperSimpleGeneric headerWidgetOnlyBackBtn "password-widget-container" False $ do
+  wrapperSimpleGeneric headerWidgetOnlyBackBtn "password-widget-container" False Nothing $ do
     buildE <- getPostBuild
     ePlainE <- performEvent $ loadWalletInfo name "" <$ buildE
     let oldAuthE' = fmapMaybe eitherToMaybe ePlainE

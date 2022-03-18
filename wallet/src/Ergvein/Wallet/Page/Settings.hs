@@ -68,7 +68,7 @@ settingsPage = do
           retractableNext = case spg of
             GoLanguage        -> languagePage
             -- GoCurrencies      -> currenciesPage
-            GoNetwork         -> networkSettingsPage
+            GoNetwork         -> activeIndexersPage
             GoUnits           -> unitsPage
             GoMnemonicExport  -> mnemonicExportPage
             GoNodes           -> btcNodesPage

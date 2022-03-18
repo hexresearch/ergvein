@@ -1,9 +1,12 @@
 {-# LANGUAGE OverloadedLists #-}
--- {-# OPTIONS_GHC -Wall #-}
+{-# OPTIONS_GHC -Wall #-}
+
 module Ergvein.Wallet.Page.Settings.Network
   (
-    networkSettingsPage
-  , networkSettingsPageUnauth
+    activeIndexersPage
+  , activeIndexersPageUnauth
+  , inactiveIndexersPage
+  , inactiveIndexersPageUnauth
   ) where
 
 import Control.Lens
@@ -11,42 +14,18 @@ import Data.Functor.Misc (Const2(..))
 import Data.Traversable (for)
 import Reflex.Dom
 import Reflex.ExternalRef
-import Text.Read
 
 import Ergvein.Node.Constants
 import Ergvein.Node.Resolve
-import Sepulcas.Alert
 import Sepulcas.Elements
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Wrapper
+import {-# SOURCE #-} Ergvein.Wallet.Navbar
 
 import qualified Data.Map.Strict as M
-import qualified Data.Text as T
 import qualified Data.Set as S
-
-data NavbarItem
-  = ActiveIndexers
-  | InactiveIndexers
-  deriving Eq
-
-instance LocalizedPrint NavbarItem where
-  localizedShow l v = case l of
-    English -> case v of
-      ActiveIndexers    -> "Active indexers"
-      InactiveIndexers  -> "Reserved indexers"
-    Russian -> case v of
-      ActiveIndexers     -> "Используемые индексаторы"
-      InactiveIndexers   -> "Неактивные индексаторы"
-
-navbarWidget :: MonadFrontBase t m => NavbarItem -> m (Dynamic t NavbarItem)
-navbarWidget initItem = divClass "navbar-2-cols" $ mdo
-  selD <- holdDyn initItem selE
-  selE <- fmap leftmost $ for [ActiveIndexers, InactiveIndexers] $ \i -> do
-    let attrD = (\ai -> "navbar-item" <> if i == ai then " active" else "") <$> selD
-    (<$) i <$> spanButton attrD i
-  pure selD
 
 data ParametersParseErrors = PPENDT | PPEInt
 
@@ -59,21 +38,35 @@ instance LocalizedPrint ParametersParseErrors where
       PPENDT -> "Некорректное значение. Только дробные числа"
       PPEInt -> "Некорректное значение. Только целые числа"
 
-networkSettingsPage :: MonadFront t m => m ()
-networkSettingsPage = do
+activeIndexersPage :: MonadFront t m => m ()
+activeIndexersPage = do
   title <- localized NSSTitle
-  wrapper False title (Just $ pure networkSettingsPage ) $ do
-    navD <- navbarWidget ActiveIndexers
-    void $ networkHoldDyn $ ffor navD $ \case
-      ActiveIndexers   -> activePageWidget
-      InactiveIndexers -> inactivePageWidget
+  let thisWidget = Just $ pure activeIndexersPage
+      navbar = networkPageNavbarWidget thisWidget NavbarActiveIndexers
+  wrapperNavbar False title thisWidget navbar $ divClass "network-page" $ do
+    activePageWidget
 
-networkSettingsPageUnauth :: MonadFrontBase t m => m ()
-networkSettingsPageUnauth = wrapperSimple False $ do
-  navD <- navbarWidget ActiveIndexers
-  void $ networkHoldDyn $ ffor navD $ \case
-    ActiveIndexers   -> activePageWidget
-    InactiveIndexers -> inactivePageWidget
+inactiveIndexersPage :: MonadFront t m => m ()
+inactiveIndexersPage = do
+  title <- localized NSSTitle
+  let thisWidget = Just $ pure inactiveIndexersPage
+      navbar = networkPageNavbarWidget thisWidget NavbarInactiveIndexers
+  wrapperNavbar False title thisWidget navbar $ divClass "network-page" $ do
+    inactivePageWidget
+
+activeIndexersPageUnauth :: MonadFrontBase t m => m ()
+activeIndexersPageUnauth = do
+  let thisWidget = Just $ pure activeIndexersPageUnauth
+      navbar = networkPageNavbarWidgetUnauth thisWidget NavbarActiveIndexers
+  wrapperSimpleNavbar False navbar $ divClass "network-page" $ do
+    activePageWidget
+
+inactiveIndexersPageUnauth :: MonadFrontBase t m => m ()
+inactiveIndexersPageUnauth = do
+  let thisWidget = Just $ pure inactiveIndexersPageUnauth
+      navbar = networkPageNavbarWidgetUnauth thisWidget NavbarInactiveIndexers
+  wrapperSimpleNavbar False navbar $ divClass "network-page" $ do
+    inactivePageWidget
 
 addUrlWidget :: forall t m . MonadFrontBase t m => Dynamic t Bool -> m (Event t ErgveinNodeAddr)
 addUrlWidget showD = fmap switchDyn $ networkHoldDyn $ ffor showD $ \b -> if not b then pure never else do
@@ -156,7 +149,7 @@ renderActive nsa refrE mconn = mdo
           else do
             descrOptionDyn $ NSSLatency <$> latD
             let unauthHeight = descrOptionDyn $ maybe NSSNoHeight NSSIndexerHeight <$> indexerHeightD
-            liftAuth unauthHeight $ do
+            void $ liftAuth unauthHeight $ do
               btcHeightD <- getCurrentHeight BTC
               descrOptionDyn $ do
                 mh <- indexerHeightD
