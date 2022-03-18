@@ -89,10 +89,11 @@ activePageWidget = mdo
   addrsD  <- (fmap . fmap) S.toList $ externalRefDynamic =<< getActiveAddrsRef
   showD <- holdDyn False $ leftmost [False <$ hideE, tglE]
   let valsD = (,) <$> connsD <*> addrsD
-  void $ networkHoldDyn $ ffor valsD $ \(conmap, urls) ->
-    for urls $ \sa -> renderActive sa refrE $ M.lookup sa conmap
+  void $ divClass "network-page-items" $
+    networkHoldDyn $ ffor valsD $ \(conmap, urls) ->
+      for urls $ \sa -> renderActive sa refrE $ M.lookup sa conmap
   hideE <- activateURL =<< addUrlWidget showD
-  (refrE, tglE) <- divClass "network-wrapper mt-3" $ divClass "net-btns-3" $ do
+  (refrE, tglE) <- divClass "network-item mt-2" $ divClass "net-btns-3" $ do
     refrE' <- buttonClass "button button-outline m-0" NSSRefresh
     restoreE <- buttonClass "button button-outline m-0" NSSRestoreUrls
     restoreNetwork restoreE
@@ -112,7 +113,7 @@ renderActive nsa refrE mconn = mdo
         $ buttonClass "button button-outline network-edit-btn mt-a mb-a ml-a"
           $ if b then NSSClose else NSSEdit
 
-  tglE <- divClass "network-wrapper mt-3" $ case mconn of
+  tglE <- divClass "network-item" $ case mconn of
     Nothing -> do
       tglE' <- divClass "network-name" $ do
         elAttr "span" offclass $ elClass "i" "fas fa-circle" $ pure ()
@@ -160,7 +161,7 @@ renderActive nsa refrE mconn = mdo
 
   void $ networkHoldDyn $ ffor tglD $ \b -> if not b
     then pure ()
-    else divClass "network-wrapper mt-2" $ do
+    else divClass "network-item mt-2" $ do
       void $ deactivateURL . (nsa <$) =<< buttonClass "button button-outline mt-1 ml-1" NSSDisable
       void $ forgetURL . (nsa <$) =<< buttonClass "button button-outline mt-1 ml-1" NSSForget
   where
@@ -175,7 +176,7 @@ inactivePageWidget = mdo
   hideE <- deactivateURL =<< addUrlWidget showD
   let addrsMapD = M.fromList . fmap (,()) . S.toList <$> addrsD
   void $ listWithKey addrsMapD $ \addr _ -> renderInactive pingAllE addr
-  (pingAllE, tglE) <- divClass "network-wrapper mt-1" $ divClass "net-btns-2" $ do
+  (pingAllE, tglE) <- divClass "network-item mt-1" $ divClass "net-btns-2" $ do
     pingAllE' <- buttonClass "button button-outline m-0" NSSPingAll
     tglE' <- fmap switchDyn $ networkHoldDyn $ ffor showD $ \b ->
       fmap (not b <$) $ buttonClass "m-0 button button-outline" $ if b then NSSClose else NSSAddUrl
@@ -188,7 +189,7 @@ renderInactive initPingE nsa = mdo
   sel <- getIndexReqSelector
   tglD <- holdDyn False tglE
   (fstPingE, refrE) <- headTailE $ leftmost [initPingE, pingE]
-  tglE <- fmap switchDyn $ divClass "network-wrapper mt-1" $ networkHold (startingWidget tglD) $ ffor fstPingE $ const $ do
+  tglE <- fmap switchDyn $ divClass "network-item mt-1" $ networkHold (startingWidget tglD) $ ffor fstPingE $ const $ do
     mAddr <- fmap namedAddrSock <$> resolveAddr seed defIndexerPort nsa
     case mAddr of
       Just addr -> do
@@ -206,7 +207,7 @@ renderInactive initPingE nsa = mdo
       _ -> pure never
   pingE <- fmap switchDyn $ networkHoldDyn $ ffor tglD $ \b -> if not b
     then pure never
-    else divClass "network-wrapper mt-1" $ divClass "net-btns-3" $ do
+    else divClass "network-item mt-1" $ divClass "net-btns-3" $ do
       void $ activateURL . (nsa <$) =<< outlineButton NSSEnable
       pingE' <- outlineButton NSSPing
       void $ forgetURL . (nsa <$) =<< outlineButton NSSForget
