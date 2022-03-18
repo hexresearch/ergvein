@@ -61,6 +61,7 @@ library
     , jsaddle
     , lens                      >= 4.17     && < 5.2
     , memory                    >= 0.14.16  && < 0.15.1
+    , network
     , string-conversions        >= 0.4.0.1  && < 0.4.0.2
     , text
     , time
