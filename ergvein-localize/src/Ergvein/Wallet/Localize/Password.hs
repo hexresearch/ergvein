@@ -7,6 +7,7 @@ module Ergvein.Wallet.Localize.Password
   , ConfirmEmptyPage(..)
   , StartHeightStrings(..)
   , PasswordTypePageStrings(..)
+  , ChangePasswordStrings(..)
   ) where
 
 import Data.Time
@@ -145,7 +146,7 @@ instance LocalizedPrint PasswordWidgetStrings where
       PWSMoreOptions   -> "Дополнительные настройки"
       PWSLessOptions   -> "Дополнительные настройки"
 
-data ConfirmEmptyPage = CEPBack | CEPSkip | CEPAttention | CEPConsequences
+data ConfirmEmptyPage = CEPBack | CEPSkip | CEPAttention | CEPConsequences | CEPSure
 
 instance LocalizedPrint ConfirmEmptyPage where
   localizedShow l v = case l of
@@ -154,11 +155,13 @@ instance LocalizedPrint ConfirmEmptyPage where
       CEPSkip         -> "Skip"
       CEPAttention    -> "The password is empty. Are you sure?"
       CEPConsequences -> "The wallet will be accesible without password"
+      CEPSure         -> "I am sure"
     Russian -> case v of
       CEPBack         -> "Назад"
       CEPSkip         -> "Пропустить"
       CEPAttention    -> "Пустой пароль. Вы уверены?"
       CEPConsequences -> "Кошелёк будет доступен без ввода пароля"
+      CEPSure         -> "Я уверен"
 
 data StartHeightStrings = SHSDescr | SHSLabel | SHSParseError | SHSNonNegError | SHSEstimate BlockHeight
 
@@ -176,6 +179,19 @@ instance LocalizedPrint StartHeightStrings where
       SHSParseError   -> "Ошибка. Введите целое число"
       SHSNonNegError  -> "Высота должна быть 0 или больше"
       SHSEstimate h   -> "Дата начала (оценка): " <> showDate h
+
+data ChangePasswordStrings = CPSTitle | CPSDescr | CPSOld
+
+instance LocalizedPrint ChangePasswordStrings where
+  localizedShow l v = case l of
+    English -> case v of
+      CPSTitle -> "Change password"
+      CPSDescr -> "Enter the new password"
+      CPSOld   -> "You will have to enter the old password at the end"
+    Russian -> case v of
+      CPSTitle -> "Смена пароля"
+      CPSDescr -> "Введите новый пароль"
+      CPSOld   -> "В конце вам понадобится ввести старый пароль"
 
 showDate :: BlockHeight -> Text
 showDate h = T.pack $ formatTime defaultTimeLocale "%F" $ addUTCTime delta genDate
