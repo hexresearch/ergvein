@@ -49,8 +49,13 @@ instance HasNode BtcType where
   type NodeResp BtcType = Message
   type NodeSpecific BtcType = ()
 
-initBtcNode :: (MonadSettings t m) => Bool -> SockAddr -> Event t NodeMessage -> m (NodeBtc t)
-initBtcNode doLog sa msgE = do
+initBtcNode :: (MonadSettings t m)
+  => Bool                 -- ^ Output logs
+  -> NodeRating           -- ^ Initial rating for the node
+  -> SockAddr             -- ^ Node address
+  -> Event t NodeMessage  -- ^ Incoming messages for the node, including send requests
+  -> m (NodeBtc t)
+initBtcNode doLog rating sa msgE = do
 
   let net = btcNetwork
       nodeLog :: MonadIO m => Text -> m ()
@@ -136,6 +141,7 @@ initBtcNode doLog sa msgE = do
   shakeD <- holdDyn False $ leftmost [verAckE, False <$ closeE]
   let openE   = () <$ ffilter id (updated shakeD)
       closedE = () <$ _socketClosed s
+  rateRef <- newExternalRef rating
   pure $ NodeConnection {
     nodeconCurrency   = BTC
   , nodeconUrl        = sa
@@ -146,6 +152,7 @@ initBtcNode doLog sa msgE = do
   , nodeconIsUp       = shakeD
   , nodeconDoLog      = doLog
   , nodeconHeight     = heightD
+  , nodeconRating     = rateRef
   }
 
 -- | Internal peeker to parse messages coming from peer.

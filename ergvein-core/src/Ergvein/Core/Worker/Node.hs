@@ -100,7 +100,8 @@ btcNodeController = mdo
 
   tmpD <- listWithKeyShallowDiff M.empty listActionE $ \u _ _ -> do
     let reqE = extractReq sel BTC u
-    node <- initBtcNode True u reqE
+    let initRating = if u `elem` initSocks then 100 else 50
+    node <- initBtcNode True initRating u reqE
     modifyExternalRef nodeRef $ \cm -> (addNodeConn (NodeConnBtc node) cm, ())
     killE <- delay 0.1 $ nodeconCloseE node
     timeoutE <- delay handshakeTimeout =<< getPostBuild
@@ -278,7 +279,7 @@ urlCacheManager initSocks reqE = mdo
     getSecondNodes :: Event t Int -> Int -> [SockAddr] -> Workflow t m (Event t [SockAddr])
     getSecondNodes restartE n urls = Workflow $ do
       urlsE <- flip mapM urls $ \u -> mdo
-        node <- initBtcNode False u reqE
+        node <- initBtcNode False 100 u reqE
         reqE <- eventToNextFrame $ NodeMsgReq (NodeReqBtc MGetAddr) <$ (nodeconOpensE node)
         pure $ fforMaybe (nodeconRespE node) $ \case
           MAddr (Addr nats) -> let

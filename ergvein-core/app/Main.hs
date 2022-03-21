@@ -83,7 +83,7 @@ main = do
     test :: MonadSettings t m => SockAddr -> m (NodeBtc t)
     test addr = do
       (msgE, msgFire) <- newTriggerEvent
-      btcNode <- initBtcNode True addr msgE
+      btcNode <- initBtcNode True (fromIntegral 100) addr msgE
 
       --handshake
       handshakeE <- delay 0.5 . ffilter id . updated . nodeconIsUp $ btcNode
