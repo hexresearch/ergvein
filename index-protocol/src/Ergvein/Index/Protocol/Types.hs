@@ -8,10 +8,10 @@ import Data.List (nub)
 import Data.Map.Strict (Map)
 import Data.Text (Text)
 import Data.Vector.Unboxed.Deriving
+import Data.Int
 import Data.Word
 import Ergvein.Text
 import Foreign.C.Types
-import Foreign.Storable
 import Network.Socket (SockAddr(..))
 
 import Ergvein.Types.Fees
@@ -291,12 +291,12 @@ data Address
 data PeerRequest = PeerRequest
   deriving (Show, Eq)
 
-data PeerResponse = PeerResponse
-  { peerResponseAddresses :: !(V.Vector Address)
+newtype PeerResponse = PeerResponse
+  { peerResponseAddresses :: V.Vector Address
   } deriving (Show, Eq)
 
-data PeerIntroduce = PeerIntroduce
-  { peerIntroduceAddresses :: !(V.Vector Address)
+newtype PeerIntroduce = PeerIntroduce
+  { peerIntroduceAddresses :: V.Vector Address
   } deriving (Show, Eq)
 
 newtype RatesRequest = RatesRequest { unRatesRequest :: Map CurrencyCode [Fiat] }
@@ -354,8 +354,44 @@ data Message = MPing                       !Ping
              | MMempoolChunk               !MempoolChunk
   deriving (Show, Eq)
 
-genericSizeOf :: (Storable a, Integral b) => a -> b
-genericSizeOf = fromIntegral . sizeOf
+class SizeOf a where
+  genericSizeOf :: a -> Word32
+
+instance SizeOf Word8 where
+  genericSizeOf _ = 1
+  {-# INLINE genericSizeOf #-}
+
+instance SizeOf Word16 where
+  genericSizeOf _ = 2
+  {-# INLINE genericSizeOf #-}
+
+instance SizeOf Word32 where
+  genericSizeOf _ = 4
+  {-# INLINE genericSizeOf #-}
+
+instance SizeOf Word64 where
+  genericSizeOf _ = 8
+  {-# INLINE genericSizeOf #-}
+
+instance SizeOf Int8 where
+  genericSizeOf _ = 1
+  {-# INLINE genericSizeOf #-}
+
+instance SizeOf Int16 where
+  genericSizeOf _ = 2
+  {-# INLINE genericSizeOf #-}
+
+instance SizeOf Int32 where
+  genericSizeOf _ = 4
+  {-# INLINE genericSizeOf #-}
+
+instance SizeOf Int64 where
+  genericSizeOf _ = 8
+  {-# INLINE genericSizeOf #-}
+
+instance SizeOf CTime where
+  genericSizeOf _ = 8
+  {-# INLINE genericSizeOf #-}
 
 instance Conversion Address SockAddr where
   convert addr = case addr of

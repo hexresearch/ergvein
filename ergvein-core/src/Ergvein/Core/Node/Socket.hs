@@ -23,23 +23,28 @@ import Control.Concurrent.STM
 import Control.Monad.IO.Unlift
 import Control.Monad.Reader
 import Data.ByteString (ByteString)
+import Data.Foldable (traverse_)
 import GHC.Generics
 import Network.Socks5 (SocksConf(..), socksConnect, SocksAddress(..), SocksHostAddress(..))
+import Network.Socket.ByteString (sendAll)
 import Reflex
 import Reflex.ExternalRef
 import Reflex.Flunky
 import Reflex.Fork
 import Sepulcas.Native
 import System.Timeout (timeout)
+import Ergvein.Text (showt)
 
 import qualified Control.Exception.Safe as Ex
+import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BSL
 import qualified Data.List as List
 import qualified Network.Socket as N
 import qualified Network.Socket.ByteString.Lazy as NSBL
 
 import  Network.Socket.Manager.TCP.Client (PeekerIO, CloseReason (..), SocketStatus (..))
-import  Network.Socket.Manager.Peeker 
+import  Network.Socket.Manager.Peeker
+import Reflex.Main.Thread (runOnMainThreadA)
 
 -- | Possible exceptions when read from socket
 type InboundException = Ex.SomeException
@@ -137,13 +142,17 @@ socket SocketConf{..} = fmap switchSocket $ networkHoldDyn $ ffor _socketConfPro
   intVar <- liftIO $ newTVarIO False
   sendChan <- liftIO newTChanIO
   performEvent_ $ ffor closeE $ const $ liftIO $ atomically $ writeTVar intVar True
-  performEvent_ $ ffor _socketConfSend $ liftIO . atomically . writeTChan sendChan
+  performEvent_ $ ffor _socketConfSend $ \bs -> do
+    logWrite $ "Serialized message: " <> showt bs
+    liftIO . atomically . writeTChan sendChan $ bs
   performEvent_ $ ffor _socketConfClose $ const $ liftIO $ closeCb Nothing
   performFork_  $ ffor connectE $ const $ liftIO $ do
     let sendThread sock = forever $ do
+          logWrite "Awaiting messages to send"
           msgs <- atomically $ readAllTVar sendChan
-          -- logWrite $ "Sending message"
-          sendLazy sock . BSL.fromChunks $ msgs
+          logWrite $ "Sending messages with length: " <> showt (BS.length <$> msgs)
+          traverse_ (sendAll sock) msgs
+          -- sendLazy sock . BSL.fromChunks $ msgs
         conCb (sock, _) = do
           -- logWrite $ "Connected"
           statusFire SocketOperational
@@ -275,7 +284,7 @@ closeSock s = liftIO $ do
 -- Note: This uses @writev(2)@ on POSIX.
 sendLazy :: MonadIO m => N.Socket -> BSL.ByteString -> m ()
 {-# INLINABLE sendLazy #-}
-sendLazy sock = \lbs -> liftIO (NSBL.sendAll sock lbs)
+sendLazy sock lbs = liftIO (NSBL.sendAll sock lbs)
 
 
 -- | Given a list of 'N.AddrInfo's, reorder it so that ipv6 and ipv4 addresses,

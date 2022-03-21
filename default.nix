@@ -92,6 +92,7 @@ let
       inherit (pkgs.haskellPackages) hakyll;
       hp2any-graph = if profile then ghc.hp2any-graph else null;
       ghc-prof-flamegraph = if profile then ghc.ghc-prof-flamegraph else null;
+      cabal-install = ghc.callHackage "cabal-install" "2.4.1.0" {};
     };
 
     android.ergvein-wallet = {

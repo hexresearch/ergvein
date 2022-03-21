@@ -102,7 +102,6 @@ in (self: super: let
     bitcoin-api = self.callPackage ./derivations/haskell-bitcoin-api.nix {};
     bitstream = self.callPackage ./derivations/bitstream.nix { };
     byte-order = self.callPackage ./derivations/byte-order.nix {};
-    bytestring-trie = self.callPackage ./derivations/bytestring-trie.nix {};
     clay = self.callPackage ./derivations/clay.nix {};
     criterion = lib.dontCheck super.criterion;
     http-media = lib.dontCheck super.http-media;
@@ -113,7 +112,7 @@ in (self: super: let
     hp2any-core = self.callPackage ./derivations/hp2any-core.nix {};
     hp2any-graph = self.callPackage ./derivations/hp2any-graph.nix {};
     immortal-worker = self.callPackage ./derivations/immortal-worker.nix {};
-    iproute = self.callPackage ./derivations/iproute.nix {};
+    # iproute = self.callPackage ./derivations/iproute.nix {};
     lmdb = self.callPackage ./derivations/haskell-lmdb.nix {};
     parseargs = lib.dontCheck super.parseargs;
     persistent-pagination = self.callPackage ./derivations/persistent-pagination.nix {};
@@ -134,9 +133,9 @@ in (self: super: let
     servant-client = lib.dontCheck (lib.doJailbreak super.servant-client);
     servant-server = lib.dontCheck (lib.doJailbreak super.servant-server);
     texmath = self.callPackage ./derivations/texmath.nix {};
-    HsYAML = self.callPackage ./derivations/HsYAML.nix {};
+    # HsYAML = self.callPackage ./derivations/HsYAML.nix {};
     doctemplates = self.callPackage ./derivations/doctemplates.nix {};
-    haddock-library = self.callPackage ./derivations/haddock-library.nix {};
+    # haddock-library = self.callPackage ./derivations/haddock-library.nix {};
     hslua = self.callPackage ./derivations/hslua.nix {};
     skylighting = self.callPackage ./derivations/skylighting.nix {};
     skylighting-core = self.callPackage ./derivations/skylighting-core.nix {};

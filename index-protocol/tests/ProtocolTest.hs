@@ -23,10 +23,10 @@ import Ergvein.Text(hex2bs, bs2Hex)
 import qualified Data.Attoparsec.ByteString as AP
 import qualified Data.ByteString            as BS
 import qualified Data.ByteString.Base16     as B16
-import qualified Data.ByteString.Builder    as BB
 import qualified Data.ByteString.Lazy       as BL
 import qualified Data.List as L
 import qualified Data.Map.Strict            as M
+import qualified Data.Serialize.Put         as P
 import qualified Data.Vector                as V
 import qualified Data.Vector.Unboxed        as UV
 
@@ -34,19 +34,19 @@ import qualified Data.Vector.Unboxed        as UV
 -- Serialize-deserialize helpers
 
 serializeMessage :: Message -> BL.ByteString
-serializeMessage = BB.toLazyByteString . messageBuilder
+serializeMessage = P.runPutLazy . messageBuilder
 
 deserializeMessage :: BS.ByteString -> Either String Message
 deserializeMessage bs = flip AP.parseOnly bs $ messageParser . msgType =<< messageHeaderParser
 
 serializeScanBlock :: ScanBlock -> BL.ByteString
-serializeScanBlock = BB.toLazyByteString . snd . scanBlockBuilder
+serializeScanBlock = P.runPutLazy . snd . scanBlockBuilder
 
 deserializeScanBlock :: BS.ByteString -> Either String ScanBlock
 deserializeScanBlock = AP.parseOnly versionBlockParser
 
 serializeMessageHeader :: MessageHeader -> BL.ByteString
-serializeMessageHeader MessageHeader{..} = BB.toLazyByteString $ messageBase msgType msgSize (BB.byteString "")
+serializeMessageHeader MessageHeader{..} = P.runPutLazy $ messageBase msgType msgSize (P.putByteString "")
 
 deserializeMessageHeader :: BS.ByteString -> Either String MessageHeader
 deserializeMessageHeader = AP.parseOnly messageHeaderParser
@@ -60,7 +60,7 @@ deserializeMessageHeader = AP.parseOnly messageHeaderParser
 prop_lenbs_builder :: BS.ByteString -> Bool
 prop_lenbs_builder bs = either (const False) (bs ==) decomp
   where
-    comp = BB.toLazyByteString $ snd $ lenBsBuilder bs
+    comp = P.runPutLazy $ snd $ lenBsBuilder bs
     decomp = AP.parseOnly parseLenBs $ BL.toStrict comp
 
 prop_encdec_MsgHeader_Eq mh = either (const False) (mh ==) decMsg
@@ -363,7 +363,7 @@ unit_enumRountrip = do
     currencies  = [minBound .. maxBound] :: [Currency]
     currencies' = traverse roundtrip currencies
     roundtrip :: Currency -> Either String Currency
-    roundtrip = AP.parseOnly enumParser . BL.toStrict . BB.toLazyByteString . enumBuilder
+    roundtrip = AP.parseOnly enumParser . BL.toStrict . P.runPutLazy . enumBuilder
 
 unit_enumOutOfRange :: IO ()
 unit_enumOutOfRange = do
@@ -371,4 +371,4 @@ unit_enumOutOfRange = do
                   Right _ -> assertFailure "Out of range value shouldn't parse"
   where
     badEnum = AP.parseOnly (enumParser @Currency)
-            $ BL.toStrict $ BB.toLazyByteString $ Ser.varInt (10000 :: Word32)
+            $ BL.toStrict $ P.runPutLazy $ Ser.varInt (10000 :: Word32)
