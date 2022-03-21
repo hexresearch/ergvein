@@ -43,7 +43,7 @@ activeIndexersPage = do
   title <- localized NSSTitle
   let thisWidget = Just $ pure activeIndexersPage
       navbar = networkPageNavbarWidget thisWidget NavbarActiveIndexers
-  wrapperNavbar False title thisWidget navbar $ divClass "network-page" $ do
+  wrapperGeneric False title thisWidget (Just navbar) "flex-column" $ divClass "network-page" $ do
     activePageWidget
 
 inactiveIndexersPage :: MonadFront t m => m ()
@@ -51,7 +51,7 @@ inactiveIndexersPage = do
   title <- localized NSSTitle
   let thisWidget = Just $ pure inactiveIndexersPage
       navbar = networkPageNavbarWidget thisWidget NavbarInactiveIndexers
-  wrapperNavbar False title thisWidget navbar $ divClass "network-page" $ do
+  wrapperGeneric False title thisWidget (Just navbar) "flex-column" $ divClass "network-page" $ do
     inactivePageWidget
 
 activeIndexersPageUnauth :: MonadFrontBase t m => m ()
@@ -70,7 +70,7 @@ inactiveIndexersPageUnauth = do
 
 addUrlWidget :: forall t m . MonadFrontBase t m => Dynamic t Bool -> m (Event t ErgveinNodeAddr)
 addUrlWidget showD = fmap switchDyn $ networkHoldDyn $ ffor showD $ \b -> if not b then pure never else do
-  murlE <- divClass "mt-3" $ do
+  murlE <- divClass "mb-1" $ do
     textD <- fmap _inputElement_value $ inputElement $ def
       & inputElementConfig_elementConfig . elementConfig_initialAttributes .~ ("type" =: "text")
     goE <- outlineButton NSSAddUrl
@@ -89,17 +89,19 @@ activePageWidget = mdo
   addrsD  <- (fmap . fmap) S.toList $ externalRefDynamic =<< getActiveAddrsRef
   showD <- holdDyn False $ leftmost [False <$ hideE, tglE]
   let valsD = (,) <$> connsD <*> addrsD
-  void $ divClass "network-page-items" $
+  void $ divClass "network-page-items mb-2" $
     networkHoldDyn $ ffor valsD $ \(conmap, urls) ->
       for urls $ \sa -> renderActive sa refrE $ M.lookup sa conmap
-  hideE <- activateURL =<< addUrlWidget showD
-  (refrE, tglE) <- divClass "network-item mt-2" $ divClass "net-btns-3" $ do
-    refrE' <- buttonClass "button button-outline m-0" NSSRefresh
-    restoreE <- buttonClass "button button-outline m-0" NSSRestoreUrls
-    restoreNetwork restoreE
-    tglE' <- fmap switchDyn $ networkHoldDyn $ ffor showD $ \b ->
-      fmap (not b <$) $ buttonClass "button button-outline m-0" $ if b then NSSClose else NSSAddUrl
-    pure (refrE', tglE')
+  (refrE, tglE, hideE) <- divClass "network-page-footer" $ do
+    hideE' <- activateURL =<< addUrlWidget showD
+    (refrE'', tglE'') <- divClass "net-btns-3" $ do
+      refrE' <- buttonClass "button button-outline m-0" NSSRefresh
+      restoreE <- buttonClass "button button-outline m-0" NSSRestoreUrls
+      restoreNetwork restoreE
+      tglE' <- fmap switchDyn $ networkHoldDyn $ ffor showD $ \b ->
+        fmap (not b <$) $ buttonClass "button button-outline m-0" $ if b then NSSClose else NSSAddUrl
+      pure (refrE', tglE')
+    pure (refrE'', tglE'', hideE')
   pure ()
 
 renderActive :: MonadFrontBase t m
@@ -108,62 +110,65 @@ renderActive :: MonadFrontBase t m
   -> Maybe (IndexerConnection t)
   -> m ()
 renderActive nsa refrE mconn = mdo
-  tglD <- holdDyn False tglE
+  tglD <- holdDyn False tglE''
   let editBtn = fmap switchDyn $ networkHoldDyn $ ffor tglD $ \b -> fmap (not b <$)
         $ buttonClass "button button-outline network-edit-btn mt-a mb-a ml-a"
           $ if b then NSSClose else NSSEdit
-
-  tglE <- divClass "network-item" $ case mconn of
-    Nothing -> do
-      tglE' <- divClass "network-name" $ do
-        elAttr "span" offclass $ elClass "i" "fas fa-circle" $ pure ()
-        divClass "mt-a mb-a network-name-txt" $ text nsa
-        editBtn
-      stD <- indexerLastStatus nsa
-      _ <- networkHoldDyn $ ffor stD $ \case
-        Just (IndexerWrongVersion v) -> descrOption $ NSSWrongVersion v
-        Just IndexerMissingCurrencies -> descrOption NSSMissingCurrencies
-        Just IndexerNotSynced -> descrOption NSSNotSynced
-        _ -> descrOption NSSOffline
-      pure tglE'
-    Just conn -> do
-      let clsUnauthD = ffor (indexConIsUp conn) $ \up -> if up then onclass else offclass
-      let isUpD = ffor (indexConIsUp conn) id
-      let indexerHeightD = M.lookup BTC <$> indexConHeight conn
-      clsD <- fmap join $ liftAuth (pure clsUnauthD) $ do
-        hD <- getCurrentHeight BTC
-        pure $ do
-          h <- indexerHeightD
-          h' <- fmap (Just . fromIntegral) hD
-          up <- indexConIsUp conn
-          let synced = h >= h' || Just 1 == ((-) <$> h' <*> h)
-          pure $ if up
-            then if synced then onclass else unsyncClass
-            else offclass
-      tglE' <- divClass "network-name" $ do
-        elDynAttr "span" clsD $ elClass "i" "fas fa-circle" $ pure ()
-        divClass "mt-a mb-a network-name-txt" $ text nsa
-        editBtn
-      latD <- indexerConnPingerWidget conn refrE
-      _ <- networkHoldDyn $ ffor isUpD $ \up -> if not up
-          then descrOption NSSOffline
-          else do
-            descrOptionDyn $ NSSLatency <$> latD
-            let unauthHeight = descrOptionDyn $ maybe NSSNoHeight NSSIndexerHeight <$> indexerHeightD
-            void $ liftAuth unauthHeight $ do
-              btcHeightD <- getCurrentHeight BTC
-              descrOptionDyn $ do
-                mh <- indexerHeightD
-                hb <- btcHeightD
-                pure $ maybe NSSNoHeight (NSSIndexerHeightAuth hb) mh
-            descrOptionDyn $ NPSIndexerVersion <$> indexConIndexerVersion conn
-      pure tglE'
-
-  void $ networkHoldDyn $ ffor tglD $ \b -> if not b
-    then pure ()
-    else divClass "network-item mt-2" $ do
-      void $ deactivateURL . (nsa <$) =<< buttonClass "button button-outline mt-1 ml-1" NSSDisable
-      void $ forgetURL . (nsa <$) =<< buttonClass "button button-outline mt-1 ml-1" NSSForget
+  tglE'' <- divClass "network-item" $ do
+    tglE <- case mconn of
+      Nothing -> do
+        tglE' <- divClass "network-name" $ do
+          elAttr "span" offclass $ elClass "i" "fas fa-circle" $ pure ()
+          divClass "mt-a mb-a network-name-txt" $ text nsa
+          editBtn
+        stD <- indexerLastStatus nsa
+        _ <- networkHoldDyn $ ffor stD $ \case
+          Just (IndexerWrongVersion v) -> descrOption $ NSSWrongVersion v
+          Just IndexerMissingCurrencies -> descrOption NSSMissingCurrencies
+          Just IndexerNotSynced -> descrOption NSSNotSynced
+          _ -> descrOption NSSOffline
+        pure tglE'
+      Just conn -> do
+        let clsUnauthD = ffor (indexConIsUp conn) $ \up -> if up then onclass else offclass
+        let isUpD = ffor (indexConIsUp conn) id
+        let indexerHeightD = M.lookup BTC <$> indexConHeight conn
+        clsD <- fmap join $ liftAuth (pure clsUnauthD) $ do
+          hD <- getCurrentHeight BTC
+          pure $ do
+            h <- indexerHeightD
+            h' <- fmap (Just . fromIntegral) hD
+            up <- indexConIsUp conn
+            let synced = h >= h' || Just 1 == ((-) <$> h' <*> h)
+            pure $ if up
+              then if synced then onclass else unsyncClass
+              else offclass
+        tglE' <- divClass "network-name" $ do
+          elDynAttr "span" clsD $ elClass "i" "fas fa-circle" $ pure ()
+          divClass "mt-a mb-a network-name-txt" $ text nsa
+          editBtn
+        latD <- indexerConnPingerWidget conn refrE
+        _ <- networkHoldDyn $ ffor isUpD $ \up -> if not up
+            then descrOption NSSOffline
+            else do
+              descrOptionDyn $ NSSLatency <$> latD
+              let unauthHeight = descrOptionDyn $ maybe NSSNoHeight NSSIndexerHeight <$> indexerHeightD
+              void $ liftAuth unauthHeight $ do
+                btcHeightD <- getCurrentHeight BTC
+                descrOptionDyn $ do
+                  mh <- indexerHeightD
+                  hb <- btcHeightD
+                  pure $ maybe NSSNoHeight (NSSIndexerHeightAuth hb) mh
+              descrOptionDyn $ NPSIndexerVersion <$> indexConIndexerVersion conn
+        pure tglE'
+    
+    void $ networkHoldDyn $ ffor tglD $ \b -> if not b
+      then pure ()
+      else divClass "net-btns-2 mt-1" $ do
+        void $ deactivateURL . (nsa <$) =<< buttonClass "button button-outline" NSSDisable
+        void $ forgetURL . (nsa <$) =<< buttonClass "button button-outline" NSSForget
+    
+    pure tglE
+  pure ()
   where
     offclass    = [("class", "mb-a mt-a indexer-offline")]
     onclass     = [("class", "mb-a mt-a indexer-online")]
