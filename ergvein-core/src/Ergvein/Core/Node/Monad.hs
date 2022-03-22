@@ -90,10 +90,10 @@ requestFromNode reqE = do
     in liftIO . nodeReqFire $ M.singleton cur $ M.singleton u $ NodeMsgReq req
 {-# INLINE requestFromNode #-}
 
-postNodeMessage :: MonadNode t m => Currency -> Event t (SockAddr, NodeMessage) -> m ()
+postNodeMessage :: MonadNode t m => Currency -> Event t (SockAddr, NodeMessage) -> m (Event t ())
 postNodeMessage cur reqE = do
   nodeReqFire <- getNodeReqFire
-  performFork_ $ ffor reqE $ \(u, msg) ->
+  performFork $ ffor reqE $ \(u, msg) ->
     liftIO . nodeReqFire $ M.singleton cur $ M.singleton u msg
 {-# INLINE postNodeMessage #-}
 

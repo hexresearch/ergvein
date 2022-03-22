@@ -31,6 +31,8 @@ module Ergvein.Core.Store.Monad(
   , setScannedHeightE
   , getScannedHeightD
   , getScannedHeight
+  , addSuperbBtcNode
+  , removeSuperbBtcNode
   , getConfirmedTxs
   , getUnconfirmedTxs
   , setSeedBackupRequired
@@ -44,12 +46,14 @@ import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.IO.Unlift
 import Control.Monad.Reader
+import Crypto.Random.Types (MonadRandom)
 import Data.Functor (void)
 import Data.Map (Map)
 import Data.Maybe (fromMaybe, isJust, isNothing)
 import Data.Set (Set)
 import Data.Text (Text)
 import Ergvein.Crypto
+import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Keys
 import Ergvein.Types.Storage
@@ -58,7 +62,7 @@ import Ergvein.Types.Storage.Currency.Public.Btc
 import Ergvein.Types.Transaction
 import Ergvein.Types.Utxo.Btc
 import Ergvein.Types.WalletInfo
-import Crypto.Random.Types (MonadRandom)
+import Network.Socket
 import Reflex
 import Sepulcas.Native
 
@@ -399,6 +403,13 @@ getScannedHeight cur = do
     ^. pubStorage'currencyPubStorages
     . at cur)
 
+addSuperbBtcNode :: MonadStorage t m => Event t SockAddr -> m (Event t ())
+addSuperbBtcNode saE = modifyPubStorage "addSuperbBtcNode" $ ffor saE $ \sa ps ->
+  Just $ modifyCurrStorageBtc (btcPubStorage'preferredNodes %~ S.insert (showt sa)) ps
+
+removeSuperbBtcNode :: MonadStorage t m => Event t SockAddr -> m (Event t ())
+removeSuperbBtcNode saE = modifyPubStorage "addSuperbBtcNode" $ ffor saE $ \sa ps ->
+  Just $ modifyCurrStorageBtc (btcPubStorage'preferredNodes %~ S.delete (showt sa)) ps
 
 -- ===========================================================================
 --           HasPubStorage helpers

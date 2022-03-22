@@ -188,7 +188,7 @@ unitsPage = do
       void $ updateSettings $ poke (updated selD) $ \v -> do
         settings <- sampleDyn settingsD
         pure $ settings {settingsShowFiatRate = v}
-    
+
     unitsDropdown val allUnits = do
       langD <- getLanguage
       let unitD = constDyn val
@@ -255,7 +255,7 @@ btcNodesPage = do
           let addr = nodeconUrl node
           (e,_) <- elAttr' "span" [("class", "mt-a mb-a mr-1")] $ elClass "i" "fas fa-times" $ pure ()
           let closeE = (addr, NodeMsgClose) <$ domEvent Click e
-          postNodeMessage BTC closeE
+          void $ postNodeMessage BTC closeE
           elDynAttr "span" clsD $ elClass "i" "fas fa-circle" $ pure ()
           divClass "mt-a mb-a network-name-txt" $ text $ showt addr
         pure ()

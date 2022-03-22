@@ -21,6 +21,8 @@ module Ergvein.Core.Node.Types
   , NodeRating(..)
   , RatingLevel(..)
   , checkRating
+  , isRemoveRating
+  , isSuperbRating
   , getAllConnByCurrency
   , nodeString
   , getNodeReqCurrency
@@ -141,3 +143,13 @@ checkRating (NodeRating r) = if r == 0
   else if r < 75
     then RLAcceptable
     else RLSuperb
+
+isRemoveRating :: NodeRating -> Bool
+isRemoveRating r = case checkRating r of
+  RLRemove -> True
+  _ -> False
+
+isSuperbRating :: NodeRating -> Bool
+isSuperbRating r = case checkRating r of
+  RLSuperb -> True
+  _ -> False
