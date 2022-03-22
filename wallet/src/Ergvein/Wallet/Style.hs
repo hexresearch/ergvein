@@ -717,7 +717,6 @@ networkPageCss = do
     flexGrow 1
     display flex
     flexDirection column
-    justifyContent spaceBetween
   ".network-item:not(:last-child)" ? do
     marginBottom $ rem 1
   ".network-hr-sep" ? do
@@ -769,7 +768,9 @@ networkPageCss = do
   ".net-btns-2" ? do
     display grid
     gridGap $ em 0.5
-    gridTemplateColumns [fr 1, fr 1]
+    gridTemplateColumns [fr 1]
+  query M.screen [M.maxWidth mobileBreakpoint] $ ".network-page" ? do
+    justifyContent spaceBetween
   query M.screen [M.minWidth mobileBreakpoint] $ ".net-btns-3" ? do
     display grid
     gridTemplateColumns [fr 1, fr 1, fr 1]
@@ -783,6 +784,7 @@ networkPageCss = do
     gridGap $ em 0.5
     width maxContent
     marginLeft auto
+    marginRight auto
 
 infoPageCss :: Css
 infoPageCss = do
