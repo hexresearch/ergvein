@@ -182,16 +182,18 @@ activateURLList addrE = do
 -- | It is really important to wait until indexer performs deinitialization before deleting it from dynamic collections
 closeAndWait :: MonadClient t m => Event t ErgveinNodeAddr -> m (Event t ErgveinNodeAddr)
 closeAndWait urlE = do
-  req      <- getIndexReqFire
+  req <- getIndexReqFire
   connsRef <- getActiveConnsRef
-  closedEE <- performEvent $ ffor urlE $ \url -> do
-    let sa = url
-    liftIO $ req $ M.singleton sa IndexerClose
-    mconn <- M.lookup sa <$> readExternalRef connsRef
-    pure $ case mconn of
-      Nothing -> never
-      Just conn -> url <$ indexConClosedE conn
-  switchDyn <$> holdDyn never closedEE
+  connE <- performEvent $ ffor urlE $ \url -> do
+    mconn <- M.lookup url <$> readExternalRef connsRef
+    case mconn of
+      Nothing -> pure $ Left url
+      Just conn -> do
+        liftIO $ req $ M.singleton url IndexerClose
+        pure $ Right $ url <$ indexConClosedE conn
+  let (connIsInactiveE, connIsActiveEE) = fanEither connE
+  closedE <- switchHold never connIsActiveEE
+  pure $ leftmost [connIsInactiveE, closedE]
 
 -- | Deactivate an URL
 deactivateURL :: (MonadClient t m, MonadSettings t m) => Event t ErgveinNodeAddr -> m (Event t ())
@@ -240,7 +242,7 @@ forgetURL addrE = do
       in (s', s')
     storeSettings s
 
-broadcastIndexerMessage :: (MonadClient t m) => Event t IndexerMsg -> m ()
+broadcastIndexerMessage :: MonadClient t m => Event t IndexerMsg -> m ()
 broadcastIndexerMessage reqE = do
   connsRef <- getActiveConnsRef
   fire <- getIndexReqFire
