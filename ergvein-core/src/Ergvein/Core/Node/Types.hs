@@ -127,7 +127,7 @@ data NodeRating = NodeRating {unNodeRating :: Word8}
 -- | Node rating is capped at 100
 instance Num NodeRating where
   (NodeRating x) + (NodeRating y)   = NodeRating $ if x + y >= 100 then 100 else x + y
-  (NodeRating x) - (NodeRating y)   = NodeRating $ if x - y <= 0 then 0 else x - y
+  (NodeRating x) - (NodeRating y)   = NodeRating $ if y >= x then 0 else x - y
   (NodeRating x) * (NodeRating y)   = NodeRating $ if x * y >= 100 then 100 else x * y
   negate (NodeRating x)             = NodeRating $ negate x
   abs x = x

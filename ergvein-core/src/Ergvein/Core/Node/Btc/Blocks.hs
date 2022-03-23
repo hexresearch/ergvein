@@ -4,6 +4,7 @@ module Ergvein.Core.Node.Btc.Blocks
 
 import Control.Monad.Random
 import Data.Maybe (catMaybes, isNothing)
+import Data.Text (Text)
 import Data.Time
 import Network.Haskoin.Block
 import Network.Haskoin.Network
@@ -36,6 +37,15 @@ blockTimeout = 20
 noNodeTimeout :: NominalDiffTime
 noNodeTimeout = 5
 
+-- | Pass all logging through formatter
+-- Also useful to disable logs for dev. purposes
+reqLog :: (PlatformNatives, MonadIO m) => Text -> m ()
+reqLog _ = pure ()
+-- reqLog t = logWrite $ "[requestBlocksBtc]: " <> t
+
+reqLogAddr :: (PlatformNatives, MonadIO m) => SockAddr -> Text -> m ()
+reqLogAddr sa t = reqLog $ "<" <> showt sa <> ">: " <> t
+
 -- | Handles requesting logic
 requestBlocksBtc :: forall t m . (MonadNode t m, MonadStorage t m) => Event t [BlockHash] -> m (Event t [Block])
 requestBlocksBtc reqE = fmap switchDyn $ workflow $ waitForRequest
@@ -51,6 +61,7 @@ requestBlocksBtc reqE = fmap switchDyn $ workflow $ waitForRequest
     -- If there is no active connections, wait noNodeTimeout and try again
     selectNode :: [BlockHash] -> Workflow t m (Event t [Block])
     selectNode req = Workflow $ do
+      reqLog "[requestBlocksBtc]: Select node"
       cons <- fmap M.elems . sampleDyn =<< getBtcNodesD
       mcon <- liftIO $ do
         consRated <- flip traverse cons $ \c -> do
@@ -60,7 +71,7 @@ requestBlocksBtc reqE = fmap switchDyn $ workflow $ waitForRequest
       buildE <- getPostBuild
       goE <- case mcon of
         Nothing -> do
-          logWrite $ "No active connections"
+          reqLog $ "No active connections"
           delay noNodeTimeout $ selectNode req <$ buildE
         Just con -> (fmap . fmap) (const $ runReq req con) $ eventToNextFrame buildE
       pure (never, goE)
@@ -74,6 +85,7 @@ requestBlocksBtc reqE = fmap switchDyn $ workflow $ waitForRequest
     -- If runReq times out, punish the node and run the request again
     runReq :: [BlockHash] -> NodeBtc t -> Workflow t m (Event t [Block])
     runReq bhs con@NodeConnection{..} = Workflow $ do
+      reqLogAddr nodeconUrl "runReq"
       let btcreq  = NodeReqBtc $ MGetData $ GetData $ fmap (InvVector InvBlock . getBlockHash) bhs
       buildE <- getPostBuild
       timeoutE <- void <$> tickLossyFromPostBuildTime blockTimeout
@@ -103,45 +115,48 @@ requestBlocksBtc reqE = fmap switchDyn $ workflow $ waitForRequest
     -- | Punish a node which has timed out or disconnected
     punish :: [BlockHash] -> NodeBtc t -> Workflow t m (Event t [Block])
     punish req con = Workflow $ do
-      logWrite "Timed out"
-      goE <- handleRating (-10) con
+      reqLogAddr (nodeconUrl con) "Timed out"
+      goE <- handleRating (-40) con
       pure (never, selectNode req <$ goE)
 
     -- | Reward a node which succesfully responded to a request
     -- If the node has found all blocks (rereq is []) then reward with 10, else 5
     rewardNode :: NodeBtc t -> [BlockHash] -> Workflow t m (Event t [Block])
     rewardNode con rereqs = Workflow $ do
+      reqLogAddr (nodeconUrl con) "Reward node"
       let reward = if null rereqs then 10 else 5
       doneE <- handleRating reward con
       let nextE = ffor doneE $ const $ if null rereqs
             then waitForRequest else selectNode rereqs
-      pure (never, never)
+      pure (never, nextE)
 
     -- | Handle node rating
     -- Close the connection, remove or add the node to the list of preferred nodes as needed
     handleRating :: Int -> NodeBtc t -> m (Event t ())
     handleRating delta con = do
+      reqLogAddr (nodeconUrl con) "Handle rating"
       let sa = nodeconUrl con
       buildE <- getPostBuild
-      storedE <- performEvent $ ffor buildE $ const $
+      actE <- performEvent $ ffor buildE $ const $
         modifyExternalRef (nodeconRating con) $ \r -> let
           d = fromIntegral $ abs delta
           r' = if (signum delta >= 0) then r + d else r - d
-          in (r',(r, r'))
-      let (killE, (remE, addE)) = fmap fanEither $ fanEither $ fmapMaybe (rate sa) storedE
+          act = rate r r'
+          in (r', act)
 
       fmap leftmost $ sequence
-        [ postNodeMessage BTC killE
-        , addSuperbBtcNode addE
-        , removeSuperbBtcNode remE
+        [ postNodeMessage BTC $ (sa, NodeMsgClose) <$ ffilter (==RAKill) actE
+        , addSuperbBtcNode $ sa <$ ffilter (==RAAdd) actE
+        , removeSuperbBtcNode $ sa <$ ffilter (==RARemove) actE
+        , pure $ void $ ffilter (==RANone) actE
         ]
 
     -- | Handle rating and return apropriate action. Which constructor is which is obvious from the usage in handleRating
-    rate :: SockAddr -> (NodeRating, NodeRating) -> Maybe (Either (SockAddr, NodeMessage) (Either SockAddr SockAddr))
-    rate sa (rnew,rold) = case checkRating rnew of
-      RLRemove -> Just $ Left (sa, NodeMsgClose)
-      RLAcceptable -> if isSuperbRating rold then Just (Right $ Left sa) else Nothing
-      RLSuperb -> if isSuperbRating rold then Nothing else Just (Right $ Right sa)
+    rate :: NodeRating -> NodeRating -> RatingAction
+    rate rold rnew = case checkRating rnew of
+      RLRemove -> RAKill
+      RLAcceptable -> if isSuperbRating rold then RARemove else RANone
+      RLSuperb -> if isSuperbRating rold then RANone else RAAdd
 
     -- | Filter blocks that we have requested
     filt :: [BlockHash] -> InvVector -> Maybe (BlockHash, Maybe Block)
@@ -149,3 +164,6 @@ requestBlocksBtc reqE = fmap switchDyn $ workflow $ waitForRequest
       InvBlock -> let bh = BlockHash ivh
         in if bh `L.elem` bhs then Just (bh, Nothing) else Nothing
       _ -> Nothing
+
+data RatingAction = RANone | RAKill | RAAdd | RARemove
+  deriving (Eq, Show)

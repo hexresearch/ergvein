@@ -408,7 +408,7 @@ addSuperbBtcNode saE = modifyPubStorage "addSuperbBtcNode" $ ffor saE $ \sa ps -
   Just $ modifyCurrStorageBtc (btcPubStorage'preferredNodes %~ S.insert (showt sa)) ps
 
 removeSuperbBtcNode :: MonadStorage t m => Event t SockAddr -> m (Event t ())
-removeSuperbBtcNode saE = modifyPubStorage "addSuperbBtcNode" $ ffor saE $ \sa ps ->
+removeSuperbBtcNode saE = modifyPubStorage "removeSuperbBtcNode" $ ffor saE $ \sa ps ->
   Just $ modifyCurrStorageBtc (btcPubStorage'preferredNodes %~ S.delete (showt sa)) ps
 
 -- ===========================================================================
