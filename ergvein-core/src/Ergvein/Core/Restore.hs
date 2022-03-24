@@ -51,7 +51,7 @@ restore renderRestorePage = do
     filtersBatchSize = 300
 
     nodeConnection = Workflow $ do
-      -- | Prevent the screen from turning off
+      -- Prevent the screen from turning off
       runOnMainThreadM androidSetScreenFlag
       logWrite "Stage 1. Waiting connection to at least one bitcoin node"
       buildE <- getPostBuild
