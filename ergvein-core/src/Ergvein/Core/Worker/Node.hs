@@ -95,7 +95,7 @@ btcNodeController = mdo
   let remNodeE = (`M.singleton` Nothing) <$> remNodeUrlE
   let listActionE = leftmost [addNodeE, remNodeE]
 
-  -- | Detect when the number of connected nodes decreased
+  -- Detect when the number of connected nodes decreased
   decDetectorD <- foldDyn handleDecDetector (False, 0) $ updated $ M.size <$> tmpD
 
   tmpD <- listWithKeyShallowDiff M.empty listActionE $ \u _ _ -> do
