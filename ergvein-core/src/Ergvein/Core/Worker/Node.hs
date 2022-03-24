@@ -126,6 +126,8 @@ btcNodeController = mdo
   where
     switchTuple (a, b) = (switchDyn . fmap leftmost $ a, switchDyn . fmap leftmost $ b)
 
+-- | Resolve preferred nodes.
+-- Suffle the values to avoid always connecting to the top node at the start
 resolveInitialUrls ::(MonadNode t m, MonadStorage t m, MonadSettings t m
   , MonadWallet t m, MonadStatus t m, MonadHasMain m) => m [SockAddr]
 resolveInitialUrls = do
@@ -135,7 +137,12 @@ resolveInitialUrls = do
   let port = if isTestnet then 18333 else 8333
   resolver <- mkResolvSeed
   namedUrls <- resolveAddrs resolver port initUrls
-  pure $ namedAddrSock <$> namedUrls
+  shuffleVals $ namedAddrSock <$> namedUrls
+
+shuffleVals :: MonadIO m => [a] -> m [a]
+shuffleVals xs = liftIO $ do
+  indices :: [Int] <- replicateM (length xs) randomIO
+  pure $ snd $ unzip $ L.sortOn fst $ zip indices xs
 
 myTxSender :: (MonadNode t m, MonadStorage t m) => SockAddr -> Event t Message -> m ()
 myTxSender addr msgE = do
