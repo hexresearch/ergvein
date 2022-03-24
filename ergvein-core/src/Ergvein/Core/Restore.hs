@@ -29,9 +29,9 @@ import Ergvein.Types.Storage
 import Ergvein.Types.Transaction
 import Reflex.Flunky
 import Reflex.Fork
+import Reflex.Main.Thread
 import Reflex.Workflow
 import Sepulcas.Native
-
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import qualified Data.Vector as V
@@ -40,7 +40,7 @@ import qualified Data.Vector as V
 filtersRetryTimeout :: NominalDiffTime
 filtersRetryTimeout = 10
 
-restore :: forall t m . (MonadWallet t m, HasStatusEnv t m, HasNodeEnv t m, HasWalletEnv t m, HasStoreEnv t m) => m () -> m (Event t ())
+restore :: forall t m . (MonadHasMain m, MonadWallet t m, HasStatusEnv t m, HasNodeEnv t m, HasWalletEnv t m, HasStoreEnv t m) => m () -> m (Event t ())
 restore renderRestorePage = do
   renderRestorePage
   workflowD <- workflow nodeConnection
@@ -51,20 +51,18 @@ restore renderRestorePage = do
     filtersBatchSize = 300
 
     nodeConnection = Workflow $ do
+      -- | Prevent the screen from turning off
+      runOnMainThreadM androidSetScreenFlag
       logWrite "Stage 1. Waiting connection to at least one bitcoin node"
       buildE <- getPostBuild
-      let status =
-            def
-              & walletStatusRestore'stage .~ RestoreStage'connectingToBtcNodes
-              & walletStatusRestore'progress .~ Nothing
+      let status = def & walletStatusRestore'stage .~ RestoreStage'connectingToBtcNodes
       void $ updateWalletStatusRestore BTC $ const status <$ buildE
       conmapD <- getNodesByCurrencyD BTC
       let upsD = fmap or $
             join $
               ffor conmapD $ \cm -> sequence $
                 ffor (M.elems cm) $ \case
-                  NodeConnBtc con -> nodeconIsUp con 
-                  
+                  NodeConnBtc con -> nodeconIsUp con
       let nextE = ffilter id $ updated upsD
       pure (False, heightAskingStage <$ nextE)
 
@@ -73,9 +71,17 @@ restore renderRestorePage = do
       heightD <- getCurrentHeight BTC
       scannedHeight <- getScannedHeight BTC
       height0E <- tag (current heightD) <$> getPostBuild
-      let heightE = leftmost [updated heightD, height0E]
-      let nextE = fforMaybe heightE $ \h -> if h == 0 then Nothing else Just $ getFiltersBatch $ fromIntegral scannedHeight
-      pure (False, nextE)
+      pubStorage <- getPubStorage
+      let heightE = ffilter (/= 0) $ leftmost [updated heightD, height0E]
+          mRestoreStartHeight = getRestoreStartHeight pubStorage
+      case mRestoreStartHeight of
+        Just _ -> do
+          let nextE = getFiltersBatch (fromIntegral scannedHeight) <$ heightE
+          pure (False, nextE)
+        Nothing -> do
+          restoreStartHeightSetE <- setRestoreStartHeightE $ scannedHeight <$ heightE
+          let nextE = getFiltersBatch (fromIntegral scannedHeight) <$ restoreStartHeightSetE
+          pure (False, nextE)
 
     getFiltersBatch :: BlockHeight -> Workflow t m Bool
     getFiltersBatch startHeight = Workflow $ do
@@ -121,13 +127,17 @@ restore renderRestorePage = do
     scanBatchKeys startHeight (curHeight, nextHeight) batch keys = Workflow $ mdo
       logWrite "Stage 4. Scan keys"
       buildE <- getPostBuild
-      let status fromH toH curr =
+      pubStorage <- getPubStorage
+      fullHeight <- sampleDyn . fmap fromIntegral =<< getCurrentHeight BTC
+      let
+        mRestoreStartHeight = getRestoreStartHeight pubStorage
+        restoreStartHeight = fromMaybe startHeight mRestoreStartHeight
+        status fromH toH currH =
             def
               & walletStatusRestore'stage .~ RestoreStage'scanning
-              & walletStatusRestore'progress ?~ mapPercentage blockScanningProgressBounds (calcPercentage fromH toH curr)
-      void $ updateWalletStatusRestore BTC $ const (status startHeight fullHeight curHeight) <$ buildE
+              & walletStatusRestore'progress ?~ calcPercentage fromH toH currH
+      void $ updateWalletStatusRestore BTC $ const (status restoreStartHeight fullHeight curHeight) <$ buildE
       (_, cb) <- newTriggerEvent
-      fullHeight <- sampleDyn . fmap fromIntegral =<< getCurrentHeight BTC
       let mkAddr k = addressToScriptBS . xPubToBtcAddr . extractXPubKeyFromEgv $ scanBox'key k
       let addrs = V.toList $ mkAddr <$> keys
       let chunks = mkChunks 100 batch
@@ -158,6 +168,8 @@ restore renderRestorePage = do
     -- Stage 5: finalize the restore
     finishScanning :: Workflow t m Bool
     finishScanning = Workflow $ do
+      -- | Allow the screen to turn off again
+      runOnMainThreadM androidClearScreenFlag
       logWrite "Stage 5. Finalize restore"
       buildE <- getPostBuild
       setE <- updateWalletStatusNormal BTC $ const WalletStatusNormal'synced <$ buildE

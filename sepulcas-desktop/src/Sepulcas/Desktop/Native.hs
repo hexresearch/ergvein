@@ -158,6 +158,9 @@ instance PlatformNatives where
 
   androidDetectDns = pure []
 
+  androidSetScreenFlag = pure ()
+  androidClearScreenFlag = pure ()
+  
 getFiles :: FilePath -> IO [FilePath]
 getFiles dir = do
   _ :/ tree <- build dir

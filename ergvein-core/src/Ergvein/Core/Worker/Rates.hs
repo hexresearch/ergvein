@@ -3,19 +3,20 @@ module Ergvein.Core.Worker.Rates
     ratesWorker
   ) where
 
+import Data.Functor
+import Data.List
 import Data.Maybe
 import Data.Time
-import Data.Functor
 import Ergvein.Core.Currency
-import Ergvein.Core.Settings
 import Ergvein.Core.Node.Monad
+import Ergvein.Core.Settings
 import Ergvein.Core.Wallet.Monad
 import Ergvein.Index.Protocol.Types hiding (CurrencyCode(..))
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Reflex.ExternalRef
-import Reflex.Fork
 import Reflex.Flunky
+import Reflex.Fork
 import Sepulcas.Native
 
 import qualified Data.Map.Strict as M
@@ -25,9 +26,10 @@ ratesTimeout = 600
 
 ratesWorker :: (MonadSettings t m, MonadWallet t m, MonadNode t m) => m ()
 ratesWorker = do
-  ratesRef  <- getRatesRef
-  mRateD <- getFiatRateSettings
-  let fiatsD = ffor mRateD maybeToList
+  ratesRef <- getRatesRef
+  showFiatRateD <- getFiatRateSettings
+  showFiatBalanceD <- getFiatBalanceSettings
+  let fiatsD = ffor2 showFiatRateD showFiatBalanceD (\mRate mBal -> nub $ maybeToList mRate <> maybeToList mBal)
   let btcCC = currencyToCurrencyCode BTC
   void $ networkHoldDyn $ ffor fiatsD $ \case
     [] -> pure ()
