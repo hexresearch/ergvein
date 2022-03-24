@@ -116,7 +116,7 @@ requestBlocksBtc reqE = fmap switchDyn $ workflow $ waitForRequest
     punish :: [BlockHash] -> NodeBtc t -> Workflow t m (Event t [Block])
     punish req con = Workflow $ do
       reqLogAddr (nodeconUrl con) "Timed out"
-      goE <- handleRating (-40) con
+      goE <- handleRating (-10) con
       pure (never, selectNode req <$ goE)
 
     -- | Reward a node which succesfully responded to a request
