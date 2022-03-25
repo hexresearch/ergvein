@@ -24,7 +24,7 @@ jint android_timezone_offset() {
     __android_log_write(ANDROID_LOG_DEBUG, "android_timezone_offset", "Failed to call getCurrentTimeZoneOffset");
     (*env)->ExceptionDescribe(env);
   }
-  assert(resInt);
+  // assert(resInt); // Could be 0 if UTC is set
   __android_log_write(ANDROID_LOG_DEBUG, "android_timezone_offset", "called getCurrentTimeZoneOffset method");
 
   return resInt;

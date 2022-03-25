@@ -41,6 +41,7 @@ foreign import ccall safe "android_share_jpeg" androidShareJpeg :: HaskellActivi
 foreign import ccall safe "android_detectdns" androidDetectDnsImpl :: HaskellActivity -> IO CString
 foreign import ccall safe "android_set_screen_flag" androidSetScreenFlagImpl :: HaskellActivity -> IO ()
 foreign import ccall safe "android_clear_screen_flag" androidClearScreenFlagImpl :: HaskellActivity -> IO ()
+foreign import ccall safe "android_get_version" androidGetVersionImpl :: IO Int
 
 decodeText :: CString -> IO Text
 decodeText cstr = do
@@ -204,9 +205,13 @@ instance PlatformNatives where
 
   androidDetectDns = liftIO $ do
     a <- getHaskellActivity
-    r <- androidDetectDnsImpl a
-    t <- decodeText r
-    pure $ fmap T.unpack $ T.splitOn ";" t
+    v <- androidGetVersionImpl
+    logWrite $ "Android version is " <> T.pack (show v)
+    if v > 23 then do
+      r <- androidDetectDnsImpl a
+      t <- decodeText r
+      pure $ T.unpack <$> T.splitOn ";" t
+    else pure []
 
   androidSetScreenFlag = liftIO $ androidSetScreenFlagImpl =<< getHaskellActivity
   androidClearScreenFlag = liftIO $ androidClearScreenFlagImpl =<< getHaskellActivity

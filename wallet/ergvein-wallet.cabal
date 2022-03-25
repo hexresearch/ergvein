@@ -123,7 +123,7 @@ library
         , ergvein-core
         , ergvein-crypto          >= 0.1        && < 0.2
         , ergvein-filters         >= 0.2        && < 0.3
-        , ergvein-index-protocol  >= 0.1        && < 0.2
+        , ergvein-index-protocol  >= 0.2        && < 0.3
         , ergvein-localize
         , ergvein-node-discovery
         , ergvein-types           >= 0.1        && < 0.2

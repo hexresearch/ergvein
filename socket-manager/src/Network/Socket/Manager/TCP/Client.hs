@@ -19,15 +19,28 @@ module Network.Socket.Manager.TCP.Client(
   , socket
   ) where
 
-import Control.Concurrent
+import Control.Concurrent ( forkIO, killThread )
 import Control.Concurrent.STM
-import Control.Monad.IO.Class
+    ( STM,
+      atomically,
+      newTVarIO,
+      readTVarIO,
+      writeTVar,
+      isEmptyTChan,
+      newTChanIO,
+      readTChan,
+      writeTChan,
+      modifyTVar',
+      TChan )
+import Control.Monad.IO.Class ( MonadIO(..) )
 import Control.Monad.Reader
+    ( void, forever, fix, ReaderT(runReaderT) )
 import Data.ByteString (ByteString)
 import Data.Foldable (traverse_)
-import Data.Time
-import GHC.Generics
+import Data.Time ( NominalDiffTime )
+import GHC.Generics ( Generic )
 import Network.Socket.Manager.Peeker
+    ( ReceiveException(..), PeekerEnv(..), MonadPeeker(..) )
 import Network.Socks5 (SocksConf(..), socksConnect, SocksAddress(..), SocksHostAddress(..))
 import System.Timeout (timeout)
 
@@ -102,7 +115,7 @@ type PeekerIO a = ReaderT PeekerEnv IO a
 --
 -- Automatically reopens on non user triggered close events (if config specifty this)
 -- and when SOCKS config is changed.
-socket :: (MonadIO m)
+socket :: MonadIO m
   => (a -> ByteString) -- ^ Serialization of incoming messages
   -> PeekerIO b -- ^ Deserialization of outcoming messages
   -> TChan (SocketInEvent a) -- ^ Incoming messages
@@ -152,7 +165,7 @@ socket mkmessage peeker inputChan SocketConf{..} = liftIO $ do
                   Right (Right a) -> inFire a >> next
             Peer host port = _socketConfPeer
         statusFire SocketConnecting
-        mproxy <- atomically . readTVar $ socksVar
+        mproxy <- readTVarIO socksVar
         connect host port mproxy conCb `Ex.catchAny` (closeCb . Just)
 
   -- Reconnection thread
@@ -160,14 +173,14 @@ socket mkmessage peeker inputChan SocketConf{..} = liftIO $ do
     e <- atomically $ readTChan reconChan
     case e of
       DoReconnect Nothing -> do
-        cid <- atomically $ readTVar connThreadVar
+        cid <- readTVarIO connThreadVar
         traverse_ killThread cid
         atomically $ writeTVar triesVar 0
         connTid <- forkIO connectThread
         atomically $ writeTVar connThreadVar $ Just connTid
         next
       DoReconnect (Just ex) -> do
-        i <- atomically $ readTVar triesVar
+        i <- readTVarIO triesVar
         case _socketConfReopen of
           Nothing -> do
             killThread inputThread
@@ -184,7 +197,7 @@ socket mkmessage peeker inputChan SocketConf{..} = liftIO $ do
               atomically $ writeTVar connThreadVar $ Just connTid
             next
       GraceStop -> do
-        cid <- atomically $ readTVar connThreadVar
+        cid <- readTVarIO connThreadVar
         traverse_ killThread cid
         killThread inputThread
         atomically $ writeTChan eventsChan $ SockOutClosed CloseGracefull

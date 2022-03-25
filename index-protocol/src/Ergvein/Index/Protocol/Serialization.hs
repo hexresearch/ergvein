@@ -1,12 +1,13 @@
 module Ergvein.Index.Protocol.Serialization where
 
 import Codec.Compression.GZip
-import Data.ByteString.Builder
 import Data.Fixed
 import Data.Monoid
 import Data.Text.Encoding
 import Data.Word
 import Foreign.C.Types
+import Data.Serialize.Put (Put, runPutLazy, putByteString, putLazyByteString, putWord8, putWord32be,
+                          putWord32le, putWord16be, putWord16le, putWord64le)
 
 import Ergvein.Index.Protocol.Types
 import Ergvein.Types.Fees
@@ -75,24 +76,24 @@ mkProtocolVersion (mj,mn,p)
 protocolVersionBS :: BS.ByteString
 protocolVersionBS = mkProtocolVersion protocolVersion
 
-addressBuilder :: Address -> (Sum Word32, Builder)
+addressBuilder :: Address -> (Sum Word32, Put)
 addressBuilder addr = case addr of
-  AddressIpv4 {..} -> (addrSize, word8 addrType <> word32BE addressV4 <> word16BE addressPort)
-  AddressIpv6 {..} -> (addrSize, word8 addrType <> encodeIpv6 addressV6 <> word16BE addressPort)
-  AddressOnionV3 {..} -> (addrSize, word8 addrType <> byteString addressOnion <> word16BE addressPort)
+  AddressIpv4 {..} -> (addrSize, putWord8 addrType <> putWord32be addressV4 <> putWord16be addressPort)
+  AddressIpv6 {..} -> (addrSize, putWord8 addrType <> encodeIpv6 addressV6 <> putWord16be addressPort)
+  AddressOnionV3 {..} -> (addrSize, putWord8 addrType <> putByteString addressOnion <> putWord16be addressPort)
   where
-    encodeIpv6 (IpV6 a b c d) = foldMap word32BE [a, b, c, d]
+    encodeIpv6 (IpV6 a b c d) = foldMap putWord32be [a, b, c, d]
     addrType = ipTypeToWord8 $ addressType addr
     addrSize = Sum $ genericSizeOf addrType
                    + addressSize (addressType addr)
                    + genericSizeOf (addressPort addr)
 
-varInt :: Integral a => a -> Builder
+varInt :: Integral a => a -> Put
 varInt w
-  | w < 0xFD = word8 $ fromIntegral w
-  | w <= 0xFFFF = word8 0xFD <> word16LE (fromIntegral w)
-  | w <= 0xFFFFFFFF = word8 0xFE <> word32LE (fromIntegral w)
-  | otherwise = word8 0xFF <> word64LE (fromIntegral w)
+  | w < 0xFD = putWord8 $ fromIntegral w
+  | w <= 0xFFFF = putWord8 0xFD <> putWord16le (fromIntegral w)
+  | w <= 0xFFFFFFFF = putWord8 0xFE <> putWord32le (fromIntegral w)
+  | otherwise = putWord8 0xFF <> putWord64le (fromIntegral w)
 
 varIntSize :: Integral a => a -> Word32
 varIntSize w
@@ -101,12 +102,12 @@ varIntSize w
   | w <= 0xFFFFFFFF = 5
   | otherwise = 9
 
-messageBase :: MessageType -> Word32 -> Builder -> Builder
+messageBase :: MessageType -> Word32 -> Put -> Put
 messageBase msgType msgLength payload
   | messageHasPayload msgType = varInt (messageTypeToWord32 msgType) <> varInt msgLength <> payload
   | otherwise = varInt (messageTypeToWord32 msgType)
 
-scanBlockBuilder :: ScanBlock -> (Sum Word32, Builder)
+scanBlockBuilder :: ScanBlock -> (Sum Word32, Put)
 scanBlockBuilder ScanBlock {..} = (scanBlockSize, scanBlock)
   where
     currencyCode = currencyCodeToWord32 scanBlockCurrency
@@ -117,11 +118,11 @@ scanBlockBuilder ScanBlock {..} = (scanBlockSize, scanBlock)
                         + varIntSize scanBlockHeight
 
     scanBlock = varInt currencyCode
-             <> byteString verbs
+             <> putByteString verbs
              <> varInt scanBlockScanHeight
              <> varInt scanBlockHeight
 
-blockFilterBuilder :: BlockFilter -> (Sum Word32, Builder)
+blockFilterBuilder :: BlockFilter -> (Sum Word32, Put)
 blockFilterBuilder BlockFilter {..} = (filterSize, filterBuilder)
   where
     idLength, filterLength :: Word32
@@ -130,17 +131,17 @@ blockFilterBuilder BlockFilter {..} = (filterSize, filterBuilder)
     filterSize = Sum $ idLength
                      + varIntSize filterLength
                      + filterLength
-    filterBuilder = byteString (BSS.fromShort blockFilterBlockId)
+    filterBuilder = putByteString (BSS.fromShort blockFilterBlockId)
                  <> varInt filterLength
-                 <> byteString blockFilterFilter
+                 <> putByteString blockFilterFilter
 
-messageBuilder :: Message -> Builder
+messageBuilder :: Message -> Put
 
-messageBuilder (MPing msg) = messageBase MPingType msgSize $ word64LE msg
+messageBuilder (MPing msg) = messageBase MPingType msgSize $ putWord64le msg
   where
     msgSize = genericSizeOf msg
 
-messageBuilder (MPong msg) = messageBase MPongType msgSize $ word64LE msg
+messageBuilder (MPong msg) = messageBase MPongType msgSize $ putWord64le msg
   where
     msgSize = genericSizeOf msg
 
@@ -148,7 +149,7 @@ messageBuilder (MReject Reject{..}) = messageBase MRejectType msgSize $
      varInt mid
   <> varInt code
   <> varInt msglen
-  <> byteString msgbs
+  <> putByteString msgbs
   where
     mid = messageTypeToWord32 rejectId
     code = rejectTypeToWord32 rejectMsgCode
@@ -163,9 +164,9 @@ messageBuilder (MVersionACK VersionACK) = messageBase MVersionACKType 0 mempty
 
 messageBuilder (MVersion Version {..}) =
   messageBase MVersionType msgSize
-  $  byteString (mkProtocolVersion versionVersion)
-  <> word64LE (fromIntegral time)
-  <> word64LE versionNonce
+  $  putByteString (mkProtocolVersion versionVersion)
+  <> putWord64le (fromIntegral time)
+  <> putWord64le versionNonce
   <> varInt scanBlocksCount
   <> scanBlocks
   where
@@ -195,11 +196,11 @@ messageBuilder (MFiltersResponse FilterResponse {..}) =
   messageBase MFiltersResponseType msgSize
   $  varInt (currencyCodeToWord32 filterResponseCurrency)
   <> varInt filtersCount
-  <> lazyByteString zippedFilters
+  <> putLazyByteString zippedFilters
   where
     (_filtersSizeSum, filters) = foldMap blockFilterBuilder filterResponseFilters
     filtersCount = fromIntegral $ V.length filterResponseFilters :: Word32
-    zippedFilters = compress $ toLazyByteString filters
+    zippedFilters = compress $ runPutLazy filters
 
     msgSize = varIntSize (currencyCodeToWord32 filterResponseCurrency)
             + varIntSize filtersCount
@@ -209,9 +210,9 @@ messageBuilder (MFiltersEvent FilterEvent {..}) =
   messageBase MFilterEventType msgSize
   $  varInt currency
   <> varInt filterEventHeight
-  <> byteString (BSS.fromShort filterEventBlockId)
+  <> putByteString (BSS.fromShort filterEventBlockId)
   <> varInt filterEventBlockFilterLength
-  <> byteString filterEventBlockFilter
+  <> putByteString filterEventBlockFilter
   where
     currency = currencyCodeToWord32 filterEventCurrency
     filterEventBlockIdLength = fromIntegral $ BSS.length filterEventBlockId
@@ -283,30 +284,30 @@ messageBuilder (MMemFilters msg) = let
 messageBuilder (MGetMempool (GetMempool ps)) = let
   n = fromIntegral $ length $ ps
   msgSize = varIntSize n + (2 * n)
-  msg = varInt n <> foldMap (\(a,b) -> word8 a <> word8 b) ps
+  msg = varInt n <> foldMap (\(a,b) -> putWord8 a <> putWord8 b) ps
   in messageBase MGetMempoolType msgSize msg
 messageBuilder (MMempoolChunk (MempoolChunk (p1, p2) txs)) = let
-  txsBs = compress $ toLazyByteString $ snd $ F.foldMap lenBsBuilder txs
+  txsBs = compress $ runPutLazy $ snd $ F.foldMap lenBsBuilder txs
   len = V.length txs
   lenBs = fromIntegral $ LBS.length txsBs
-  msg = word8 p1 <> word8 p2 <> varInt len <> lazyByteString txsBs
+  msg = putWord8 p1 <> putWord8 p2 <> varInt len <> putLazyByteString txsBs
   msgSize = lenBs + 2 + varIntSize len
   in messageBase MMempoolChunkType msgSize msg
 
-enumBuilder :: Enum a => a -> Builder
+enumBuilder :: Enum a => a -> Put
 enumBuilder = varInt . (fromIntegral :: Int -> Word32) . fromEnum
 
 enumSize :: Enum a => a -> Word32
 enumSize = (varIntSize :: Word32 -> Word32) . fromIntegral . fromEnum
 
-cfBuilder :: (CurrencyCode, [Fiat]) -> (Sum Word32, Builder)
+cfBuilder :: (CurrencyCode, [Fiat]) -> (Sum Word32, Put)
 cfBuilder (cc, fs) = let
   fsNum = fromIntegral $ length fs :: Word32
   ccid = currencyCodeToWord32 cc
   size = Sum $ varIntSize ccid + varIntSize fsNum  + sum (fmap enumSize fs)
   in (size, ) $ varInt ccid <> varInt fsNum <> foldMap enumBuilder fs
 
-cfdBuilder :: (CurrencyCode, M.Map Fiat Centi) -> (Sum Word32, Builder)
+cfdBuilder :: (CurrencyCode, M.Map Fiat Centi) -> (Sum Word32, Put)
 cfdBuilder (cc, fds) = let
   fdsNum = fromIntegral $ length fds :: Word32
   ccid = currencyCodeToWord32 cc
@@ -317,14 +318,14 @@ cfdBuilder (cc, fds) = let
 fdSize :: (Fiat, Centi) -> Word32
 fdSize (f, _) = enumSize f + 8
 
-fdBuilder :: (Fiat, Centi) -> Builder
+fdBuilder :: (Fiat, Centi) -> Put
 fdBuilder (f, d) = enumBuilder f <> centiBuilder d
 
 -- | Encode fixed point as 64 bit LE word
-centiBuilder :: Centi -> Builder
-centiBuilder (MkFixed v) = word64LE $ fromIntegral v
+centiBuilder :: Centi -> Put
+centiBuilder (MkFixed v) = putWord64le $ fromIntegral v
 
-feeRespBuilder :: FeeResp -> (Sum Word32, Builder)
+feeRespBuilder :: FeeResp -> (Sum Word32, Put)
 feeRespBuilder (FeeRespBTC isTest (FeeBundle (a,b) (c,d) (e,f))) = let
   cur = currencyCodeToWord32 $ if isTest then TBTC else BTC
   vals = [a, b, c, d, e, f]
@@ -339,7 +340,7 @@ feeRespBuilder (FeeRespGeneric cur h m l) = let
   msg = varInt currency <> foldMap varInt vals
   in (Sum msgSize, msg)
 
-filterTreeBuilder :: FilterTree -> (Sum Word32, Builder)
+filterTreeBuilder :: FilterTree -> (Sum Word32, Put)
 filterTreeBuilder (FilterTree ft) = let
   amount = M.size ft
   (s, ftMsg) = M.foldMapWithKey subBuilder ft
@@ -347,15 +348,15 @@ filterTreeBuilder (FilterTree ft) = let
   msgSize = s + Sum (varIntSize amount)
   in (msgSize, msg)
   where
-    subBuilder :: TxPrefix -> MempoolFilter -> (Sum Word32, Builder)
+    subBuilder :: TxPrefix -> MempoolFilter -> (Sum Word32, Put)
     subBuilder (a,b) mf = let
       (s, mfMsg) = lenBsBuilder $ unMempoolFilter mf
-      msg = word8 a <> word8 b <> mfMsg
+      msg = putWord8 a <> putWord8 b <> mfMsg
       in (s + 2, msg)
 
-lenBsBuilder :: BS.ByteString -> (Sum Word32, Builder)
+lenBsBuilder :: BS.ByteString -> (Sum Word32, Put)
 lenBsBuilder bs = let
   len = fromIntegral $ BS.length bs
-  msg = varInt len <> byteString bs
+  msg = varInt len <> putByteString bs
   msgSize = varIntSize len + len
   in (Sum msgSize, msg)

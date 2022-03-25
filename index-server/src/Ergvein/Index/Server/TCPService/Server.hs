@@ -10,9 +10,9 @@ import Control.Monad.IO.Unlift
 import Control.Monad.Logger
 import Control.Monad.Random
 import Control.Monad.Trans.Except
-import Data.ByteString.Builder
 import Data.Either.Combinators
 import Data.Foldable
+import Data.Serialize.Put (runPutLazy)
 import Data.Word
 import Network.Socket
 
@@ -124,7 +124,7 @@ sendLoop sock sendChan = do
       Left Nothing   -> pure ()
       Right m        -> sendMsg (messageBuilder m) >> loop
   where
-    sendMsg = sendLazy sock . toLazyByteString
+    sendMsg = sendLazy sock . runPutLazy
 
 evalMsg :: Socket -> SockAddr -> ExceptT Reject ServerM (Maybe Message, Bool)
 evalMsg sock addr = response =<< request sock =<< messageHeader sock

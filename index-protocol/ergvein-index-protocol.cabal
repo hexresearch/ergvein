@@ -1,5 +1,5 @@
 name:                ergvein-index-protocol
-version:             0.1.0.1
+version:             0.2.0.0
 synopsis:            Shared api contract for ergvein wallet cryptocurrencies index server
 description:         See README.md
 category:            Cryptocurrency
@@ -19,20 +19,21 @@ library
       base                 >= 4.7  && < 4.13
     , attoparsec           >= 0.13 && < 0.14
     , attoparsec-binary    >= 0.2  && < 0.3
+    , bitstream            >= 0.3  && < 0.4
     , bytestring           >= 0.10 && < 0.11
-    , conversion           >= 1.2  && < 1.3
+    , cereal               >= 0.5  && < 0.6
     , containers           >= 0.6  && < 0.7
+    , conversion           >= 1.2  && < 1.3
     , ergvein-common       >= 1.0  && < 1.1
-    , text                 >= 1.2  && < 1.3
+    , ergvein-types
     , network              >= 2.8  && < 3.2
     , scientific           >= 0.3  && < 0.4
     , template-haskell     >= 2.14 && < 2.15
+    , text                 >= 1.2  && < 1.3
     , time                 >= 1.8  && < 1.9
     , vector               >= 0.12 && < 0.13
     , vector-th-unbox      >= 0.2  && < 0.3
     , zlib                 >= 0.6  && < 0.7
-    , bitstream            >= 0.3  && < 0.4
-    , ergvein-types
   default-language:    Haskell2010
   default-extensions:
     BangPatterns
@@ -77,10 +78,11 @@ test-suite ergvein-index-protocol-test
     , attoparsec-binary
     , base16-bytestring
     , bytestring
+    , cereal
     , containers           >= 0.6  && < 0.7
+    , ergvein-common
     , ergvein-index-protocol
     , ergvein-types
-    , ergvein-common
     , QuickCheck
     , quickcheck-instances
     , tasty
