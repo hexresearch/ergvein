@@ -216,9 +216,6 @@ instance PlatformNatives where
   androidSetScreenFlag = liftIO $ androidSetScreenFlagImpl =<< getHaskellActivity
   androidClearScreenFlag = liftIO $ androidClearScreenFlagImpl =<< getHaskellActivity
 
-  androidSetScreenFlag = liftIO $ androidSetScreenFlagImpl =<< getHaskellActivity
-  androidClearScreenFlag = liftIO $ androidClearScreenFlagImpl =<< getHaskellActivity
-
 getFiles :: FilePath -> IO [FilePath]
 getFiles dir = do
   _ :/ tree <- build dir

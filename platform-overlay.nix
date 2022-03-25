@@ -2,7 +2,6 @@
     nixpkgsOverlays = [
       (import ./nixpkgs-overlays/default.nix)
       (import ./nixpkgs-overlays/rust.nix)
-      (import ./nixpkgs-overlays/android.nix)
     ];
     config = {
       android_sdk.accept_license = true;

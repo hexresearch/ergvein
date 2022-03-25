@@ -51,7 +51,7 @@ library
     , bytestring                >= 0.10     && < 0.11
     , cereal
     , containers                >= 0.6      && < 0.7
-    , cryptonite                >= 0.25     && < 0.26
+    , cryptonite                
     , deepseq                   >= 1.4      && < 1.5
     , ergvein-common
     , ergvein-crypto
