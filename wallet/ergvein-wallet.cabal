@@ -36,8 +36,6 @@ library
         Ergvein.Wallet.Monad.Class
         Ergvein.Wallet.Monad.Env
         Ergvein.Wallet.Navbar
-        Ergvein.Wallet.Navbar.Switcher
-        Ergvein.Wallet.Navbar.Types
         Ergvein.Wallet.Orphanage
         Ergvein.Wallet.Page.About
         Ergvein.Wallet.Page.Balances
@@ -48,7 +46,6 @@ library
         Ergvein.Wallet.Page.History.Btc
         Ergvein.Wallet.Page.History.Common
         Ergvein.Wallet.Page.Initial
-        Ergvein.Wallet.Page.Network
         Ergvein.Wallet.Page.Password
         Ergvein.Wallet.Page.PinCode
         Ergvein.Wallet.Page.QRCode

@@ -115,13 +115,14 @@ setupPinPage :: MonadFrontBase t m
   -> [Currency]
   -> BlockHeight
   -> m ()
-setupPinPage wt seedBackupRequired mpath mnemonic login curs startingHeight = wrapperSimpleGeneric headerWidgetOnlyBackBtn "pincode-page" False $ do
-  let thisWidget = Just $ pure $ setupPinPage wt seedBackupRequired mpath mnemonic login curs startingHeight
-  passE <- setupPinWidget
-  void $ nextWidget $ ffor passE $ \pass -> Retractable {
-      retractableNext = confirmPinPage pass wt seedBackupRequired mpath mnemonic login curs startingHeight
-    , retractablePrev = thisWidget
-    }
+setupPinPage wt seedBackupRequired mpath mnemonic login curs startingHeight =
+  wrapperSimpleGeneric headerWidgetOnlyBackBtn "pincode-page" False Nothing $ do
+    let thisWidget = Just $ pure $ setupPinPage wt seedBackupRequired mpath mnemonic login curs startingHeight
+    passE <- setupPinWidget
+    void $ nextWidget $ ffor passE $ \pass -> Retractable {
+        retractableNext = confirmPinPage pass wt seedBackupRequired mpath mnemonic login curs startingHeight
+      , retractablePrev = thisWidget
+      }
 
 confirmPinWidget :: MonadFrontBase t m => Password -> m (Event t Password)
 confirmPinWidget pass = divClass "pincode-widget" $ mdo
@@ -150,13 +151,14 @@ confirmPinPage :: MonadFrontBase t m
   -> [Currency]
   -> BlockHeight
   -> m ()
-confirmPinPage pass wt seedBackupRequired mpath mnemonic login curs startingHeight = wrapperSimpleGeneric headerWidgetOnlyBackBtn "pincode-page" False $ do
-  let thisWidget = Just $ pure $ confirmPinPage pass wt seedBackupRequired mpath mnemonic login curs startingHeight
-  passE <- confirmPinWidget pass
-  void $ nextWidget $ ffor passE $ \confirmedPass -> Retractable {
-      retractableNext = performAuth wt seedBackupRequired mnemonic curs login confirmedPass mpath startingHeight False
-    , retractablePrev = thisWidget
-    }
+confirmPinPage pass wt seedBackupRequired mpath mnemonic login curs startingHeight =
+  wrapperSimpleGeneric headerWidgetOnlyBackBtn "pincode-page" False Nothing $ do
+    let thisWidget = Just $ pure $ confirmPinPage pass wt seedBackupRequired mpath mnemonic login curs startingHeight
+    passE <- confirmPinWidget pass
+    void $ nextWidget $ ffor passE $ \confirmedPass -> Retractable {
+        retractableNext = performAuth wt seedBackupRequired mnemonic curs login confirmedPass mpath startingHeight False
+      , retractablePrev = thisWidget
+      }
 
 confirmEmptyPage :: MonadFrontBase t m
   => WalletSource
