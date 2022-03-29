@@ -91,7 +91,9 @@ btcNodeController = do
 btcPrivateNodeController :: (MonadNode t m, MonadStorage t m, MonadSettings t m
   , MonadWallet t m, MonadStatus t m, MonadHasMain m) => SockAddr -> m ()
 btcPrivateNodeController sa = do
-  btcLog "Starting private"
+  -- This is done to drop all cons in case we switched from pub to private
+  clearedE <- clearNodeConns =<< getPostBuild
+  btcLog $ "Starting private: <" <> showt sa <> ">"
   sel         <- getNodeNodeReqSelector
   conMapD     <- getNodeConnectionsD
   nodeRef     <- getNodeConnRef
@@ -99,7 +101,8 @@ btcPrivateNodeController sa = do
   let txidsD  = ffor pubStorageD $ \ps -> M.keysSet $ ps ^. btcPubStorage . currencyPubStorage'transactions
   let reqE = extractReq sel BTC sa
   node <- initBtcNode True 100 sa reqE True
-  modifyExternalRef nodeRef $ \cm -> (addNodeConn (NodeConnBtc node) cm, ())
+  performEvent $ ffor clearedE $ const $
+    modifyExternalRef nodeRef $ \cm -> (addNodeConn (NodeConnBtc node) cm, ())
   let respE = nodeconRespE node
   let txInvsE = flip push respE $ \case
         MInv inv -> do

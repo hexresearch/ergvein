@@ -39,6 +39,8 @@ module Ergvein.Core.Store.Monad(
   , getUnconfirmedTxs
   , setSeedBackupRequired
   , setRestoreStartHeightE
+  , clearCustomNode
+  , setCustomNode
   ) where
 
 import Control.Concurrent.MVar
@@ -419,6 +421,14 @@ getCustomNodeD = do
   holdUniqDyn $ ffor pubStorageD $ \ps -> let
     PubStorageBtc bs = ps ^. btcPubStorage . currencyPubStorage'meta
     in bs ^. btcPubStorage'customNode
+
+clearCustomNode :: MonadStorage t m => Event t () -> m (Event t ())
+clearCustomNode clearE = modifyPubStorage "clearCustomNode" $ ffor clearE $ \_ ps ->
+  Just $ modifyCurrStorageBtc (btcPubStorage'customNode .~ Nothing) ps
+
+setCustomNode :: MonadStorage t m => Event t Text -> m (Event t ())
+setCustomNode setE = modifyPubStorage "setCustomNode" $ ffor setE $ \n ps ->
+  Just $ modifyCurrStorageBtc (btcPubStorage'customNode .~ Just n) ps
 
 isCustomModeD :: (MonadStorage t m, MonadFix m) => m (Dynamic t Bool)
 isCustomModeD = holdUniqDyn . fmap isJust =<< getCustomNodeD
