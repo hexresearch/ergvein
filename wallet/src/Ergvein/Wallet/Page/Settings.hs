@@ -5,31 +5,26 @@
 module Ergvein.Wallet.Page.Settings(
     settingsPage
   , torPage
-  , currenciesPage
   ) where
 
-import Control.Lens
-import Data.List
 import Data.Traversable (for)
 import Reflex.Dom
 
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Page.Currencies
 import Ergvein.Wallet.Page.Password
 import Ergvein.Wallet.Page.Settings.MnemonicExport
 import Ergvein.Wallet.Page.Settings.Network
 import Ergvein.Wallet.Page.Settings.Unauth
+import Ergvein.Wallet.Password
 import Ergvein.Wallet.Settings
 import Ergvein.Wallet.Wrapper
 import Sepulcas.Alert
 import Sepulcas.Elements
 import Sepulcas.Elements.Toggle
 
-import qualified Data.Dependent.Map as DM
 import qualified Data.Map.Strict as Map
-import qualified Data.Set as S
 import qualified Data.Text as T
 
 data SubPageSettings
@@ -94,34 +89,6 @@ torPage :: MonadFront t m => m ()
 torPage = do
   title <- localized STPSButTor
   wrapper True title (Just $ pure torPage) torPageWidget
-
-currenciesPage :: MonadFront t m => m ()
-currenciesPage = do
-  title <- localized STPSButActiveCurrs
-  wrapper True title (Just $ pure currenciesPage) $ do
-    h3 $ localizedText STPSSetsActiveCurrs
-    divClass "initial-options" $ mdo
-      activeCursD <- getActiveCursD
-      ps <- getPubStorage
-      authD <- getWalletInfo
-      currListE <- fmap switchDyn $ networkHoldDyn $ ffor activeCursD $ \currs ->
-        selectCurrenciesWidget $ S.toList currs
-      void $ uac currListE
-      updateAE <- withWallet $ ffor currListE $ \curs prvStr -> do
-          auth <- sample . current $ authD
-          let authNew = auth & walletInfo'storage . storage'pubStorage . pubStorage'activeCurrencies .~ curs
-              difC = curs \\ _pubStorage'activeCurrencies ps
-              mpath = auth ^. walletInfo'storage . storage'pubStorage . pubStorage'pathPrefix
-              mL = Map.fromList [(currency, mkStore mpath prvStr currency) | currency <- difC ]
-              authN2 = authNew & walletInfo'storage . storage'pubStorage . pubStorage'currencyPubStorages %~ Map.union mL
-          pure $ Just authN2
-      setWalletInfoE <- setWalletInfo updateAE
-      doneE <- storeWalletNow "currenciesPage" False (void setWalletInfoE)
-      showSuccessMsg $ STPSSuccess <$ doneE
-      pure ()
-  where
-    uac cE = updateActiveCurs $ const . S.fromList <$> cE
-    mkStore mpath prvStr currency = createCurrencyPubStorage mpath (_prvStorage'rootPrvKey prvStr) (filterStartingHeight currency) currency
 
 unitsPage :: MonadFront t m => m ()
 unitsPage = do
@@ -202,63 +169,75 @@ unitsPage = do
       let selD = _dropdown_value dp
       updated <$> holdUniqDyn selD
 
--- portfolioPage :: MonadFront t m => m ()
--- portfolioPage = do
---   title <- localized STPSTitle
---   wrapper True title (Just $ pure portfolioPage) $ do
---     h3 $ localizedText STPSSetsPortfolio
---     divClass "initial-options" $ mdo
---       settings <- getSettings
---       let sFC = fromMaybe USD $ settingsFiatCurr settings
---       divClass "select-currencies-title" $ h4 $ localizedText STPSSetsPortfolioEnable
---       portD <- holdDyn (settingsPortfolio settings) $ poke pbtnE $ \_ -> do
---         portS <- sampleDyn portD
---         pure $ not portS
---       pbtnE <- divButton (fmap toggled portD) $ networkHoldDyn $ ffor portD $ \pS ->
---         if pS
---           then localizedText CSOn
---           else localizedText CSOff
---       void $ updateSettings $ ffor (updated portD) (\portS -> settings {settingsPortfolio = portS})
---       divClass "select-currencies-title" $ h4 $ localizedText STPSSetsFiatSelect
---       fiatE <- fiatDropdown sFC allFiats
---       void $ updateSettings $ ffor fiatE (\fiat -> settings {settingsFiatCurr = Just fiat})
---   where
---     toggled b = if b
---       then "button button-on button-currency"
---       else "button button-off button-currency"
-
---     fiatDropdown val fiats = do
---       let fiatD = constDyn val
---       initKey <- sample . current $ fiatD
---       let listFiatsD = constDyn $ Map.fromList $ fmap (\f -> (f, showt f)) fiats
---           ddnCfg = DropdownConfig {
---                 _dropdownConfig_setValue   = updated fiatD
---               , _dropdownConfig_attributes = constDyn ("class" =: "select-lang")
---               }
---       dp <- divClass "select-fiat" $ dropdown initKey listFiatsD ddnCfg
---       let selD = _dropdown_value dp
---       updated <$> holdUniqDyn selD
-
 btcNodesPage :: MonadFront t m => m ()
 btcNodesPage = do
-  title <- localized STPSButNodes
-  wrapper False title (Just $ pure btcNodesPage) $ do
-    conmapD <- getNodeConnectionsD
-    void $ lineOption $ networkHoldDyn $ ffor conmapD $ \cm -> do
-      let btcNodes = maybe [] Map.elems $ DM.lookup BtcTag cm
-      btcNetworkWidget btcNodes
-      for_ btcNodes $ \node -> do
-        let offclass = [("class", "mt-a mb-a indexer-offline")]
-        let onclass = [("class", "mt-a mb-a indexer-online")]
-        let clsD = (\b -> if b then onclass else offclass) <$> nodeconIsUp node
-        divClass "network-name" $ do
-          let addr = nodeconUrl node
-          (e,_) <- elAttr' "span" [("class", "mt-a mb-a mr-1")] $ elClass "i" "fas fa-times" $ pure ()
-          let closeE = (addr, NodeMsgClose) <$ domEvent Click e
-          void $ postNodeMessage BTC closeE
-          elDynAttr "span" clsD $ elClass "i" "fas fa-circle" $ pure ()
-          divClass "mt-a mb-a network-name-txt" $ text $ showt addr
-        pure ()
+  icmd <- isCustomModeD
+  title <- localizedDyn $ NDSSTitle <$> icmd
+  wrapper False title (Just $ pure btcNodesPage) btcNodesWidget
+  pure ()
+
+btcNodesWidget :: MonadFront t m => m ()
+btcNodesWidget = do
+  btcNodesD <- getBtcNodesD
+  void $ lineOption $ networkHoldDyn $ ffor btcNodesD $ \cm -> do
+    let btcNodes = Map.elems cm
+    btcNetworkWidget btcNodes
+    mapM_ btcNodeWidget btcNodes
+  labelHorSep
+  icmd <- isCustomModeD
+  void $ networkHoldDyn $ ffor icmd $ \b ->
+    if b then btcCustomMode else btcPublicMode
+  pure ()
+
+btcCustomMode :: MonadFront t m => m ()
+btcCustomMode = mdo
+  tglD <- holdDyn False actE
+  actE <- networkHoldDynE $ ffor tglD $ \case
+    False -> divClass "" $ do
+      goPub <- outlineButton NDSSSwitchPub
+      void $ clearCustomNode =<< clearNodeConns goPub
+      setupE <- outlineButton NDSSSetPriv
+      pure $ True <$ setupE
+    True -> do
+      mnode <- sampleDyn =<< getCustomNodeD
+      nodeD <- setupCustomNode mnode
+      divClass "" $ do
+        setE <- outlineButton NDSSSetNode
+        void $ setCustomNode $ attachWithMaybe (\v _ -> v) (current nodeD) setE
+        cancelE <- outlineButton NDSSCancel
+        pure $ False <$ cancelE
+  pure ()
+
+btcPublicMode :: MonadFront t m => m ()
+btcPublicMode = mdo
+  tglD <- holdDyn False actE
+  actE <- networkHoldDynE $ ffor tglD $ \case
+    False -> divClass "" $ do
+      setupE <- outlineButton NDSSSetPriv
+      pure $ True <$ setupE
+    True -> do
+      mnode <- sampleDyn =<< getCustomNodeD
+      nodeD <- setupCustomNode mnode
+      divClass "" $ do
+        setE <- outlineButton NDSSSetNode
+        void $ setCustomNode $ attachWithMaybe (\v _ -> v) (current nodeD) setE
+        cancelE <- outlineButton NDSSCancel
+        pure $ False <$ cancelE
+  pure ()
+
+btcNodeWidget :: MonadFront t m => NodeBtc t -> m ()
+btcNodeWidget node = do
+  let offclass = [("class", "mt-a mb-a indexer-offline")]
+  let onclass = [("class", "mt-a mb-a indexer-online")]
+  let clsD = (\b -> if b then onclass else offclass) <$> nodeconIsUp node
+  divClass "network-name" $ do
+    let addr = nodeconUrl node
+    unless (nodeconIsPrivate node) $ do
+      (e,_) <- elAttr' "span" [("class", "mt-a mb-a mr-1")] $ elClass "i" "fas fa-times" $ pure ()
+      let closeE = (addr, NodeMsgClose) <$ domEvent Click e
+      void $ postNodeMessage BTC closeE
+    elDynAttr "span" clsD $ elClass "i" "fas fa-circle" $ pure ()
+    divClass "mt-a mb-a network-name-txt" $ text $ showt addr
   pure ()
 
 btcNetworkWidget :: MonadFront t m => [NodeBtc t] -> m ()

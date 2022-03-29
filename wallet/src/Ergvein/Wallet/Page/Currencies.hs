@@ -25,9 +25,9 @@ selectCurrenciesPage wt seedBackupRequired mnemonic = wrapperSimple True $ do
   void $ nextWidget $ ffor e $ \ac -> Retractable {
       retractableNext = if isAndroid
         -- On Android login is entered first. After that user is redirected to the password setup page.
-        then setupLoginPage wt seedBackupRequired Nothing mnemonic ac
+        then setupLoginPage wt seedBackupRequired Nothing mnemonic ac Nothing
         -- On desktop login and passwrod are entered on the same page.
-        else setupPasswordPage wt seedBackupRequired Nothing mnemonic ac Nothing
+        else setupPasswordPage wt seedBackupRequired Nothing mnemonic ac Nothing Nothing
     , retractablePrev = Nothing
     }
 

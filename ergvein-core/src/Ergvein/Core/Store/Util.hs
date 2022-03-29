@@ -110,14 +110,14 @@ createPubKeystore masterPubKey =
       internalKeys = V.unfoldrN initialInternalAddressCount (keygen Internal) 0
   in PubKeystore masterPubKey externalKeys internalKeys
 
-createPubStorage :: Bool -> Bool -> Maybe DerivPrefix -> EgvRootXPrvKey -> [Currency] -> BlockHeight -> PubStorage
-createPubStorage isRestored seedBackupRequired mpath rootPrvKey cs startingHeight = PubStorage rootPubKey pubStorages cs isRestored seedBackupRequired mpath
+createPubStorage :: Bool -> Bool -> Maybe DerivPrefix -> EgvRootXPrvKey -> [Currency] -> BlockHeight -> Maybe Text -> PubStorage
+createPubStorage isRestored seedBackupRequired mpath rootPrvKey cs startingHeight mnode = PubStorage rootPubKey pubStorages cs isRestored seedBackupRequired mpath
   where rootPubKey = EgvRootXPubKey $ deriveXPubKey $ unEgvRootXPrvKey rootPrvKey
-        mkStore = createCurrencyPubStorage mpath rootPrvKey startingHeight
+        mkStore = createCurrencyPubStorage mpath rootPrvKey startingHeight mnode
         pubStorages = M.fromList [(currency, mkStore currency) | currency <- cs]
 
-createCurrencyPubStorage :: Maybe DerivPrefix -> EgvRootXPrvKey -> BlockHeight -> Currency -> CurrencyPubStorage
-createCurrencyPubStorage mpath rootPrvKey startingHeight c = CurrencyPubStorage {
+createCurrencyPubStorage :: Maybe DerivPrefix -> EgvRootXPrvKey -> BlockHeight -> Maybe Text -> Currency -> CurrencyPubStorage
+createCurrencyPubStorage mpath rootPrvKey startingHeight mnode c = CurrencyPubStorage {
     _currencyPubStorage'pubKeystore   = createPubKeystore $ deriveCurrencyMasterPubKey dpath rootPrvKey c
   , _currencyPubStorage'path          = dpath
   , _currencyPubStorage'scannedHeight = startingHeight
@@ -133,6 +133,7 @@ createCurrencyPubStorage mpath rootPrvKey startingHeight c = CurrencyPubStorage 
       , _btcPubStorage'possiblyReplacedTxs = M.empty
       , _btcPubStorage'restoreStartHeight  = Nothing
       , _btcPubStorage'preferredNodes      = S.fromList $ (defBtcAddrs False)
+      , _btcPubStorage'customNode          = mnode
       }
   }
   where
@@ -146,13 +147,14 @@ createStorage :: MonadIO m
   -> (WalletName, Password) -- ^ Wallet file name and encryption password
   -> BlockHeight -- ^ Starting height for the restore process
   -> [Currency] -- ^ Default currencies
+  -> Maybe Text -- ^ Custom BTC node
   -> m (Either StorageAlert WalletStorage)
-createStorage isRestored seedBackupRequired mpath mnemonic (login, pass) startingHeight cs = case mnemonicToSeed "" mnemonic of
+createStorage isRestored seedBackupRequired mpath mnemonic (login, pass) startingHeight cs mnode = case mnemonicToSeed "" mnemonic of
    Left err -> pure $ Left $ SAMnemonicFail $ showt err
    Right seed -> do
     let rootPrvKey = EgvRootXPrvKey $ makeXPrvKey seed
         prvStorage = createPrvStorage mpath mnemonic rootPrvKey
-        pubStorage = createPubStorage isRestored seedBackupRequired mpath rootPrvKey cs startingHeight
+        pubStorage = createPubStorage isRestored seedBackupRequired mpath rootPrvKey cs startingHeight mnode
     encryptPrvStorageResult <- encryptPrvStorage prvStorage pass
     case encryptPrvStorageResult of
       Left err -> pure $ Left err

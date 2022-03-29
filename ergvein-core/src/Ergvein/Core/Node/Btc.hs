@@ -54,8 +54,9 @@ initBtcNode :: (MonadSettings t m)
   -> NodeRating           -- ^ Initial rating for the node
   -> SockAddr             -- ^ Node address
   -> Event t NodeMessage  -- ^ Incoming messages for the node, including send requests
+  -> Bool                 -- ^ Is the node private
   -> m (NodeBtc t)
-initBtcNode doLog rating sa msgE = do
+initBtcNode doLog rating sa msgE isPrivate = do
 
   let net = btcNetwork
       nodeLog :: MonadIO m => Text -> m ()
@@ -153,6 +154,7 @@ initBtcNode doLog rating sa msgE = do
   , nodeconDoLog      = doLog
   , nodeconHeight     = heightD
   , nodeconRating     = rateRef
+  , nodeconIsPrivate  = isPrivate
   }
 
 -- | Internal peeker to parse messages coming from peer.
