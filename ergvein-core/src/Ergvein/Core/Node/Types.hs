@@ -67,6 +67,7 @@ data NodeConnection t cur = NodeConnection {
 , nodeconDoLog      :: !Bool
 , nodeconHeight     :: !(Dynamic t (Maybe Word32))
 , nodeconRating     :: !(ExternalRef t NodeRating)
+, nodeconIsPrivate  :: !Bool
 }
 
 data NodeStatus = NodeStatus {

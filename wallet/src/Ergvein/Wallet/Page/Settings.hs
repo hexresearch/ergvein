@@ -5,18 +5,14 @@
 module Ergvein.Wallet.Page.Settings(
     settingsPage
   , torPage
-  , currenciesPage
   ) where
 
-import Control.Lens
-import Data.List
 import Data.Traversable (for)
 import Reflex.Dom
 
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Page.Currencies
 import Ergvein.Wallet.Page.Password
 import Ergvein.Wallet.Page.Settings.MnemonicExport
 import Ergvein.Wallet.Page.Settings.Network
@@ -29,7 +25,6 @@ import Sepulcas.Elements.Toggle
 
 import qualified Data.Dependent.Map as DM
 import qualified Data.Map.Strict as Map
-import qualified Data.Set as S
 import qualified Data.Text as T
 
 data SubPageSettings
@@ -94,34 +89,6 @@ torPage :: MonadFront t m => m ()
 torPage = do
   title <- localized STPSButTor
   wrapper True title (Just $ pure torPage) torPageWidget
-
-currenciesPage :: MonadFront t m => m ()
-currenciesPage = do
-  title <- localized STPSButActiveCurrs
-  wrapper True title (Just $ pure currenciesPage) $ do
-    h3 $ localizedText STPSSetsActiveCurrs
-    divClass "initial-options" $ mdo
-      activeCursD <- getActiveCursD
-      ps <- getPubStorage
-      authD <- getWalletInfo
-      currListE <- fmap switchDyn $ networkHoldDyn $ ffor activeCursD $ \currs ->
-        selectCurrenciesWidget $ S.toList currs
-      void $ uac currListE
-      updateAE <- withWallet $ ffor currListE $ \curs prvStr -> do
-          auth <- sample . current $ authD
-          let authNew = auth & walletInfo'storage . storage'pubStorage . pubStorage'activeCurrencies .~ curs
-              difC = curs \\ _pubStorage'activeCurrencies ps
-              mpath = auth ^. walletInfo'storage . storage'pubStorage . pubStorage'pathPrefix
-              mL = Map.fromList [(currency, mkStore mpath prvStr currency) | currency <- difC ]
-              authN2 = authNew & walletInfo'storage . storage'pubStorage . pubStorage'currencyPubStorages %~ Map.union mL
-          pure $ Just authN2
-      setWalletInfoE <- setWalletInfo updateAE
-      doneE <- storeWalletNow "currenciesPage" False (void setWalletInfoE)
-      showSuccessMsg $ STPSSuccess <$ doneE
-      pure ()
-  where
-    uac cE = updateActiveCurs $ const . S.fromList <$> cE
-    mkStore mpath prvStr currency = createCurrencyPubStorage mpath (_prvStorage'rootPrvKey prvStr) (filterStartingHeight currency) currency
 
 unitsPage :: MonadFront t m => m ()
 unitsPage = do

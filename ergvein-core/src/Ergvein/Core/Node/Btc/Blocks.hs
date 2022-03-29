@@ -3,7 +3,7 @@ module Ergvein.Core.Node.Btc.Blocks
   ) where
 
 import Control.Monad.Random
-import Data.Maybe (catMaybes, isNothing)
+import Data.Maybe (catMaybes, isNothing, listToMaybe)
 import Data.Text (Text)
 import Data.Time
 import Network.Haskoin.Block
@@ -40,8 +40,8 @@ noNodeTimeout = 5
 -- | Pass all logging through formatter
 -- Also useful to disable logs for dev. purposes
 reqLog :: (PlatformNatives, MonadIO m) => Text -> m ()
-reqLog _ = pure ()
--- reqLog t = logWrite $ "[requestBlocksBtc]: " <> t
+-- reqLog _ = pure ()
+reqLog t = logWrite $ "[requestBlocksBtc]: " <> t
 
 reqLogAddr :: (PlatformNatives, MonadIO m) => SockAddr -> Text -> m ()
 reqLogAddr sa t = reqLog $ "<" <> showt sa <> ">: " <> t
@@ -53,8 +53,27 @@ requestBlocksBtc reqE = fmap switchDyn $ workflow $ waitForRequest
     -- | Wait for a request to come. Filter empty requests just in case
     waitForRequest :: Workflow t m (Event t [Block])
     waitForRequest = Workflow $ do
-      let nonEmptyReqE = ffilter (not . null) reqE
-      pure (never, selectNode <$> nonEmptyReqE)
+      icmD <- isCustomModeD
+      let goE = flip push reqE $ \case
+            [] -> pure Nothing
+            req -> do
+              icm <- sampleDyn icmD
+              pure $ Just $ if icm then pickPrivate req else selectNode req
+      pure (never, goE)
+
+    -- | Get the private node
+    pickPrivate :: [BlockHash] -> Workflow t m (Event t [Block])
+    pickPrivate req = Workflow $ do
+      reqLog "[requestBlocksBtc]: Picking the private node"
+      mcon <- fmap (listToMaybe . M.elems) . sampleDyn =<< getBtcNodesD
+      goE <- case mcon of
+        Nothing -> do
+          reqLog $ "Failed to get the private connection. Retrying in " <> showt noNodeTimeout <> " seconds"
+          fmap (pickPrivate req <$) . delay noNodeTimeout =<< getPostBuild
+        Just con -> do
+          reqLog $ "Requesting from private node"
+          fmap (runReq req con <$) . eventToNextFrame =<< getPostBuild
+      pure (never, goE)
 
     -- | Node selection process.
     -- Node is selected randomly from weighted distibution, where the weight is a node's rating
@@ -132,24 +151,27 @@ requestBlocksBtc reqE = fmap switchDyn $ workflow $ waitForRequest
 
     -- | Handle node rating
     -- Close the connection, remove or add the node to the list of preferred nodes as needed
+    -- Simply skip this step if the node is private
     handleRating :: Int -> NodeBtc t -> m (Event t ())
-    handleRating delta con = do
-      reqLogAddr (nodeconUrl con) "Handle rating"
-      let sa = nodeconUrl con
-      buildE <- getPostBuild
-      actE <- performEvent $ ffor buildE $ const $
-        modifyExternalRef (nodeconRating con) $ \r -> let
-          d = fromIntegral $ abs delta
-          r' = if (signum delta >= 0) then r + d else r - d
-          act = rate r r'
-          in (r', act)
+    handleRating delta con = if nodeconIsPrivate con
+      then eventToNextFrame =<< getPostBuild
+      else do
+        reqLogAddr (nodeconUrl con) "Handle rating"
+        let sa = nodeconUrl con
+        buildE <- getPostBuild
+        actE <- performEvent $ ffor buildE $ const $
+          modifyExternalRef (nodeconRating con) $ \r -> let
+            d = fromIntegral $ abs delta
+            r' = if (signum delta >= 0) then r + d else r - d
+            act = rate r r'
+            in (r', act)
 
-      fmap leftmost $ sequence
-        [ postNodeMessage BTC $ (sa, NodeMsgClose) <$ ffilter (==RAKill) actE
-        , addSuperbBtcNode $ sa <$ ffilter (==RAAdd) actE
-        , removeSuperbBtcNode $ sa <$ ffilter (==RARemove) actE
-        , pure $ void $ ffilter (==RANone) actE
-        ]
+        fmap leftmost $ sequence
+          [ postNodeMessage BTC $ (sa, NodeMsgClose) <$ ffilter (==RAKill) actE
+          , addSuperbBtcNode $ sa <$ ffilter (==RAAdd) actE
+          , removeSuperbBtcNode $ sa <$ ffilter (==RARemove) actE
+          , pure $ void $ ffilter (==RANone) actE
+          ]
 
     -- | Handle rating and return apropriate action. Which constructor is which is obvious from the usage in handleRating
     rate :: NodeRating -> NodeRating -> RatingAction

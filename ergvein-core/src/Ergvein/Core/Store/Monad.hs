@@ -33,6 +33,8 @@ module Ergvein.Core.Store.Monad(
   , getScannedHeight
   , addSuperbBtcNode
   , removeSuperbBtcNode
+  , getCustomNodeD
+  , isCustomModeD
   , getConfirmedTxs
   , getUnconfirmedTxs
   , setSeedBackupRequired
@@ -410,6 +412,16 @@ addSuperbBtcNode saE = modifyPubStorage "addSuperbBtcNode" $ ffor saE $ \sa ps -
 removeSuperbBtcNode :: MonadStorage t m => Event t SockAddr -> m (Event t ())
 removeSuperbBtcNode saE = modifyPubStorage "removeSuperbBtcNode" $ ffor saE $ \sa ps ->
   Just $ modifyCurrStorageBtc (btcPubStorage'preferredNodes %~ S.delete (showt sa)) ps
+
+getCustomNodeD :: (MonadStorage t m, MonadFix m) => m (Dynamic t (Maybe Text))
+getCustomNodeD = do
+  pubStorageD <- getPubStorageD
+  holdUniqDyn $ ffor pubStorageD $ \ps -> let
+    PubStorageBtc bs = ps ^. btcPubStorage . currencyPubStorage'meta
+    in bs ^. btcPubStorage'customNode
+
+isCustomModeD :: (MonadStorage t m, MonadFix m) => m (Dynamic t Bool)
+isCustomModeD = holdUniqDyn . fmap isJust =<< getCustomNodeD
 
 -- ===========================================================================
 --           HasPubStorage helpers

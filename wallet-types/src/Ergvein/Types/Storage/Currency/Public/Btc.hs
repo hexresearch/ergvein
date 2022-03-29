@@ -15,6 +15,7 @@ module Ergvein.Types.Storage.Currency.Public.Btc
   , btcPubStorage'possiblyReplacedTxs
   , btcPubStorage'restoreStartHeight
   , btcPubStorage'preferredNodes
+  , btcPubStorage'customNode
   ) where
 
 import Control.Lens
@@ -147,6 +148,8 @@ data BtcPubStorage = BtcPubStorage {
   , _btcPubStorage'restoreStartHeight :: !(Maybe Word64)
   -- | Preferred btc node adresses
   , _btcPubStorage'preferredNodes     :: !(Set Text)
+  -- | Custom BTC node. Maybe
+  , _btcPubStorage'customNode         :: !(Maybe Text)
   } deriving (Eq, Show, Read)
 
 instance SafeCopy BtcPubStorage where
@@ -161,12 +164,13 @@ instance SafeCopy BtcPubStorage where
     put _btcPubStorage'possiblyReplacedTxs
     put _btcPubStorage'restoreStartHeight
     put _btcPubStorage'preferredNodes
-  getCopy = contain $ BtcPubStorage <$> safeGet <*> safeGet <*> get <*> get <*> get <*> get <*> get <*> get <*> get
+    put _btcPubStorage'customNode
+  getCopy = contain $ BtcPubStorage <$> safeGet <*> safeGet <*> get <*> get <*> get <*> get <*> get <*> get <*> get <*> get
   kind = extension
 
 instance Migrate BtcPubStorage where
   type MigrateFrom BtcPubStorage = BtcPubStorage_V3
-  migrate (BtcPubStorage_V3 a b c d e f g h) = BtcPubStorage a b c d e f g h (S.fromList $ defBtcAddrs False)
+  migrate (BtcPubStorage_V3 a b c d e f g h) = BtcPubStorage a b c d e f g h (S.fromList $ defBtcAddrs False) Nothing
 
 -- This instances is required only for the current version
 makeLenses ''BtcPubStorage

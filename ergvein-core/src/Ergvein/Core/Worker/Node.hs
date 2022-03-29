@@ -72,9 +72,52 @@ btcLog v = logWrite $ "[nodeController][" <> showt BTC <> "]: " <> v
 handleDecDetector :: Int -> (Bool, Int) -> (Bool, Int)
 handleDecDetector n (_, prev) = if n < prev then (True, n) else (False, n)
 
-btcNodeController ::(MonadNode t m, MonadStorage t m, MonadSettings t m
+-- | Track custom node field.
+-- If there is a valid custom node, use a simplified private node controller
+btcNodeController :: (MonadNode t m, MonadStorage t m, MonadSettings t m
   , MonadWallet t m, MonadStatus t m, MonadHasMain m) => m ()
-btcNodeController = mdo
+btcNodeController = do
+  customNodeD <- getCustomNodeD
+  void $ networkHoldDyn $ ffor customNodeD $ \case
+    Nothing -> btcPublicNodeController
+    Just url -> do
+      let port = if isTestnet then 18333 else 8333
+      resolver <- mkResolvSeed
+      namedUrl <- resolveAddr resolver port url
+      case namedUrl of
+        Nothing -> btcPublicNodeController
+        Just (NamedSockAddr _ sa) -> btcPrivateNodeController sa
+
+btcPrivateNodeController :: (MonadNode t m, MonadStorage t m, MonadSettings t m
+  , MonadWallet t m, MonadStatus t m, MonadHasMain m) => SockAddr -> m ()
+btcPrivateNodeController sa = do
+  btcLog "Starting private"
+  sel         <- getNodeNodeReqSelector
+  conMapD     <- getNodeConnectionsD
+  nodeRef     <- getNodeConnRef
+  pubStorageD <- getPubStorageD
+  let txidsD  = ffor pubStorageD $ \ps -> M.keysSet $ ps ^. btcPubStorage . currencyPubStorage'transactions
+  let reqE = extractReq sel BTC sa
+  node <- initBtcNode True 100 sa reqE True
+  modifyExternalRef nodeRef $ \cm -> (addNodeConn (NodeConnBtc node) cm, ())
+  let respE = nodeconRespE node
+  let txInvsE = flip push respE $ \case
+        MInv inv -> do
+          txids <- sampleDyn txidsD
+          pure $ filterTxInvs txids inv
+        _ -> pure Nothing
+      reqTxE = (sa,) . NodeReqBtc . MGetData . GetData <$> txInvsE
+  _ <- requestFromNode reqTxE
+  let newTxE = fforMaybe respE $ \case
+        MTx tx -> Just tx
+        _ -> Nothing
+  myTxSender sa respE
+  void $ btcMempoolTxInserter newTxE
+
+
+btcPublicNodeController :: (MonadNode t m, MonadStorage t m, MonadSettings t m
+  , MonadWallet t m, MonadStatus t m, MonadHasMain m) => m ()
+btcPublicNodeController = mdo
   btcLog "Starting"
   sel         <- getNodeNodeReqSelector
   conMapD     <- getNodeConnectionsD
@@ -101,7 +144,7 @@ btcNodeController = mdo
   tmpD <- listWithKeyShallowDiff M.empty listActionE $ \u _ _ -> do
     let reqE = extractReq sel BTC u
     let initRating = if u `elem` initSocks then 100 else 50
-    node <- initBtcNode True initRating u reqE
+    node <- initBtcNode True initRating u reqE False
     modifyExternalRef nodeRef $ \cm -> (addNodeConn (NodeConnBtc node) cm, ())
     killE <- delay 0.1 $ nodeconCloseE node
     timeoutE <- delay handshakeTimeout =<< getPostBuild
@@ -279,7 +322,7 @@ urlCacheManager initSocks reqE = mdo
     getSecondNodes :: Event t Int -> Int -> [SockAddr] -> Workflow t m (Event t [SockAddr])
     getSecondNodes restartE n urls = Workflow $ do
       urlsE <- flip mapM urls $ \u -> mdo
-        node <- initBtcNode False 100 u reqE
+        node <- initBtcNode False 100 u reqE False
         reqE <- eventToNextFrame $ NodeMsgReq (NodeReqBtc MGetAddr) <$ (nodeconOpensE node)
         pure $ fforMaybe (nodeconRespE node) $ \case
           MAddr (Addr nats) -> let
