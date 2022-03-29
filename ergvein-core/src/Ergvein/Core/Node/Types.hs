@@ -122,7 +122,7 @@ getAllConnByCurrency :: Currency -> ConnMap t -> Maybe (Map SockAddr (NodeConn t
 getAllConnByCurrency cur cm = case cur of
   BTC  -> fmap NodeConnBtc <$> DM.lookup BtcTag cm
 
-data NodeRating = NodeRating {unNodeRating :: Word8}
+newtype NodeRating = NodeRating {unNodeRating :: Word8}
   deriving (Eq, Ord, Show)
 
 -- | Node rating is capped at 100

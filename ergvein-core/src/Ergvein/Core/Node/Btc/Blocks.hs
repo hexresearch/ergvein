@@ -6,6 +6,7 @@ import Control.Monad.Random
 import Data.Maybe (catMaybes, isNothing, listToMaybe)
 import Data.Text (Text)
 import Data.Time
+import Data.Traversable (for)
 import Network.Haskoin.Block
 import Network.Haskoin.Network
 import Reflex
@@ -37,6 +38,18 @@ blockTimeout = 20
 noNodeTimeout :: NominalDiffTime
 noNodeTimeout = 5
 
+-- | Punishment value
+punishVal :: Int
+punishVal = -10
+
+-- | Full reward if the node has found all blocks from a request
+rewardFull :: Int
+rewardFull = 10
+
+-- | Partial reward if the node has at least answered a request in full
+rewardPartial :: Int
+rewardPartial = 5
+
 -- | Pass all logging through formatter
 -- Also useful to disable logs for dev. purposes
 reqLog :: (PlatformNatives, MonadIO m) => Text -> m ()
@@ -48,9 +61,9 @@ reqLogAddr sa t = reqLog $ "<" <> showt sa <> ">: " <> t
 
 -- | Handles requesting logic
 requestBlocksBtc :: forall t m . (MonadNode t m, MonadStorage t m) => Event t [BlockHash] -> m (Event t [Block])
-requestBlocksBtc reqE = fmap switchDyn $ workflow $ waitForRequest
+requestBlocksBtc reqE = fmap switchDyn $ workflow waitForRequest
   where
-    -- | Wait for a request to come. Filter empty requests just in case
+    -- Wait for a request to come. Filter empty requests just in case
     waitForRequest :: Workflow t m (Event t [Block])
     waitForRequest = Workflow $ do
       icmD <- isCustomModeD
@@ -61,7 +74,7 @@ requestBlocksBtc reqE = fmap switchDyn $ workflow $ waitForRequest
               pure $ Just $ if icm then pickPrivate req else selectNode req
       pure (never, goE)
 
-    -- | Get the private node
+    -- Get the private node
     pickPrivate :: [BlockHash] -> Workflow t m (Event t [Block])
     pickPrivate req = Workflow $ do
       reqLog "[requestBlocksBtc]: Picking the private node"
@@ -75,7 +88,7 @@ requestBlocksBtc reqE = fmap switchDyn $ workflow $ waitForRequest
           fmap (runReq req con <$) . eventToNextFrame =<< getPostBuild
       pure (never, goE)
 
-    -- | Node selection process.
+    -- Node selection process.
     -- Node is selected randomly from weighted distibution, where the weight is a node's rating
     -- If there is no active connections, wait noNodeTimeout and try again
     selectNode :: [BlockHash] -> Workflow t m (Event t [Block])
@@ -83,7 +96,7 @@ requestBlocksBtc reqE = fmap switchDyn $ workflow $ waitForRequest
       reqLog "[requestBlocksBtc]: Select node"
       cons <- fmap M.elems . sampleDyn =<< getBtcNodesD
       mcon <- liftIO $ do
-        consRated <- flip traverse cons $ \c -> do
+        consRated <- for cons $ \c -> do
           r <- readExternalRef $ nodeconRating c
           pure (c, fromIntegral . unNodeRating $ r)
         fromListMay consRated
@@ -92,10 +105,10 @@ requestBlocksBtc reqE = fmap switchDyn $ workflow $ waitForRequest
         Nothing -> do
           reqLog $ "No active connections"
           delay noNodeTimeout $ selectNode req <$ buildE
-        Just con -> (fmap . fmap) (const $ runReq req con) $ eventToNextFrame buildE
+        Just con -> fmap (const $ runReq req con) <$> eventToNextFrame buildE
       pure (never, goE)
 
-    -- | Run the request to the selected node
+    -- Run the request to the selected node
     -- Blocks are collected in a Map BlockHash (Maybe Block)
     -- If the node says that a block was not found, Nothing is added to the map
     -- Once the map is filled, respond to the caller with blocks
@@ -112,9 +125,7 @@ requestBlocksBtc reqE = fmap switchDyn $ workflow $ waitForRequest
       let updE = fforMaybe nodeconRespE $ \case
             MBlock blk -> let
               bh = headerHash $ blockHeader blk
-              in if bh `L.elem` bhs
-                    then Just $ [(bh, Just blk)]
-                    else Nothing
+              in pure . (, Just blk) <$> L.find (==bh) bhs
             MNotFound (NotFound invs) -> case catMaybes $ filt bhs <$> invs of
               [] -> Nothing
               vals -> Just vals
@@ -131,25 +142,25 @@ requestBlocksBtc reqE = fmap switchDyn $ workflow $ waitForRequest
       goE <- eventToNextFrame $ leftmost [ rewardE, punishE ]
       pure (fst <$> resE, goE)
 
-    -- | Punish a node which has timed out or disconnected
+    -- Punish a node which has timed out or disconnected
     punish :: [BlockHash] -> NodeBtc t -> Workflow t m (Event t [Block])
     punish req con = Workflow $ do
       reqLogAddr (nodeconUrl con) "Timed out"
-      goE <- handleRating (-40) con
+      goE <- handleRating punishVal con
       pure (never, selectNode req <$ goE)
 
-    -- | Reward a node which succesfully responded to a request
+    -- Reward a node which succesfully responded to a request
     -- If the node has found all blocks (rereq is []) then reward with 10, else 5
     rewardNode :: NodeBtc t -> [BlockHash] -> Workflow t m (Event t [Block])
     rewardNode con rereqs = Workflow $ do
       reqLogAddr (nodeconUrl con) "Reward node"
-      let reward = if null rereqs then 10 else 5
+      let reward = if null rereqs then rewardFull else rewardPartial
       doneE <- handleRating reward con
       let nextE = ffor doneE $ const $ if null rereqs
             then waitForRequest else selectNode rereqs
       pure (never, nextE)
 
-    -- | Handle node rating
+    -- Handle node rating
     -- Close the connection, remove or add the node to the list of preferred nodes as needed
     -- Simply skip this step if the node is private
     handleRating :: Int -> NodeBtc t -> m (Event t ())
@@ -173,18 +184,18 @@ requestBlocksBtc reqE = fmap switchDyn $ workflow $ waitForRequest
           , pure $ void $ ffilter (==RANone) actE
           ]
 
-    -- | Handle rating and return apropriate action. Which constructor is which is obvious from the usage in handleRating
+    -- Handle rating and return apropriate action. Which constructor is which is obvious from the usage in handleRating
     rate :: NodeRating -> NodeRating -> RatingAction
     rate rold rnew = case checkRating rnew of
       RLRemove -> RAKill
       RLAcceptable -> if isSuperbRating rold then RARemove else RANone
       RLSuperb -> if isSuperbRating rold then RANone else RAAdd
 
-    -- | Filter blocks that we have requested
+    -- Filter blocks that we have requested
     filt :: [BlockHash] -> InvVector -> Maybe (BlockHash, Maybe Block)
     filt bhs (InvVector ivt ivh) = case ivt of
       InvBlock -> let bh = BlockHash ivh
-        in if bh `L.elem` bhs then Just (bh, Nothing) else Nothing
+        in (bh, Nothing) <$ L.find (==bh) bhs
       _ -> Nothing
 
 data RatingAction = RANone | RAKill | RAAdd | RARemove

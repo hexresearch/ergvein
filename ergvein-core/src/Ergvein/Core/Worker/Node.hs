@@ -298,7 +298,7 @@ urlCacheManager initSocks reqE = mdo
   performEvent_ $ ffor batchE $ \urls -> liftIO $ do
     n <- readTVarIO cntVar
     let (xs,ys) = splitAt (targetNodeNum - n) urls
-    when (not $ null xs) $ do
+    unless (null xs) $ do
       respFire xs
       atomically $ writeTVar cntVar (n + length xs)
     modifyExternalRefMaybe_ urlsRef $ addSocksToCache ys
@@ -324,7 +324,7 @@ urlCacheManager initSocks reqE = mdo
     -- Return event with addrs from responses
     getSecondNodes :: Event t Int -> Int -> [SockAddr] -> Workflow t m (Event t [SockAddr])
     getSecondNodes restartE n urls = Workflow $ do
-      urlsE <- flip mapM urls $ \u -> mdo
+      urlsE <- forM urls $ \u -> mdo
         node <- initBtcNode False 100 u reqE False
         reqE <- eventToNextFrame $ NodeMsgReq (NodeReqBtc MGetAddr) <$ (nodeconOpensE node)
         pure $ fforMaybe (nodeconRespE node) $ \case
