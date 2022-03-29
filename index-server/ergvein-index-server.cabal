@@ -191,6 +191,7 @@ executable ergvein-index-server-load-test
       base
     , bitcoin-api
     , bytestring
+    , cereal
     , ergvein-common
     , ergvein-index-protocol
     , ergvein-index-server

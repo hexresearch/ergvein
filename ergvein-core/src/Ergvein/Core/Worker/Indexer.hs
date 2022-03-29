@@ -26,7 +26,7 @@ import Control.Monad.Random
 import Reflex.Fork
 import Ergvein.Core.Node.Socket
 
-latencyCheckInterval :: NominalDiffTime 
+latencyCheckInterval :: NominalDiffTime
 latencyCheckInterval = 4
 
 indexerNodeController :: (PlatformNatives, MonadHasMain m, MonadClient t m, MonadSettings t m)
@@ -37,9 +37,9 @@ indexerNodeController initialAddresses = mdo
       addrAddE = M.fromList . fmap (, Just ()) <$> addrE
       addrDelE = (`M.singleton` Nothing) . fst <$> addrConnClosedE
       reconnectNeededE = fforMaybe addrConnClosedE $ \case
-       (addrToReconnect, True) -> Just addrToReconnect 
+       (addrToReconnect, True) -> Just addrToReconnect
        _-> Nothing
-  
+
   addressReconnectionCountMapRef <- newExternalRef M.empty
   addrReconnectE <- performFork $ ffor reconnectNeededE $ \addrToReconnect -> do
       reconnectTryIndex <- modifyExternalRef addressReconnectionCountMapRef $ \oldMap -> let
@@ -71,10 +71,8 @@ indexerNodeController initialAddresses = mdo
         let closedSocketE  = not . isCloseFinal <$> indexConClosedE conn
             closedConnectionE = leftmost [ closedSocketE, True <$ timeoutE]
         -- remove the connection from the connection map
-        closedConnectionE' <- performEvent $ ffor closedConnectionE $ 
-          ((modifyExternalRef activeConnectionsRef $ (, ()) . M.delete address) >>) . pure 
-        -- send out the event to delete this widget
-        pure closedConnectionE'
+        performEvent $ ffor closedConnectionE $
+          ((modifyExternalRef activeConnectionsRef $ (, ()) . M.delete address) >>) . pure
       _ -> (True <$) <$> getPostBuild
     pure $ (address,) <$> closedConnectionE
   pure ()
@@ -91,16 +89,16 @@ connectionLatencyWidget connection = mdo
   pure timeoutE
   where
     body :: Event t () -> Workflow t m (Event t (), Event t ())
-    body pongE =  Workflow $ do 
+    body pongE =  Workflow $ do
       timeoutE <- delay (latencyCheckInterval * 2)  =<< getPostBuild
       let nextE = body pongE <$ pongE
       pure ((pongE,  timeoutE), nextE)
-    pingNode :: Event t () -> m (Event t ()) 
+    pingNode :: Event t () -> m (Event t ())
     pingNode e = do
       fireReq  <- getIndexReqFire
       performFork_ $ ffor e $ const $ liftIO $ do
         pingPayload <- randomIO
-        fireReq $ M.singleton (indexConName connection) $ (IndexerMsg $ MPing pingPayload)
+        fireReq $ M.singleton (indexConName connection) $ IndexerMsg (MPing pingPayload)
       pure $ fforMaybe (indexConRespE connection) $ \case
                       MPong _  ->  Just ()
                       _        ->  Nothing

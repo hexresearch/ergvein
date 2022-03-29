@@ -9,8 +9,7 @@ import Ergvein.Text
 import Ergvein.Wallet.Language
 import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
-import Ergvein.Wallet.Navbar
-import Ergvein.Wallet.Navbar.Types
+import {-# SOURCE #-} Ergvein.Wallet.Navbar
 import Ergvein.Wallet.Page.QRCode
 import Ergvein.Wallet.Wrapper
 import Sepulcas.Clipboard

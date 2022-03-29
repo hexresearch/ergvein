@@ -31,19 +31,6 @@ import qualified Data.Text as T
 
 data GoPage = GoPinCode | GoTextPassword | GoEmptyPassword
 
-data ChangePasswordStrings = CPSTitle | CPSDescr | CPSOld
-
-instance LocalizedPrint ChangePasswordStrings where
-  localizedShow l v = case l of
-    English -> case v of
-      CPSTitle -> "Change password"
-      CPSDescr -> "Enter the new password"
-      CPSOld   -> "You will have to enter the old password at the end"
-    Russian -> case v of
-      CPSTitle -> "Смена пароля"
-      CPSDescr -> "Введите новый пароль"
-      CPSOld   -> "В конце вам понадобится ввести старый пароль"
-
 type IsTextPassword = Bool
 
 setupBtcStartingHeight :: MonadFrontBase t m => m (Dynamic t BlockHeight)
@@ -149,13 +136,14 @@ setupPinPage :: MonadFrontBase t m
   -> BlockHeight
   -> Maybe Text
   -> m ()
-setupPinPage wt seedBackupRequired mpath mnemonic login curs startingHeight mnode = wrapperSimpleGeneric headerWidgetOnlyBackBtn "pincode-page" False $ do
-  let thisWidget = Just $ pure $ setupPinPage wt seedBackupRequired mpath mnemonic login curs startingHeight mnode
-  passE <- setupPinWidget
-  void $ nextWidget $ ffor passE $ \pass -> Retractable {
-      retractableNext = confirmPinPage pass wt seedBackupRequired mpath mnemonic login curs startingHeight mnode
-    , retractablePrev = thisWidget
-    }
+setupPinPage wt seedBackupRequired mpath mnemonic login curs startingHeight mnode =
+  wrapperSimpleGeneric headerWidgetOnlyBackBtn "pincode-page" False Nothing $ do
+    let thisWidget = Just $ pure $ setupPinPage wt seedBackupRequired mpath mnemonic login curs startingHeight mnode
+    passE <- setupPinWidget
+    void $ nextWidget $ ffor passE $ \pass -> Retractable {
+        retractableNext = confirmPinPage pass wt seedBackupRequired mpath mnemonic login curs startingHeight mnode
+      , retractablePrev = thisWidget
+      }
 
 confirmPinWidget :: MonadFrontBase t m => Password -> m (Event t Password)
 confirmPinWidget pass = divClass "pincode-widget" $ mdo
@@ -185,13 +173,14 @@ confirmPinPage :: MonadFrontBase t m
   -> BlockHeight
   -> Maybe Text
   -> m ()
-confirmPinPage pass wt seedBackupRequired mpath mnemonic login curs startingHeight mnode = wrapperSimpleGeneric headerWidgetOnlyBackBtn "pincode-page" False $ do
-  let thisWidget = Just $ pure $ confirmPinPage pass wt seedBackupRequired mpath mnemonic login curs startingHeight mnode
-  passE <- confirmPinWidget pass
-  void $ nextWidget $ ffor passE $ \confirmedPass -> Retractable {
-      retractableNext = performAuth wt seedBackupRequired mnemonic curs login confirmedPass mpath startingHeight False mnode
-    , retractablePrev = thisWidget
-    }
+confirmPinPage pass wt seedBackupRequired mpath mnemonic login curs startingHeight mnode =
+  wrapperSimpleGeneric headerWidgetOnlyBackBtn "pincode-page" False Nothing $ do
+    let thisWidget = Just $ pure $ confirmPinPage pass wt seedBackupRequired mpath mnemonic login curs startingHeight mnode
+    passE <- confirmPinWidget pass
+    void $ nextWidget $ ffor passE $ \confirmedPass -> Retractable {
+        retractableNext = performAuth wt seedBackupRequired mnemonic curs login confirmedPass mpath startingHeight False mnode
+      , retractablePrev = thisWidget
+      }
 
 confirmEmptyPage :: MonadFrontBase t m
   => WalletSource
@@ -209,7 +198,7 @@ confirmEmptyPage wt seedBackupRequired mnemonic curs login pass mpath startingHe
   h4 $ localizedText CEPAttention
   h5 $ localizedText CEPConsequences
   divClass "fit-content ml-a mr-a" $ do
-    setE <- divClass "" (submitClass "button button-outline w-100" PWSSet)
+    setE <- divClass "" (submitClass "button button-outline w-100" CEPSure)
     void $ retract =<< divClass "" (submitClass "button button-outline w-100" CEPBack)
     void $ nextWidget $ ffor setE $ const $ Retractable {
         retractableNext = performAuth wt seedBackupRequired mnemonic curs login pass mpath startingHeight isPass mnode
@@ -382,7 +371,7 @@ confirmEmptyPasswordPage isTextPassword nextPage = do
     h4 $ localizedText CEPAttention
     h5 $ localizedText CEPConsequences
     divClass "fit-content mx-a" $ do
-      submitE <- divClass "" (submitClass "button button-outline w-100" PWSSet)
+      submitE <- divClass "" (submitClass "button button-outline w-100" CEPSure)
       let passE = (T.empty, isTextPassword) <$ submitE
       doneE <- setNewPassword passE
       void $ nextWidget $ ffor doneE $ const $ Retractable {

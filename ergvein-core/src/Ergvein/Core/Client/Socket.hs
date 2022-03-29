@@ -30,7 +30,7 @@ import Sepulcas.Native
 
 import qualified Data.Attoparsec.ByteString as AP
 import qualified Data.ByteString            as B
-import qualified Data.ByteString.Builder    as BB
+import qualified Data.Serialize.Put         as P
 import qualified Data.ByteString.Lazy       as BL
 import qualified Data.Map.Strict            as M
 import qualified Data.Vector.Unboxed        as VU
@@ -96,12 +96,18 @@ initIndexerConnection sname sa msgE = mdo
            liftIO $ currenciesNotSyncedFire ()
            pure Nothing
          | otherwise -> do
+            nodeLog sa "Version is OK, firing handler for version event"
             liftIO $ versionFire versionVersion
+            nodeLog sa "Scheduling VersionACK message"
             pure $ Just (MVersionACK VersionACK)
     MPing nonce -> pure $ Just $ MPong nonce
+    MVersionACK _ -> do
+      nodeLog sa "Received remote version ACK"
+      pure Nothing
     _ -> pure Nothing
   let sendE = leftmost [handshakeE, hsRespE, gate (current shakeD) reqE]
 
+  performEvent_ $ ffor sendE $ nodeLog sa . ("Sending message: " <>) . showt
   performEvent_ $ ffor (_socketRecvEr s) $ nodeLog sa . showt
 
   -- Track handshake status
@@ -146,7 +152,7 @@ initIndexerConnection sname sa msgE = mdo
     }
   where
     serializeMessage :: Message -> B.ByteString
-    serializeMessage = BL.toStrict . BB.toLazyByteString . messageBuilder
+    serializeMessage = BL.toStrict . P.runPutLazy . messageBuilder
 
 -- | Internal peeker to parse messages coming from peer.
 peekMessage :: (MonadPeeker m, MonadIO m, MonadThrow m, PlatformNatives)

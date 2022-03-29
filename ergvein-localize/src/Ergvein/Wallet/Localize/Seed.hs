@@ -49,7 +49,7 @@ instance LocalizedPrint SeedPageStrings where
   localizedShow l v = case l of
     English -> case v of
       SPSTitle                -> "These words are your mnemonic phrase"
-      SPSWarn                 -> "It is the ONLY way to restore access to your wallet. Write it down or you will lost your money forever."
+      SPSWarn                 -> "It is the ONLY way to restore access to your wallet. Write it down, or you risk losing your money forever."
       SPSWrote                -> "I wrote them"
       SPSVerifyTitle          -> "Verify mnemonic phrase"
       SPSVerifyDescr          -> "Tap the words to put them next to each other in the correct order."
