@@ -155,7 +155,9 @@ setupCustomNode mnode = mdo
       case mNamedSa of
         Nothing -> basicWidget Nothing PWSInvalidIP
         Just nsa -> do
-          node <- initBtcNode True 100 (namedAddrSock nsa) never True
+          -- This rating is irrelevant, since we don't actually keep the connection
+          let initRating = 100
+          node <- initBtcNode True initRating (namedAddrSock nsa) never True
           fmap join $ networkHoldDyn $ ffor (nodeconIsUp node) $ \case
             False -> basicWidget Nothing PWSNodeOffline
             True -> basicWidget (Just iptxt) (PWSNodeActive iptxt)

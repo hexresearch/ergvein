@@ -100,7 +100,10 @@ btcPrivateNodeController sa = do
   pubStorageD <- getPubStorageD
   let txidsD  = ffor pubStorageD $ \ps -> M.keysSet $ ps ^. btcPubStorage . currencyPubStorage'transactions
   let reqE = extractReq sel BTC sa
-  node <- initBtcNode True 100 sa reqE True
+  -- Since it's a private node assume perfect rating.
+  -- Also the rating is never modified for private nodes and thus is irrelevant
+  let initRating = 100
+  node <- initBtcNode True initRating sa reqE True
   performEvent $ ffor clearedE $ const $
     modifyExternalRef nodeRef $ \cm -> (addNodeConn (NodeConnBtc node) cm, ())
   let respE = nodeconRespE node
@@ -146,6 +149,7 @@ btcPublicNodeController = mdo
 
   tmpD <- listWithKeyShallowDiff M.empty listActionE $ \u _ _ -> do
     let reqE = extractReq sel BTC u
+    -- If the node is one of "preferred" nodes, set the rating at max.
     let initRating = if u `elem` initSocks then 100 else 50
     node <- initBtcNode True initRating u reqE False
     modifyExternalRef nodeRef $ \cm -> (addNodeConn (NodeConnBtc node) cm, ())
@@ -332,7 +336,9 @@ urlCacheManager initSocks reqE = mdo
     getSecondNodes :: Event t Int -> Int -> [SockAddr] -> Workflow t m (Event t [SockAddr])
     getSecondNodes restartE n urls = Workflow $ do
       urlsE <- forM urls $ \u -> mdo
-        node <- initBtcNode False 100 u reqE False
+        -- We will not use these nodes for actual request so the rating is irrelevant
+        let initRating = 100
+        node <- initBtcNode False initRating u reqE False
         reqE <- eventToNextFrame $ NodeMsgReq (NodeReqBtc MGetAddr) <$ (nodeconOpensE node)
         pure $ fforMaybe (nodeconRespE node) $ \case
           MAddr (Addr nats) -> let
