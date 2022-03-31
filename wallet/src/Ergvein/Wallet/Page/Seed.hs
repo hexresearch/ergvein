@@ -86,8 +86,8 @@ mnemonicPage mMnemonic = wrapperSimple True $ do
 
 setLoginPasswordPage :: MonadFrontBase t m => WalletSource -> Bool -> Mnemonic -> m ()
 setLoginPasswordPage walletSource seedBackupRequired mnemonic = if isAndroid
-  then setupLoginPage walletSource seedBackupRequired Nothing mnemonic activeCurrencies
-  else setupPasswordPage walletSource seedBackupRequired Nothing mnemonic activeCurrencies Nothing
+  then setupLoginPage walletSource seedBackupRequired Nothing mnemonic activeCurrencies Nothing
+  else setupPasswordPage walletSource seedBackupRequired Nothing mnemonic activeCurrencies Nothing Nothing
   where activeCurrencies = [BTC]
 
 checkPageUnauth :: MonadFrontBase t m => Mnemonic -> m ()

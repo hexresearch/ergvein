@@ -13,6 +13,7 @@ module Ergvein.Wallet.Password(
   , askPasswordModal
   , setupLogin
   , setupDerivPrefix
+  , setupCustomNode
   , nameProposal
   , check
   ) where
@@ -25,6 +26,7 @@ import Data.Time (getCurrentTime)
 import Reflex.Localize.Dom
 
 import Ergvein.Aeson
+import Ergvein.Node.Resolve
 import Ergvein.Wallet.Localize
 import Ergvein.Wallet.Monad
 import Ergvein.Wallet.Page.PinCode
@@ -131,6 +133,70 @@ setupDerivPrefix ac mpath = do
       [] -> defaultDerivePath BTC
       [c] -> defaultDerivePath c
       _ -> defaultDerivPathPrefix
+
+data SetupAction = SACheck | SAClear | SASave Text
+  deriving (Eq, Show)
+
+setupCustomNode :: MonadFrontBase t m => Maybe Text -> m (Dynamic t (Maybe Text))
+setupCustomNode mnode = mdo
+  initE <- if isJust mnode then getPostBuild else pure never
+  let actE = leftmost [switchDyn $ snd <$> valD, SACheck <$ initE]
+  let clearE = ffilter (==SAClear) actE
+  mkLabel PWSCustomNodeDesc
+  nodeIpD <- labeledTextInput PWSCustomNode $ def
+    & textInputConfig_initialValue .~ fromMaybe "" mnode
+    & textInputConfig_setValue .~ ("" <$ clearE)
+  valD <- fmap join $ networkHold waitCheck $ ffor actE $ \case
+    SACheck -> do
+      iptxt <- sampleDyn nodeIpD
+      let port = if isTestnet then 18333 else 8333
+      resolver <- mkResolvSeed
+      mNamedSa <- resolveAddr resolver port iptxt
+      case mNamedSa of
+        Nothing -> basicWidget Nothing PWSInvalidIP
+        Just nsa -> do
+          -- This rating is irrelevant, since we don't actually keep the connection
+          let initRating = 100
+          node <- initBtcNode True initRating (namedAddrSock nsa) never True
+          fmap join $ networkHoldDyn $ ffor (nodeconIsUp node) $ \case
+            False -> basicWidget Nothing PWSNodeOffline
+            True -> basicWidget (Just iptxt) (PWSNodeActive iptxt)
+    SAClear -> waitCheck
+    SASave iptxt -> do
+      mkLabel $ PWSNodeSaved iptxt
+      actE' <- controlPanel Nothing
+      pure $ pure (Just iptxt, actE')
+  pure $ fst <$> valD
+  where
+    mkBtn :: MonadFrontBase t m => PasswordWidgetStrings -> m (Event t ())
+    mkBtn = submitClass "button button-outline"
+
+    mkLabel :: MonadFrontBase t m => PasswordWidgetStrings -> m ()
+    mkLabel = divClass "password-setup-descr" . h5 . localizedText
+
+    basicWidget :: MonadFrontBase t m
+      => Maybe Text
+      -> PasswordWidgetStrings
+      -> m (Dynamic t (Maybe Text, Event t SetupAction))
+    basicWidget mip lbl = do
+      mkLabel lbl
+      actE <- controlPanel mip
+      pure $ pure (Nothing, actE)
+
+    waitCheck :: MonadFrontBase t m => m (Dynamic t (Maybe Text, Event t SetupAction))
+    waitCheck = do
+      divClass "password-setup-descr" $ h5 $ localizedText PWSNodeFiller
+      actE <- fmap (SACheck <$) $ mkBtn PWSCheckNode
+      pure $ pure (Nothing, actE)
+
+    controlPanel :: MonadFrontBase t m => Maybe Text -> m (Event t SetupAction)
+    controlPanel mip = divClass "" $ do
+      checkE <- fmap (SACheck <$) $ mkBtn PWSCheckNode
+      clearE <- fmap (SAClear <$) $ mkBtn PWSCancelNode
+      saveE <- case mip of
+        Nothing -> pure never
+        Just ip -> fmap (SASave ip <$) $ mkBtn PWSSaveNode
+      pure $ leftmost [checkE, clearE, saveE]
 
 askPasswordWidget :: MonadFrontBase t m => Text -> Bool -> Event t () -> m (Event t Password)
 askPasswordWidget name writeMeta clearInputE

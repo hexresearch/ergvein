@@ -155,7 +155,7 @@ prepareTxView addrs hght tz sblUrl (mTT, TxInfo{..}) = btcView txInfo'tx
         txBlockM = HK.blockHashToHex <$> txInfo'blockHash
         txBlockLink = (\a -> Just (blUrl <> "/block/" <> a, a)) =<< txBlockM
 
-        blockTime = TxTime trTime -- $ maybe Nothing (Just . secToTimestamp . HK.blockTimestamp) txInfo'blockHeader
+        blockTime = TxTime trTime
         trTime = fmap (utcToZonedTime tz . etxMetaTime) meta
         txFeeCalc = case mTT of
           Nothing -> Nothing
