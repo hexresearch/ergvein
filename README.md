@@ -50,7 +50,7 @@ Fill password and answer questions for certificate, next put password in a file,
 
 Next, you can build release with:
 ```
-./release-android --arg releasePasswordFile ./release/my-password --arg releaseKeyStore ./release/my_store.keystore
+./release-android.sh --arg releasePasswordFile ./release/my-password --arg releaseKeyStore ./release/my_store.keystore
 ```
 Results will be symlinked in folders `android-release` for bundle and `android-release-apk` for APK version, we provide both
 as bundles are not easy for manual installation.
