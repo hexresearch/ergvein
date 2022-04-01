@@ -31,30 +31,6 @@ let
       export VERSION_TAG=${versionTag}
     '';
   });
-
-  # addRust = stdenv: drv: pkgs.haskell.lib.overrideCabal drv (drv: let
-  #   nixTarget = stdenv.targetPlatform.config;
-  #   cargoTarget = if nixTarget == "aarch64-unknown-linux-android" then "aarch64-unknown-linux-gnu"
-  #     else if nixTarget == "armv7a-unknown-linux-androideabi" then "arm-linux-androideabi"
-  #     else nixTarget;
-  #   toolchain = with pkgs.fenix;
-  #     combine [
-  #       minimal.rustc
-  #       minimal.cargo
-  #       targets.${cargoTarget}.latest.rust-std
-  #     ];
-  #   in {
-  #   buildTools = (drv.buildTools or []) ++ [toolchain];
-  #   preConfigure = ''
-  #     export CARGO_BUILD_TARGET="${cargoTarget}"
-  #     export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER="${pkgs.pkgsCross.aarch64-multiplatform.stdenv.cc}/bin/${cargoTarget}-gcc";
-  #     export CARGO_TARGET_ARM_LINUX_ANDROIDEABI_LINKER="${pkgs.pkgsCross.armv7l-hf-multiplatform.stdenv.cc}/bin/${cargoTarget}-gcc";
-  #     echo "CARGO_BUILD_TARGET=$CARGO_BUILD_TARGET"
-  #     echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=$CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER"
-  #     echo "CARGO_TARGET_ARM_LINUX_ANDROIDEABI_LINKER=$CARGO_TARGET_ARM_LINUX_ANDROIDEABI_LINKER"
-  #     ${drv.preConfigure or ""}
-  #   '';
-  # });
 in (self: super: let
   # Internal packages (depends on production or dev environment)
   callInternal = name: path: args: (
