@@ -1,0 +1,5 @@
+First production-ready release for the public.
+
+Fixes from the previous version:
+* Fix coin selection and UI
+* Bug fixes with syncing with filter indexers

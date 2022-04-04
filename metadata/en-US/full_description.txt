@@ -1,0 +1,7 @@
+Cypra is a Bitcoin wallet that implements innovative client filters (BIP-158) that allow users to stop surveillance after their public keys. Even if wallet nodes are spying for you they cannot infer which funds do you have.
+
+Features:
+* We use SPV design. The wallet doesn't trust nodes. The implementation uses Golomb-Rice client-side filters (BIP-158) to prevent leaking any information about your funds.
+* Private keys are stored in encrypted storage and never leave your device. All wallet data is encrypted and protected by your password.
+* Mobile and desktop applications.
+* Decentralized public network of indexing nodes that allows users to participate in the network.
