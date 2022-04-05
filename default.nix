@@ -1,5 +1,5 @@
 { release ? false
-, signApk ? false
+, signApk ? release
 , profile ? false
 , gitHash ? null
 , releaseBundle ? true
