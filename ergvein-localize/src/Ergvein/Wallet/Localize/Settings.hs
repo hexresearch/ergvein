@@ -1,6 +1,7 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 module Ergvein.Wallet.Localize.Settings(
     SettingsPageStrings(..)
+  , NodeSetupStrings(..)
   , NetSetupStrings(..)
   , DeleteWalletStrings(..)
   ) where
@@ -122,10 +123,10 @@ instance LocalizedPrint SettingsPageStrings where
       STPSEnableRbfByDefault  -> "Отправлять RBF транзакции по умолчанию:"
       STPSSelectLanguage      -> "Выберите язык:"
       STPSTorStatus           -> "Статус подключения"
-      STPSTorEnable          -> "Подключить"
-      STPSTorDisable       -> "Отключить"
-      STPSTorEnabled        -> "Подключено:"
-      STPSTorDisabled     -> "Отключено"
+      STPSTorEnable           -> "Подключить"
+      STPSTorDisable          -> "Отключить"
+      STPSTorEnabled          -> "Подключено:"
+      STPSTorDisabled         -> "Отключено"
       STPSUseTor              -> "Проксировать через Tor"
       STPSSetsProxy           -> "Настройки прокси SOCKS"
       STPSProxyIpField        -> "Адрес прокси"
@@ -151,6 +152,28 @@ instance LocalizedPrint UnitBTC where
     BtcWhole    -> "BTC"
     BtcMilli    -> "mBTC"
     BtcSat      -> "sat"
+
+data NodeSetupStrings
+  = NDSSTitle Bool
+  | NDSSSwitchPub
+  | NDSSSetPriv
+  | NDSSSetNode
+  | NDSSCancel
+
+instance LocalizedPrint NodeSetupStrings where
+  localizedShow l v = case l of
+    English -> case v of
+      NDSSTitle m   -> "BTC nodes: " <> if m then "private" else "public" <> " mode"
+      NDSSSwitchPub -> "Switch to public mode"
+      NDSSSetPriv   -> "Setup private node"
+      NDSSSetNode   -> "Set node"
+      NDSSCancel    -> "Cancel"
+    Russian -> case v of
+      NDSSTitle m   -> "Ноды BTC: " <> if m then "приватный" else "публичный" <> " режим"
+      NDSSSwitchPub -> "Переключить на публичный режим"
+      NDSSSetPriv   -> "Настроить приватную ноду"
+      NDSSSetNode   -> "Установить ноду"
+      NDSSCancel    -> "Отмена"
 
 data NetSetupStrings
   = NSSTitle

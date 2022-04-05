@@ -110,6 +110,16 @@ data PasswordWidgetStrings =
   | PWSInvalidPath
   | PWSMoreOptions
   | PWSLessOptions
+  | PWSCustomNode
+  | PWSCustomNodeDesc
+  | PWSNodeFiller
+  | PWSCheckNode
+  | PWSSaveNode
+  | PWSCancelNode
+  | PWSInvalidIP
+  | PWSNodeOffline
+  | PWSNodeActive Text
+  | PWSNodeSaved Text
 
 instance LocalizedPrint PasswordWidgetStrings where
   localizedShow l v = case l of
@@ -129,6 +139,16 @@ instance LocalizedPrint PasswordWidgetStrings where
       PWSInvalidPath   -> "Derivation path is invalid! Format m/0'/0'/0'"
       PWSMoreOptions   -> "Advanced settings"
       PWSLessOptions   -> "Advanced settings"
+      PWSCustomNode    -> "Private BTC node's IP"
+      PWSCustomNodeDesc -> "You can select a private node to use for all requests"
+      PWSNodeFiller    -> "Enter an IP address"
+      PWSCheckNode     -> "Check"
+      PWSSaveNode      -> "Save"
+      PWSCancelNode    -> "Cancel"
+      PWSInvalidIP     -> "Invalid ip"
+      PWSNodeOffline   -> "Node offline or is not a BTC node"
+      PWSNodeActive t  -> "Node <" <> t <> "> is online! Save it?"
+      PWSNodeSaved  t  -> "Node <" <> t <> "> is saved!"
     Russian -> case v of
       PWSPassword      -> "Пароль"
       PWSPassNamed n   -> "Пароль от " <> n
@@ -145,6 +165,16 @@ instance LocalizedPrint PasswordWidgetStrings where
       PWSInvalidPath   -> "Путь вывода неверен! Формат поля m/0'/0'/0'"
       PWSMoreOptions   -> "Дополнительные настройки"
       PWSLessOptions   -> "Дополнительные настройки"
+      PWSCustomNode    -> "IP адрес частного BTC-узла"
+      PWSCustomNodeDesc -> "Этот узел будет использоваться для всех запросов"
+      PWSNodeFiller    -> "Введите IP адрес"
+      PWSCheckNode     -> "Проверить"
+      PWSSaveNode      -> "Сохранить"
+      PWSCancelNode    -> "Отменить"
+      PWSInvalidIP     -> "Некорректный IP адрес"
+      PWSNodeOffline   -> "Узел оффлайн или не является BTC узлом"
+      PWSNodeActive t  -> "Узел <" <> t <> "> онлайн! Сохранить?"
+      PWSNodeSaved  t  -> "Узел <" <> t <> "> сохранён!"
 
 data ConfirmEmptyPage = CEPBack | CEPSkip | CEPAttention | CEPConsequences | CEPSure
 

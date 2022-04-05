@@ -18,6 +18,11 @@ module Ergvein.Core.Node.Types
   , NodeMessage(..)
   , Host
   , Port
+  , NodeRating(..)
+  , RatingLevel(..)
+  , checkRating
+  , isRemoveRating
+  , isSuperbRating
   , getAllConnByCurrency
   , nodeString
   , getNodeReqCurrency
@@ -35,6 +40,7 @@ import Ergvein.Text (showt)
 import Ergvein.Types
 import Network.Socket (SockAddr)
 import Reflex
+import Reflex.ExternalRef
 
 import qualified Data.Dependent.Map as DM
 
@@ -60,6 +66,8 @@ data NodeConnection t cur = NodeConnection {
 , nodeconIsUp       :: !(Dynamic t Bool)
 , nodeconDoLog      :: !Bool
 , nodeconHeight     :: !(Dynamic t (Maybe Word32))
+, nodeconRating     :: !(ExternalRef t NodeRating)
+, nodeconIsPrivate  :: !Bool
 }
 
 data NodeStatus = NodeStatus {
@@ -113,3 +121,36 @@ type ConnMap t = DMap (CurrencyTag t) (Map SockAddr)
 getAllConnByCurrency :: Currency -> ConnMap t -> Maybe (Map SockAddr (NodeConn t))
 getAllConnByCurrency cur cm = case cur of
   BTC  -> fmap NodeConnBtc <$> DM.lookup BtcTag cm
+
+newtype NodeRating = NodeRating {unNodeRating :: Word8}
+  deriving (Eq, Ord, Show)
+
+-- | Node rating is capped at 100
+instance Num NodeRating where
+  (NodeRating x) + (NodeRating y)   = NodeRating $ if x + y >= 100 then 100 else x + y
+  (NodeRating x) - (NodeRating y)   = NodeRating $ if y >= x then 0 else x - y
+  (NodeRating x) * (NodeRating y)   = NodeRating $ if x * y >= 100 then 100 else x * y
+  negate (NodeRating x)             = NodeRating $ negate x
+  abs x = x
+  signum (NodeRating x)             = NodeRating $ signum x
+  fromInteger i                     = NodeRating $ fromInteger i
+
+data RatingLevel = RLAcceptable | RLSuperb | RLRemove
+  deriving (Eq, Ord, Show)
+
+checkRating :: NodeRating -> RatingLevel
+checkRating (NodeRating r) = if r == 0
+  then RLRemove
+  else if r < 75
+    then RLAcceptable
+    else RLSuperb
+
+isRemoveRating :: NodeRating -> Bool
+isRemoveRating r = case checkRating r of
+  RLRemove -> True
+  _ -> False
+
+isSuperbRating :: NodeRating -> Bool
+isSuperbRating r = case checkRating r of
+  RLSuperb -> True
+  _ -> False
