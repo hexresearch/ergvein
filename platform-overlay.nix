@@ -1,4 +1,4 @@
-{ profile ? false }: (import ./reflex-platform.nix) {
+{ profile ? true }: (import ./reflex-platform.nix) {
     nixpkgsOverlays = [
       (import ./nixpkgs-overlays/default.nix)
       (import ./nixpkgs-overlays/rust.nix)

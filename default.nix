@@ -1,5 +1,5 @@
 { release ? false
-, profile ? false
+, profile ? true
 , gitHash ? null
 , releaseBundle ? true
 , releasePasswordFile ? ./release/password
