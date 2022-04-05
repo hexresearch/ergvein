@@ -9,20 +9,23 @@ import Control.Monad.IO.Class
 import Data.Maybe (fromMaybe, listToMaybe)
 import Data.Serialize
 import Network.Haskoin.Transaction
+import Data.String (fromString)
 
+import Ergvein.Core.Node.Btc.Blocks
+import Ergvein.Text
 import Ergvein.Types.Storage.Currency.Public.Btc
 import Ergvein.Types.Utxo.Btc
-import Sepulcas.Elements
-import Ergvein.Wallet.Monad
-import Ergvein.Text
-import Ergvein.Wallet.Wrapper
 import Ergvein.Wallet.Localize ()
+import Ergvein.Wallet.Monad
+import Ergvein.Wallet.Wrapper
+import Sepulcas.Elements
 
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import qualified Data.Vector as V
 import qualified Data.Text as T
 import qualified Network.Haskoin.Keys as HK
+import qualified Network.Haskoin.Block as HB
 
 import Network.Socket
 import qualified Control.Exception.Safe as Ex
@@ -35,6 +38,7 @@ data DebugBtns
   | DbgPrvExt
   | DbgMnemonic
   | DbgTxs
+  | DbgBlocks
 
 mkTxt :: Text -> Text
 mkTxt = id
@@ -49,6 +53,7 @@ debugWidget = el "div" $ do
   pubExtE <- fmap (DbgPubExt <$) $ outlineButton $ mkTxt "Pub Externals"
   prvIntE <- fmap (DbgPrvInt <$) $ outlineButton $ mkTxt "Priv Internals"
   prvExtE <- fmap (DbgPrvExt <$) $ outlineButton $ mkTxt "Priv Externals"
+  blksE   <- fmap (DbgBlocks <$) $ outlineButton $ mkTxt "Debug blocks"
   txsE <- fmap (DbgTxs <$) $ outlineButton $ mkTxt "Txs"
   mnemonicE <- fmap (DbgMnemonic <$) $ outlineButton ("Mnemonic" :: Text)
   pingE <- outlineButton $ mkTxt "Ping"
@@ -59,7 +64,7 @@ debugWidget = el "div" $ do
   h5 . dynText . (\s -> "Current height: " <> s) . fmap showt =<< getCurrentHeight BTC
   h5 . dynText . (\s -> "Scanned height: " <> s) . fmap showt =<< getScannedHeightD BTC
 
-  let goE = leftmost [utxoE, pubIntE, pubExtE, prvIntE, prvExtE, txsE, mnemonicE]
+  let goE = leftmost [utxoE, pubIntE, pubExtE, prvIntE, prvExtE, txsE, mnemonicE, blksE]
   void $ nextWidget $ ffor goE $ \sel -> Retractable {
       retractableNext = case sel of
         DbgUtxo     -> dbgUtxoPage
@@ -69,6 +74,7 @@ debugWidget = el "div" $ do
         DbgPrvExt   -> dbgPrivExternalsPage
         DbgMnemonic -> dbgMnemonicPage
         DbgTxs      -> dbgTxsPage
+        DbgBlocks   -> dbgBlocksPage
     , retractablePrev = Nothing
     }
 
@@ -178,3 +184,15 @@ dbgTxsPage = wrapper False "Transactions" (Just $ pure dbgTxsPage) $ divClass "c
         el "div" $ text $ bs2Hex $ encode tx
         el "div" $ text "------------------------------------------------------"
 
+dbgBlocksPage :: MonadFront t m => m ()
+dbgBlocksPage = wrapper False "Blocks" (Just $ pure dbgBlocksPage) $ divClass "currency-content" $ do
+  el "h2" $ text "lol"
+  let requiredBlock :: HB.BlockHash = fromString "000000000000000000053331707fcbaa576b72ce41cf3f82cb22010886e9fd9c"
+  el "h2" $ text $ showt $ requiredBlock
+  reqE <- outlineButton $ mkTxt "Req"
+  blockE <- requestBlocksBtc $ [requiredBlock] <$ reqE
+  let actE = leftmost [Nothing <$ reqE, Just <$> blockE]
+  networkHold (pure ()) $ ffor actE $ \case
+    Nothing -> pure () 
+    Just b -> divClass "" $ text $ showt $ HB.blockHeader $ head b
+  pure ()

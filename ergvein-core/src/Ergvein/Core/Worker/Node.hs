@@ -4,13 +4,14 @@ module Ergvein.Core.Worker.Node
   ) where
 
 import Control.Concurrent
+import Control.Concurrent.STM
 import Control.Exception
 import Control.Lens
 import Control.Monad.IO.Unlift (MonadUnliftIO)
 import Control.Monad.Random
 import Data.Either (fromRight)
 import Data.IP
-import Data.Maybe (fromMaybe, listToMaybe)
+import Data.Maybe (fromMaybe, listToMaybe, catMaybes)
 import Data.Text (Text)
 import Data.Time
 import Data.Traversable (for)
@@ -20,9 +21,11 @@ import Ergvein.Core.Resolve
 import Ergvein.Core.Status
 import Ergvein.Core.Store
 import Ergvein.Core.Wallet
+import Ergvein.Node.Resolve
 import Ergvein.Text
 import Ergvein.Types.Currency
 import Ergvein.Types.Storage
+import Ergvein.Types.Storage.Currency.Public.Btc
 import Ergvein.Types.Transaction as ETT
 import Network.DNS
 import Network.Haskoin.Constants
@@ -34,6 +37,7 @@ import Reflex.Flunky
 import Reflex.Fork
 import Reflex.Main.Thread
 import Reflex.Network
+import Reflex.Workflow
 import Sepulcas.Native
 import System.IO.Unsafe
 
@@ -45,61 +49,114 @@ import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import qualified Network.Haskoin.Transaction as HT
 
-minNodeNum :: Int
-minNodeNum = 3
+-- | How many node connections to establish and keep
+targetNodeNum :: Int
+targetNodeNum = 5
 
+-- | How many tier-1 nodes to use to populate url cache
 firstTierNodeNum :: Int
 firstTierNodeNum = 10
 
-saStorageSize :: Int
-saStorageSize = 50
+-- | How many urls to cache
+urlCacheSize :: Int
+urlCacheSize = 50
+
+-- | Time to perform handshake, seconds
+handshakeTimeout :: NominalDiffTime
+handshakeTimeout = 7
 
 btcLog :: (PlatformNatives, MonadIO m) => Text -> m ()
 btcLog v = logWrite $ "[nodeController][" <> showt BTC <> "]: " <> v
 
-btcRefrTimeout :: NominalDiffTime
-btcRefrTimeout = 5
+-- | Check if the counter decreased
+handleDecDetector :: Int -> (Bool, Int) -> (Bool, Int)
+handleDecDetector n (_, prev) = if n < prev then (True, n) else (False, n)
 
+-- | Track custom node field.
+-- If there is a valid custom node, use a simplified private node controller
 btcNodeController :: (MonadNode t m, MonadStorage t m, MonadSettings t m
   , MonadWallet t m, MonadStatus t m, MonadHasMain m) => m ()
-btcNodeController = mdo
-  btcLog "Starting"
-  sel       <- getNodeNodeReqSelector
-  conMapD   <- getNodeConnectionsD
-  nodeRef   <- getNodeConnRef
-  te        <- void <$> tickLossyFromPostBuildTime btcRefrTimeout
+btcNodeController = do
+  customNodeD <- getCustomNodeD
+  void $ networkHoldDyn $ ffor customNodeD $ \case
+    Nothing -> btcPublicNodeController
+    Just url -> do
+      let port = if isTestnet then 18333 else 8333
+      resolver <- mkResolvSeed
+      namedUrl <- resolveAddr resolver port url
+      case namedUrl of
+        Nothing -> btcPublicNodeController
+        Just (NamedSockAddr _ sa) -> btcPrivateNodeController sa
 
+btcPrivateNodeController :: (MonadNode t m, MonadStorage t m, MonadSettings t m
+  , MonadWallet t m, MonadStatus t m, MonadHasMain m) => SockAddr -> m ()
+btcPrivateNodeController sa = do
+  -- This is done to drop all cons in case we switched from pub to private
+  clearedE <- clearNodeConns =<< getPostBuild
+  btcLog $ "Starting private: <" <> showt sa <> ">"
+  sel         <- getNodeNodeReqSelector
+  conMapD     <- getNodeConnectionsD
+  nodeRef     <- getNodeConnRef
   pubStorageD <- getPubStorageD
+  let txidsD  = ffor pubStorageD $ \ps -> M.keysSet $ ps ^. btcPubStorage . currencyPubStorage'transactions
+  let reqE = extractReq sel BTC sa
+  -- Since it's a private node assume perfect rating.
+  -- Also the rating is never modified for private nodes and thus is irrelevant
+  let initRating = 100
+  node <- initBtcNode True initRating sa reqE True
+  performEvent $ ffor clearedE $ const $
+    modifyExternalRef nodeRef $ \cm -> (addNodeConn (NodeConnBtc node) cm, ())
+  let respE = nodeconRespE node
+  let txInvsE = flip push respE $ \case
+        MInv inv -> do
+          txids <- sampleDyn txidsD
+          pure $ filterTxInvs txids inv
+        _ -> pure Nothing
+      reqTxE = (sa,) . NodeReqBtc . MGetData . GetData <$> txInvsE
+  _ <- requestFromNode reqTxE
+  let newTxE = fforMaybe respE $ \case
+        MTx tx -> Just tx
+        _ -> Nothing
+  myTxSender sa respE
+  void $ btcMempoolTxInserter newTxE
 
-  let txidsD = ffor pubStorageD $ \ps -> M.keysSet $ ps ^. btcPubStorage . currencyPubStorage'transactions
 
+btcPublicNodeController :: (MonadNode t m, MonadStorage t m, MonadSettings t m
+  , MonadWallet t m, MonadStatus t m, MonadHasMain m) => m ()
+btcPublicNodeController = mdo
+  btcLog "Starting"
+  sel         <- getNodeNodeReqSelector
+  conMapD     <- getNodeConnectionsD
+  nodeRef     <- getNodeConnRef
+  pubStorageD <- getPubStorageD
+  initSocks   <- resolveInitialUrls
+  let txidsD  = ffor pubStorageD $ \ps -> M.keysSet $ ps ^. btcPubStorage . currencyPubStorage'transactions
   let btcLenD = ffor conMapD $ maybe 0 M.size . DM.lookup BtcTag
-  let te' = poke te $ const $ do
-        cm <- sample . current $ conMapD
-        let nodes = maybe [] M.elems (DM.lookup BtcTag cm)
-        stats <- traverse (sampleDyn . nodeconIsUp) nodes
-        pure $ length $ filter id stats
-  -- Get an url to connect if:
-  -- 1. BTC conMap is updated
-  -- 2. The first minNodeNum times an urls is added to the storage
-  -- 3. Suppose 1st event fired and the storage is empty, then try again after btcRefrTimeout
-  let tickE = leftmost [updated btcLenD, 0 <$ fstRunE, te']
-  let urlE = flip push tickE $ \l -> if l >= minNodeNum
-        then pure Nothing
-        else listToMaybe <$> sampleDyn urlStoreD
-  (urlStoreD, fstRunE) <- mkUrlBatcher sel urlE
+
+  let reqUrlsE = fforMaybe (updated decDetectorD) $ \(b,n) -> if b
+        then if n < targetNodeNum then Just (targetNodeNum - n) else Nothing
+        else Nothing
+
+  urlsToAddE  <- urlCacheManager initSocks reqUrlsE
 
   let (remNodeUrlE, txE) = switchTuple $ splitDynPure $ fmap (unzip . M.elems) tmpD
+  let addNodeE = (M.fromList . fmap (, Just ())) <$> urlsToAddE
   let remNodeE = (`M.singleton` Nothing) <$> remNodeUrlE
-  let addNodeE = (`M.singleton` Just ()) <$> urlE
   let listActionE = leftmost [addNodeE, remNodeE]
+
+  -- Detect when the number of connected nodes decreased
+  decDetectorD <- foldDyn handleDecDetector (False, 0) $ updated $ M.size <$> tmpD
 
   tmpD <- listWithKeyShallowDiff M.empty listActionE $ \u _ _ -> do
     let reqE = extractReq sel BTC u
-    node <- initBtcNode True u reqE
+    -- If the node is one of "preferred" nodes, set the rating at max.
+    let initRating = if u `elem` initSocks then 100 else 50
+    node <- initBtcNode True initRating u reqE False
     modifyExternalRef nodeRef $ \cm -> (addNodeConn (NodeConnBtc node) cm, ())
-    closeE' <- delay 0.1 $ nodeconCloseE node
-    closeE <- performEvent $ ffor closeE' $ const $
+    killE <- delay 0.1 $ nodeconCloseE node
+    timeoutE <- delay handshakeTimeout =<< getPostBuild
+    let timedoutE = gate (fmap not $ current (nodeconIsUp node)) timeoutE
+    closeE <- performEvent $ ffor (leftmost [killE, timedoutE]) $ const $
       modifyExternalRef nodeRef $ \cm -> (removeNodeConn BtcTag u cm, ())
     let respE = nodeconRespE node
     let txInvsE = flip push respE $ \case
@@ -118,6 +175,24 @@ btcNodeController = mdo
   void $ btcMempoolTxInserter txE
   where
     switchTuple (a, b) = (switchDyn . fmap leftmost $ a, switchDyn . fmap leftmost $ b)
+
+-- | Resolve preferred nodes.
+-- Suffle the values to avoid always connecting to the top node at the start
+resolveInitialUrls ::(MonadNode t m, MonadStorage t m, MonadSettings t m
+  , MonadWallet t m, MonadStatus t m, MonadHasMain m) => m [SockAddr]
+resolveInitialUrls = do
+  ps <- getPubStorage
+  let PubStorageBtc bs = ps ^. btcPubStorage . currencyPubStorage'meta
+  let initUrls = S.toList $ _btcPubStorage'preferredNodes bs
+  let port = if isTestnet then 18333 else 8333
+  resolver <- mkResolvSeed
+  namedUrls <- resolveAddrs resolver port initUrls
+  shuffleVals $ namedAddrSock <$> namedUrls
+
+shuffleVals :: MonadIO m => [a] -> m [a]
+shuffleVals xs = liftIO $ do
+  indices :: [Int] <- replicateM (length xs) randomIO
+  pure $ snd $ unzip $ L.sortOn fst $ zip indices xs
 
 myTxSender :: (MonadNode t m, MonadStorage t m) => SockAddr -> Event t Message -> m ()
 myTxSender addr msgE = do
@@ -199,21 +274,6 @@ filterTxInvs txids (Inv invs) = case txs of
         | S.notMember (ETT.BtcTxHash $ TxHash hash) txids -> Just iv
       _ -> Nothing
 
-data SAStorageAct = SAAdd [SockAddr] | SARemove SockAddr | SAClear
-
-handleSAStore :: SAStorageAct -> S.Set SockAddr -> Maybe (S.Set SockAddr)
-handleSAStore sact acc = case sact of
-  SAClear -> Just S.empty
-  SAAdd sas -> let
-    l = S.size acc
-    ltotal = l + length sas
-    in if l >= saStorageSize
-      then Nothing
-      else Just $ S.union acc $ S.fromList $ if ltotal <= saStorageSize
-        then sas
-        else take (ltotal - saStorageSize) sas
-  SARemove sa -> Just $ S.delete sa acc
-
 -- We only want to connect to nodes that support these services:
 -- NODE_NETWORK: this node can be asked for full blocks instead of just headers and mempool.
 -- NODE_WITNESS: see BIP 0144
@@ -223,76 +283,93 @@ hasServices addr = hasNetwork && hasWitness
     hasNetwork = BI.testBit (naServices addr) 0
     hasWitness = BI.testBit (naServices addr) 3
 
+-- | Manages the url cache.
+-- First targetNodeNum urls are fired as they appear and are not cached
+-- Afterwards, collects urlCacheSize urls and provides batches when requested
+-- Init socks are appended at the top of the list so they are picked first
+urlCacheManager :: forall t m . (MonadNode t m, MonadStatus t m, MonadHasMain m, MonadSettings t m)
+    => [SockAddr]               -- ^ Initial urls
+    -> Event t Int              -- ^ Event to request a batch of N urls
+    -> m (Event t [SockAddr])   -- ^ Url cache
+urlCacheManager initSocks reqE = mdo
+  (restartE, restartFire) <- newTriggerEvent
+  (respE, respFire) <- newTriggerEvent
 
--- | Creates a dynamic storage for BTC nodes urls
--- Collects saStorageSize urls
--- Takes an event to remove an address from the storage
--- If storage is empty, requests another batch of urls of size saStorageSize
--- Returns the storage and an event which fires first minNodeNum times
--- That event allows the controller to connect to nodes immediately once there is at least 1 connection
-mkUrlBatcher :: (MonadNode t m, MonadStatus t m, MonadHasMain m, MonadSettings t m)
-  => NodeReqSelector t -> Event t SockAddr -> m (Dynamic t [SockAddr], Event t ())
-mkUrlBatcher sel remE = mdo
+  -- Fire at most targetNodeNum instantly if we have those
+  let (instaUrls, restUrls) = splitAt targetNodeNum initSocks
   buildE <- getPostBuild
-  remCntD <- count remE
-  let goE = leftmost [Just saStorageSize <$ buildE, actE]
-  hostAddrsE <- fmap switchDyn $ networkHold (pure never) $ ffor goE $ \case
-    Nothing -> pure never
-    Just n -> do
-      btcLog $ "Getting a new batch: " <> showt n
-      initNodesE <- getRandomBTCNodesFromDNS sel firstTierNodeNum
-      fmap switchDyn $ networkHold (pure never) $ ffor initNodesE $ \initNodes -> do
-        es <- for initNodes $ \node -> do
-          reqE <- fmap (NodeReqBtc MGetAddr <$) getPostBuild
-          _ <- requestNodeWait node reqE
-          pure $ fforMaybe (nodeconRespE node) $ \case
-            MAddr (Addr nats) -> let
-              addrs = map snd nats
-              verifiedAddrs = filter hasServices addrs
-              in Just $ fmap naAddress verifiedAddrs
-            _ -> Nothing
-        pure $ leftmost es
-  urlsD <- foldDynMaybe handleSAStore S.empty $ leftmost
-    [ SAAdd . mapMaybe tryHostToSockAddr <$> hostAddrsE -- Add
-    , SARemove <$> remE                                 -- Remove
-    ]
-  -- let addr = SockAddrInet 8333 $ tupleToHostAddress (127,0,0,1)
-  -- let urlsD' = S.insert addr <$> urlsD
-  -- performEvent_ $ ffor (updated urlsD') $ liftIO . print
-  let actE = flip push (updated urlsD) $ \acc ->
-           -- If the storage is full, stop connections
-        if | S.size acc >= saStorageSize -> pure $ Just Nothing
-           -- If it's in between, do nothing
-           | S.size acc /= 0             -> pure Nothing
-           -- If the storage is empty, request saStorageSize more
-           | otherwise -> do
-               remCnt <- sampleDyn remCntD
-               if remCnt <= minNodeNum
-                 then pure Nothing           -- Do not fire for first minNodeNum updates
-                 else pure $ Just (Just saStorageSize)
-  nonNullUrlsE <- takeE minNodeNum $ ffilter (not . null) (updated urlsD)
-  fstRunE      <- eventToNextFrame $ () <$ nonNullUrlsE
-  pure (S.toList <$> urlsD, fstRunE)
+  performEvent_ $ ffor buildE $ const $ liftIO $ respFire instaUrls
 
--- | Connects to DNS servers, gets n urls and initializes connection to those nodes
-getRandomBTCNodesFromDNS :: (MonadNode t m, MonadStatus t m, MonadHasMain m, MonadSettings t m)
-  => NodeReqSelector t -> Int -> m (Event t [NodeBtc t])
-getRandomBTCNodesFromDNS sel n = do
-  buildE <- getPostBuild
-  let dnsUrls = getSeeds btcNetwork
-  i <- liftIO $ randomRIO (0, length dnsUrls - 1)
-  void $ updateWalletStatusNormal BTC $ const WalletStatusNormal'gettingNodeAddresses <$ buildE
-  rs <- mkResolvSeed
-  urlsE <- performFork $ requestNodesFromBTCDNS rs (dnsUrls!!i) n <$ buildE
-  void $ updateWalletStatusNormal BTC $ const (WalletStatusNormal'connectingToPeers BTC) <$ urlsE
-  nodesD <- networkHold (pure []) $ ffor urlsE $ \urls -> for urls $ \u -> let
-    reqE = extractReq sel BTC u
-    in initBtcNode False u reqE
-  let connectedE = fforMaybe (updated nodesD) $ \case
-        [] -> Nothing
-        ns -> Just ns
-  void $ updateWalletStatusNormal BTC $ const WalletStatusNormal'synced <$ connectedE
-  pure connectedE
+  -- Put the rest in cache
+  urlsRef <- newExternalRef restUrls
+  cntVar <- liftIO $ newTVarIO (length instaUrls)
+  -- Start batch getter workflow
+  batchE <- fmap switchDyn $ workflow (getFirstNodes restartE urlCacheSize)
+
+  performEvent_ $ ffor batchE $ \urls -> liftIO $ do
+    n <- readTVarIO cntVar
+    let (xs,ys) = splitAt (targetNodeNum - n) urls
+    unless (null xs) $ do
+      respFire xs
+      atomically $ writeTVar cntVar (n + length xs)
+    modifyExternalRefMaybe_ urlsRef $ addSocksToCache ys
+  performEvent_ $ ffor reqE $ \n -> liftIO $ do
+    (isEmpty, urls) <- modifyExternalRef urlsRef $ \urls -> let
+      (xs,ys) = splitAt n urls
+      in (ys, (null ys, xs))
+    when isEmpty (restartFire urlCacheSize)
+    respFire urls
+  pure respE
+  where
+    -- | Get first firstTierNodeNum node urls from a random dns server
+    -- n - max number of urls to collect
+    getFirstNodes :: Event t Int -> Int -> Workflow t m (Event t [SockAddr])
+    getFirstNodes restartE n = Workflow $ do
+      buildE <- getPostBuild
+      dnsUrl <- liftIO . uniform $ getSeeds btcNetwork
+      rs <- mkResolvSeed
+      urlsE <- performFork $ requestNodesFromBTCDNS rs dnsUrl firstTierNodeNum <$ buildE
+      pure (never, getSecondNodes restartE n <$> urlsE)
+
+    -- | Connect to first nodes and request nodes from them
+    -- Return event with addrs from responses
+    getSecondNodes :: Event t Int -> Int -> [SockAddr] -> Workflow t m (Event t [SockAddr])
+    getSecondNodes restartE n urls = Workflow $ do
+      urlsE <- forM urls $ \u -> mdo
+        -- We will not use these nodes for actual request so the rating is irrelevant
+        let initRating = 100
+        node <- initBtcNode False initRating u reqE False
+        reqE <- eventToNextFrame $ NodeMsgReq (NodeReqBtc MGetAddr) <$ (nodeconOpensE node)
+        pure $ fforMaybe (nodeconRespE node) $ \case
+          MAddr (Addr nats) -> let
+            addrs = map snd nats
+            verifiedAddrs = filter hasServices addrs
+            in Just $ fmap naAddress verifiedAddrs
+          _ -> Nothing
+      let resE = fforMaybe (leftmost urlsE) $ \urls -> case catMaybes (tryHostToSockAddr <$> urls) of
+            [] -> Nothing
+            xs -> Just xs
+      -- Count the number of unique urls
+      urlCountD <- foldDyn (+) 0 (length <$> resE)
+      -- When there is enough urls, switch to finalize to close all widgets
+      let enoughE = ffilter (>=n) $ updated urlCountD
+      pure (resE, finalize restartE <$ enoughE)
+
+    -- | Wait for restart request, which carries the number of urls to collect
+    finalize :: Event t Int -> Workflow t m (Event t [SockAddr])
+    finalize restartE = Workflow $ pure (never, getFirstNodes restartE <$> restartE)
+
+    -- | Append socks, capping the cache at urlCacheSize
+    addSocksToCache :: [SockAddr] -> [SockAddr] -> Maybe [SockAddr]
+    addSocksToCache sas acc = let
+      l = length acc
+      acc' = L.nub $ acc ++ sas
+      ltotal = length acc'
+      in if l >= urlCacheSize
+        then Nothing
+        else Just $ if ltotal <= urlCacheSize
+          then acc'
+          else take urlCacheSize acc'
 
 -- | Connects to DNS servers and collects n BTC node addresses
 requestNodesFromBTCDNS :: (MonadIO m, PlatformNatives) => ResolvSeed -> String -> Int -> m [SockAddr]
@@ -323,4 +400,3 @@ randomVals l urls = if l >= n
 tryHostToSockAddr :: Network.Haskoin.Network.HostAddress -> Maybe SockAddr
 tryHostToSockAddr h = unsafePerformIO $ do
   (Just <$> evaluate (hostToSockAddr h)) `catch` (\ErrorCall{} -> pure Nothing)
-
