@@ -107,7 +107,7 @@ initIndexerConnection sname sa msgE = mdo
     _ -> pure Nothing
   let sendE = leftmost [handshakeE, hsRespE, gate (current shakeD) reqE]
 
-  performEvent_ $ ffor sendE $ nodeLog sa . ("Sending message: " <>) . showt
+  -- performEvent_ $ ffor sendE $ nodeLog sa . ("Sending message: " <>) . showt
   performEvent_ $ ffor (_socketRecvEr s) $ nodeLog sa . showt
 
   -- Track handshake status

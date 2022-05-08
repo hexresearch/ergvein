@@ -5,6 +5,7 @@ module Ergvein.Wallet.Localize.History
     HistoryPageStrings(..)
   , HistoryTitle(..)
   , BumpFeeWidgetStrings(..)
+  , RemoveTxWidgetStrings(..)
   ) where
 
 import Data.Word
@@ -41,6 +42,7 @@ data HistoryPageStrings =
   | HistoryTIFee
   | HistoryTIRbf
   | HistoryTIBumpFeeBtn
+  | HistoryTIRemoveBtn
   | HistoryTIConflictingTxs
   | HistoryTIReplacedTxs
   | HistoryTIPossiblyReplacedTxs
@@ -78,6 +80,7 @@ instance LocalizedPrint HistoryPageStrings where
       HistoryTIFee                 -> "Fee"
       HistoryTIRbf                 -> "Replace by fee"
       HistoryTIBumpFeeBtn          -> "Bump fee"
+      HistoryTIRemoveBtn           -> "Remove"
       HistoryTIConflictingTxs      -> "Conflicting transactions"
       HistoryTIReplacedTxs         -> "Replaced transactions"
       HistoryTIPossiblyReplacedTxs -> "The transaction may have replaced these transactions or was replaced by one of them"
@@ -112,6 +115,7 @@ instance LocalizedPrint HistoryPageStrings where
       HistoryTIFee                 -> "Комиссия"
       HistoryTIRbf                 -> "Replace by fee"
       HistoryTIBumpFeeBtn          -> "Увеличить комиссию"
+      HistoryTIRemoveBtn           -> "Удалить"
       HistoryTIConflictingTxs      -> "Конфликтующие транзакции"
       HistoryTIReplacedTxs         -> "Замененные транзакции"
       HistoryTIPossiblyReplacedTxs -> "Эта транзакция заменила следующие транзакции или была заменена одной из них"
@@ -205,3 +209,27 @@ instance LocalizedPrint BumpFeeWidgetStrings where
       BumpFeeSignTx                      -> "Подписать транзакцию"
       BumpFeeTitle                       -> "Увеличение комиссии"
       BumpFeeTxId                        -> "ID транзакции"
+
+data RemoveTxWidgetStrings =
+    RemoveTxTitle
+  | RemoveTxHeader
+  | RemoveTxBody
+  | RemoveTxAgree
+  | RemoveTxCancel
+  deriving (Eq)
+
+instance LocalizedPrint RemoveTxWidgetStrings where
+  localizedShow l v = case l of
+    English -> case v of
+      RemoveTxTitle    -> "Remove tx"
+      RemoveTxHeader   -> "Are you sure to remove the transaction?"
+      RemoveTxBody     -> "If the transaction is in mempool, it can still appear even after removal. If a miner publishes a block with the transaction, it will appear again in your wallet. You should delete only those transactions that are stale and are not accepted by the network."
+      RemoveTxAgree    -> "Delete it"
+      RemoveTxCancel   -> "Cancel"
+
+    Russian -> case v of
+      RemoveTxTitle    -> "Удалить транзакцию"
+      RemoveTxHeader   -> "Вы точно уверены?"
+      RemoveTxBody     -> "Если транзакция попала в мемпул, то она всё ещё может подтвердиться. Если майнер опубликует блок с этой транзакцией, то она снова появится в вашем кошельке. Удаляйте только те транзакции, что застряли и точно не находятся в мемпуле."
+      RemoveTxAgree    -> "Удалить её"
+      RemoveTxCancel   -> "Отмена"

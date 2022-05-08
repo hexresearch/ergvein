@@ -23,6 +23,7 @@ module Ergvein.Core.Store.Monad(
   , txListToMap
   , addOutgoingTx
   , removeOutgoingTxs
+  , removeStorageTx
   , getBtcBlockHashByTxHash
   , getTxStorage
   , getTxById
@@ -363,13 +364,18 @@ addOutgoingTx caller reqE =  modifyPubStorage clr $ ffor reqE $ \etx ->
   Just . modifyCurrStorage (egvTxCurrency etx) (currencyPubStorage'outgoing %~ S.insert (egvTxId etx))
   where clr = caller <> ":" <> "addOutgoingTx"
 
-removeOutgoingTxs :: MonadStorage t m => Text -> Currency -> Event t [EgvTx] -> m (Event t ())
+removeOutgoingTxs :: MonadStorage t m => Text -> Currency -> Event t [TxId] -> m (Event t ())
 removeOutgoingTxs caller cur reqE = modifyPubStorage clr $ ffor reqE $ \etxs ps -> let
-  remset = S.fromList $ egvTxId <$> etxs
+  remset = S.fromList etxs
   outs = ps ^. pubStorage'currencyPubStorages . at cur . non (error "removeOutgoingTxs: not exsisting store!") . currencyPubStorage'outgoing
   uni = S.intersection outs remset
   in if S.null uni then Nothing else Just $ modifyCurrStorage cur (currencyPubStorage'outgoing %~ flip S.difference remset) ps
   where clr = caller <> ":" <> "removeOutgoingTxs"
+
+removeStorageTx :: MonadStorage t m => Text -> Currency -> Event t TxId -> m (Event t ())
+removeStorageTx caller cur reqE = modifyPubStorage clr $ ffor reqE $ \tx ps ->
+  Just $ modifyCurrStorage cur (currencyPubStorage'transactions %~ M.delete tx) ps
+  where clr = caller <> ":" <> "removeStorageTxs"
 
 storeBlockHeadersE :: MonadStorage t m => Text -> Currency -> Event t [HB.Block] -> m (Event t [HB.Block])
 storeBlockHeadersE caller _ reqE = do

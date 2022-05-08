@@ -59,6 +59,7 @@ library
         Ergvein.Wallet.Page.Settings.Unauth
         Ergvein.Wallet.Page.TxInfo.Btc
         Ergvein.Wallet.Page.TxInfo.Common
+        Ergvein.Wallet.Page.TxInfo.Remove
         Ergvein.Wallet.Password
         Ergvein.Wallet.Settings
         Ergvein.Wallet.Status.Widget

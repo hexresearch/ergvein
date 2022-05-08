@@ -143,14 +143,14 @@ socket SocketConf{..} = fmap switchSocket $ networkHoldDyn $ ffor _socketConfPro
   sendChan <- liftIO newTChanIO
   performEvent_ $ ffor closeE $ const $ liftIO $ atomically $ writeTVar intVar True
   performEvent_ $ ffor _socketConfSend $ \bs -> do
-    logWrite $ "Serialized message: " <> showt bs
+    -- logWrite $ "Serialized message: " <> showt bs
     liftIO . atomically . writeTChan sendChan $ bs
   performEvent_ $ ffor _socketConfClose $ const $ liftIO $ closeCb Nothing
   performFork_  $ ffor connectE $ const $ liftIO $ do
     let sendThread sock = forever $ do
-          logWrite "Awaiting messages to send"
+          -- logWrite "Awaiting messages to send"
           msgs <- atomically $ readAllTVar sendChan
-          logWrite $ "Sending messages with length: " <> showt (BS.length <$> msgs)
+          -- logWrite $ "Sending messages with length: " <> showt (BS.length <$> msgs)
           traverse_ (sendAll sock) msgs
           -- sendLazy sock . BSL.fromChunks $ msgs
         conCb (sock, _) = do
