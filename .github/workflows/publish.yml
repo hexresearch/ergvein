@@ -148,7 +148,9 @@ jobs:
         ./release-android.sh
 
     - name: Git-Crypt Lock
-      run: sudo git-crypt lock
+      run: |
+        git config --global --add safe.directory /home/actions/_work/ergvein/ergvein
+        sudo git-crypt lock
 
     - name: Create Release
       id: create_release
