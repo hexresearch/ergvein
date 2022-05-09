@@ -169,7 +169,7 @@ scanBtcBlocks keys hashesE = do
   performEvent_ $ ffor txsUpdsE $ \(upds, _) -> logWrite $ "Transactions got: " <> showt (mconcat . V.toList . fmap snd $ upds)
   storeUpdated1E <- insertTxsUtxoInPubKeystore "scanBtcBlocks" BTC txsUpdsE
   updD <- holdDyn (error "impossible: scanBtcBlocks") storeUpdated1E
-  outUpdE <- removeOutgoingTxs "scanBtcBlocks" BTC $ (M.elems . M.unions . V.toList . snd . V.unzip . fst) <$> storeUpdated1E
+  outUpdE <- removeOutgoingTxs "scanBtcBlocks" BTC $ (fmap egvTxId . M.elems . M.unions . V.toList . snd . V.unzip . fst) <$> storeUpdated1E
   let storeUpdated2E = tag (current updD) outUpdE
   pure $ leftmost [(V.any (not . M.null . snd)) . fst <$> storeUpdated2E, False <$ noScanE]
 
