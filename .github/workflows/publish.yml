@@ -147,10 +147,11 @@ jobs:
         nix-channel --update
         ./release-android.sh
 
+    - name: Restore permissions on repo
+      run: sudo chown -R actions /home/actions/_work/ergvein/ergvein
+      
     - name: Git-Crypt Lock
-      run: |
-        git config --global --add safe.directory /home/actions/_work/ergvein/ergvein
-        sudo git-crypt lock
+      run: git-crypt lock
 
     - name: Create Release
       id: create_release
