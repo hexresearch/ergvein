@@ -129,5 +129,6 @@ in (self: super: let
     dns = self.callPackage ./derivations/dns.nix {};
     distributive = lib.dontCheck super.distributive;
     hakyll = lib.dontCheck (lib.doJailbreak (self.callPackage ./derivations/hakyll.nix {}));
+    commutative-semigroups = self.callPackage ./derivations/commutative-semigroups.nix {};
   }
 )
