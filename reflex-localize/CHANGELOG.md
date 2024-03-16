@@ -1,3 +1,7 @@
+# 1.2.0.0
+
+* Raise bounds for `reflex-0.9`
+
 # 1.1.0.0
 
 * Added instance for `LocalizedPrint ()`
