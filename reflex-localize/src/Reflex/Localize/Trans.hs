@@ -19,6 +19,10 @@ import Reflex.ExternalRef
 import Reflex.Localize.Language
 import Reflex.Localize.Monad
 
+#if MIN_VERSION_reflex(0,9,0)
+import Data.Semigroup.Commutative (Commutative)
+#endif 
+
 data LocalizeEnv t = LocalizeEnv {
   locEnvLangRef :: !(ExternalRef t Language)
 } deriving (Generic)
@@ -41,7 +45,11 @@ deriving instance MonadIO m => MonadIO (LocalizeT t m)
 #ifndef ghcjs_HOST_OS
 deriving instance MonadJSM m => MonadJSM (LocalizeT t m)
 #endif
+#if MIN_VERSION_reflex(0,9,0)
+deriving instance (Group q, Commutative q, Query q, Eq q, MonadQuery t q m, Monad m) => MonadQuery t q (LocalizeT t m)
+#else 
 deriving instance (Group q, Additive q, Query q, Eq q, MonadQuery t q m, Monad m) => MonadQuery t q (LocalizeT t m)
+#endif
 deriving instance (Monoid w, DynamicWriter t w m) => DynamicWriter t w (LocalizeT t m)
 #if !MIN_VERSION_reflex(0,7,0)
 deriving instance (Monoid w, MonadBehaviorWriter t w m) => MonadBehaviorWriter t w (RetractT t m)
